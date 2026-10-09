@@ -5,29 +5,19 @@ import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Input, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
-import { formatNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
-import { useSupplierBalances, useSuppliers } from './api'
+import { usePartyBalances } from '../parties/api'
+import { BalanceText } from '../parties/PartyParts'
+import { useSuppliers } from './api'
 import { canManageSuppliers } from './permissions'
-
-/** Positive = we owe (baki), negative = advance with the supplier (peski). */
-export function BalanceText({ paisa }: { paisa: number }) {
-  if (paisa === 0) return <span className="text-subtle">Settled</span>
-  return (
-    <span className="tabular-nums">
-      <span className="font-semibold text-ink">{formatNPR(Math.abs(paisa))}</span>{' '}
-      <span className={paisa > 0 ? 'text-warn-ink' : 'text-good-ink'}>{paisa > 0 ? 'to pay (baki)' : 'advance (peski)'}</span>
-    </span>
-  )
-}
 
 export function SuppliersPage() {
   const auth = useCompany()
   const suppliers = useSuppliers(auth.companyId)
-  const balances = useSupplierBalances(auth.companyId, auth.canSeeFinance)
+  const balances = usePartyBalances(auth.companyId, 'supplier', auth.canSeeFinance)
   const [adding, setAdding] = useState(false)
   const [search, setSearch] = useState('')
-  const balance = new Map(balances.data?.map((b) => [b.supplier_id, b]))
+  const balance = new Map(balances.data?.map((b) => [b.party_id, b]))
   const companyLevel = balances.data?.[0]?.company_level ?? false
   const q = search.trim().toLowerCase()
   const list = suppliers.data?.filter((s) => !q || s.name.toLowerCase().includes(q) || s.categories.join(' ').toLowerCase().includes(q))

@@ -97,15 +97,21 @@ begin
   return v_id;
 end $$;
 
--- Sum of ledger columns for a project (null = unallocated bucket), as the superuser.
-create or replace function tests.ledger(p_supplier uuid, p_project uuid, p_col text) returns bigint
+-- Sum of ledger columns for a party and project (null = unallocated bucket), as the superuser.
+create or replace function tests.ledger(p_party uuid, p_project uuid, p_col text) returns bigint
 language plpgsql as $$
 declare v bigint;
 begin
   execute format(
-    'select coalesce(sum(%I), 0) from public.ledger_entries where supplier_id = $1 and project_id is not distinct from $2', p_col)
-  into v using p_supplier, p_project;
+    'select coalesce(sum(%I), 0) from public.ledger_entries where party_id = $1 and project_id is not distinct from $2', p_col)
+  into v using p_party, p_project;
   return v;
 end $$;
+
+-- Milestone 3: project cost (ledger), as the superuser.
+create or replace function tests.project_cost(p_project uuid) returns bigint
+language sql stable as $$
+  select coalesce(sum(cost_paisa), 0)::bigint from public.ledger_entries where project_id = p_project
+$$;
 
 grant execute on all functions in schema tests to authenticated;

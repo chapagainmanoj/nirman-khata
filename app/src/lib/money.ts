@@ -93,3 +93,14 @@ export function percent(numerator: number, denominator: number | null | undefine
 function assertPaisa(value: number) {
   if (!Number.isSafeInteger(value)) throw new Error(`Money must be integer paisa, got ${value}`)
 }
+
+/**
+ * Split a total over n equal parts to the paisa; leftover paisa go to the first parts
+ * (the same rule as save_labour_batch on the server).
+ */
+export function splitEvenly(totalPaisa: number, n: number): number[] {
+  if (n <= 0) return []
+  const base = Math.floor(totalPaisa / n)
+  const left = totalPaisa - base * n
+  return Array.from({ length: n }, (_, i) => base + (i < left ? 1 : 0))
+}

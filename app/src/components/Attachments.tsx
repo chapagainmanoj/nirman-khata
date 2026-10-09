@@ -10,14 +10,17 @@ import { supabase } from '../lib/supabase'
 import { platform } from '../platform'
 import { Button, ConfirmButton, ErrorBanner, Status } from './ui'
 
-export type AttachmentOwner = { delivery_id: string } | { bill_id: string } | { payment_id: string }
-// keyof on the union above is `never`, so the owner column is named explicitly.
-type OwnerColumn = 'delivery_id' | 'bill_id' | 'payment_id'
+// keyof on a union of single-key objects is `never`, so the owner column is named explicitly.
+type OwnerColumn = 'delivery_id' | 'bill_id' | 'payment_id' | 'work_package_id' | 'charge_id' | 'labour_cost_id' | 'expense_id'
+export type AttachmentOwner = { [K in OwnerColumn]: { [P in K]: string } }[OwnerColumn]
 
 const BUCKET = 'attachments'
 
 // Screen readers hear "Challan photo 1 of 2", not "IMG_20261010_143022.jpg".
-const WHAT: Record<OwnerColumn, string> = { delivery_id: 'Challan', bill_id: 'Bill', payment_id: 'Payment proof' }
+const WHAT: Record<OwnerColumn, string> = {
+  delivery_id: 'Challan', bill_id: 'Bill', payment_id: 'Payment proof', work_package_id: 'Agreement',
+  charge_id: 'Claim', labour_cost_id: 'Labour', expense_id: 'Receipt',
+}
 
 export function Attachments({
   owner, canAdd, canRemove, label = 'Add photo',

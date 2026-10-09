@@ -108,3 +108,17 @@ export function fiscalYearRange(label: string): { start: IsoDate; end: IsoDate }
     end: bsToAd({ year: start + 1, month: 3, day: bsMonthDays(start + 1, 3) }),
   }
 }
+
+/** The AD date n days after (or before, if negative) an AD date. */
+export function addDays(iso: IsoDate, n: number): IsoDate {
+  const d = new Date(`${iso}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
+/** Every AD date from `from` to `to`, inclusive; empty when `to` is before `from`. */
+export function dateRange(from: IsoDate, to: IsoDate): IsoDate[] {
+  const out: IsoDate[] = []
+  for (let d = from; d <= to && out.length < 366; d = addDays(d, 1)) out.push(d)
+  return out
+}

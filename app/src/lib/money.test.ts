@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatNPR, formatNPRShort, paisaToInput, parseNPR, percent, splitProRata } from './money'
+import { formatNPR, formatNPRShort, paisaToInput, parseNPR, percent, splitEvenly, splitProRata } from './money'
 
 describe('formatNPR', () => {
   it('uses lakh/crore grouping (acceptance #15)', () => {
@@ -86,5 +86,15 @@ describe('percent', () => {
     expect(percent(70, 100)).toBe('70%') // acceptance #9: 7 lakh of 10 lakh
     expect(percent(1, 0)).toBe('Not available')
     expect(percent(1, null)).toBe('Not available')
+  })
+})
+
+describe('splitEvenly', () => {
+  it('splits a week of labour exactly (acceptance #18)', () => {
+    expect(splitEvenly(7000000, 7)).toEqual(Array(7).fill(1000000))
+  })
+  it('gives leftover paisa to the first days, totalling exactly', () => {
+    expect(splitEvenly(1000001, 3)).toEqual([333334, 333334, 333333])
+    expect(splitEvenly(5, 0)).toEqual([])
   })
 })

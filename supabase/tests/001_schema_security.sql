@@ -1,7 +1,7 @@
 -- Catalog-level security checks (design §3.4, test S3).
 begin;
 \ir helpers/helpers.psql
-select plan(8);
+select plan(9);
 
 select is(
   (select array_agg(c.relname::text order by c.relname)
@@ -67,6 +67,19 @@ select ok(
   and not has_function_privilege('authenticated', 'private.begin_op(uuid, uuid, text, jsonb)', 'EXECUTE')
   and not has_function_privilege('authenticated', 'private.settle_one(uuid, uuid, uuid, bigint, date, uuid, text)', 'EXECUTE'),
   'ledger and settlement writers cannot be called directly'
+);
+
+-- Every function that writes money rows, by name, so a new overload cannot slip through.
+select is(
+  (select array_agg(p.oid::regprocedure::text order by 1)
+   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'private'
+     and p.proname in ('begin_op', 'finish_op', 'new_event', 'add_ledger', 'negate_events', 'lock_supplier', 'lock_party',
+                       'lock_docs', 'settle_one', 'unsettle_where', 'reverse_with_event', 'post_payment', 'pay_now',
+                       'post_labour', 'notify')
+     and has_function_privilege('authenticated', p.oid, 'EXECUTE')),
+  null,
+  'no internal writer (milestones 2 and 3) is callable by signed-in users'
 );
 
 select * from finish();

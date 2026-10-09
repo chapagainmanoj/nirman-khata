@@ -101,7 +101,7 @@ select throws_ok(format($$select public.settle(gen_random_uuid(), jsonb_build_ar
     jsonb_build_object('payment_id', %L, 'bill_id', %L, 'project_id', %L, 'amount_paisa', 1000000),
     jsonb_build_object('payment_id', %L, 'bill_id', %L, 'project_id', %L, 'amount_paisa', 1000000)))$$,
     :'p1', :'b1', :'pa', :'p2', :'b2', :'pa'),
-  'P0001', 'Match one supplier at a time', 'one settle call cannot mix suppliers');
+  'P0001', 'Match one supplier or other party at a time', 'one settle call cannot mix suppliers');
 select is((select count(*) from public.settlement_events where bill_id in (:'b1', :'b2')), 0::bigint,
   '... and nothing is settled');
 

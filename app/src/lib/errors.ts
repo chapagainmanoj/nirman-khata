@@ -5,6 +5,9 @@ type ErrorLike = { message?: string; code?: string; details?: string } | null | 
 const BY_CONSTRAINT: Record<string, string> = {
   projects_company_id_code_key: 'This project code is already used.',
   suppliers_unique_name: 'A supplier with this name already exists.',
+  subcontractors_unique_name: 'A subcontractor with this name already exists.',
+  payees_unique_name: 'A payee with this name already exists.',
+  crews_unique_name: 'A crew with this name already exists for this project.',
 }
 
 const BY_CODE: Record<string, string> = {

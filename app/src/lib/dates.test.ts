@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  adToBs, bsMonthDays, bsToAd, fiscalYear, fiscalYearRange, formatAd, formatBs, formatDual, todayKathmandu,
+  addDays, adToBs, bsMonthDays, bsToAd, dateRange, fiscalYear, fiscalYearRange, formatAd, formatBs, formatDual, todayKathmandu,
 } from './dates'
 
 // Reference dates from the official calendar (Nepali new year and fiscal-year start).
@@ -77,5 +77,18 @@ describe('todayKathmandu', () => {
     // 2026-10-09 20:00 UTC is already 10 Oct in Kathmandu (UTC+05:45).
     expect(todayKathmandu(new Date('2026-10-09T20:00:00Z'))).toBe('2026-10-10')
     expect(todayKathmandu(new Date('2026-10-09T18:00:00Z'))).toBe('2026-10-09')
+  })
+})
+
+describe('addDays and dateRange', () => {
+  it('crosses month and year ends', () => {
+    expect(addDays('2026-01-31', 1)).toBe('2026-02-01')
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
+    expect(addDays('2026-03-01', -1)).toBe('2026-02-28')
+  })
+  it('lists a week inclusive of both ends', () => {
+    expect(dateRange('2026-05-11', '2026-05-17')).toHaveLength(7)
+    expect(dateRange('2026-05-11', '2026-05-11')).toEqual(['2026-05-11'])
+    expect(dateRange('2026-05-12', '2026-05-11')).toEqual([])
   })
 })

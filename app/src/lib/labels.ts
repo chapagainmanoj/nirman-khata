@@ -32,6 +32,8 @@ type SlipStatus = Database['public']['Enums']['slip_status']
 type BillStatus = Database['public']['Enums']['bill_status']
 type PaymentMethod = Database['public']['Enums']['payment_method']
 type DeliveryIssue = Database['public']['Enums']['delivery_issue']
+type PackageStatus = Database['public']['Enums']['package_status']
+type ChargeStatus = Database['public']['Enums']['charge_status']
 
 export const SLIP_STATUS: Record<SlipStatus, [string, Tone]> = {
   draft: ['Draft', 'neutral'],
@@ -77,3 +79,20 @@ export function settlementLabel(outstanding: number, settled: number): [string, 
   if (settled > 0) return ['Part paid', 'warn']
   return ['Unpaid', 'bad']
 }
+
+export const PACKAGE_STATUS: Record<PackageStatus, [string, Tone]> = {
+  planned: ['Planned', 'info'],
+  in_progress: ['In progress', 'warn'],
+  completed: ['Completed', 'good'],
+  cancelled: ['Cancelled', 'neutral'],
+}
+
+export const CHARGE_STATUS: Record<ChargeStatus, [string, Tone]> = {
+  draft: ['Waiting for approval', 'warn'],
+  approved: ['Approved', 'good'],
+  rejected: ['Rejected', 'neutral'],
+  reversed: ['Reversed', 'bad'],
+}
+
+/** Common crew work types (req §14); free text is allowed too. */
+export const WORK_TYPES = ['Dakarmi', 'Jyami', 'Mixed']

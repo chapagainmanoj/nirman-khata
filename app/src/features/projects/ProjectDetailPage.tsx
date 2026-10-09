@@ -13,8 +13,10 @@ import { t } from '../../lib/i18n'
 import { ROLE_LABELS, STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
 import { formatNPR, percent } from '../../lib/money'
 import { supabase, type Tables } from '../../lib/supabase'
+import { ExpenseSection, LabourSection, SubcontractSection } from '../costs/CostLists'
 import { DeliveryList } from '../supply/DeliveryList'
 import { useProjectCost } from '../supply/api'
+import { BalanceText } from '../parties/PartyParts'
 import { canEnter } from '../supply/permissions'
 import { memberName, useAmountsAsOf, useAssignments, useHeadings, useMembers, useProject, type Member } from './api'
 import { ProjectDetailsFields } from './ProjectDetailsFields'
@@ -54,6 +56,9 @@ export function ProjectDetailPage() {
         </div>
         <DeliveryList filter={{ projectId: p.id }} />
       </section>
+      <SubcontractSection projectId={p.id} />
+      <LabourSection projectId={p.id} />
+      <ExpenseSection projectId={p.id} />
     </>
   )
 }
@@ -115,6 +120,10 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
   )
 }
 
+const OWED: Array<['supplier' | 'subcontractor' | 'crew' | 'payee', string]> = [
+  ['supplier', 'Suppliers'], ['subcontractor', 'Subcontractors'], ['crew', 'Labour crews'], ['payee', 'Other payees'],
+]
+
 function AmountsCard({ projectId, status }: { projectId: string; status: Tables<'projects'>['status'] }) {
   const auth = useCompany()
   const [asOf, setAsOf] = useState(todayKathmandu())
@@ -153,8 +162,11 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
           <Detail label="Recorded cost">{formatNPR(c.cost_paisa)}</Detail>
           <Detail label="Budget used">{percent(c.cost_paisa, budget)}</Detail>
           <Detail label="Budget remaining">{budget === null ? t('common.notAvailable') : formatNPR(budget - c.cost_paisa)}</Detail>
-          <Detail label="Cash paid to suppliers">{formatNPR(c.cash_paid_paisa)}</Detail>
-          <Detail label="Owed to suppliers">{formatNPR(c.payable_paisa)}</Detail>
+          <Detail label="Cash paid">{formatNPR(c.cash_paid_paisa)}</Detail>
+          <Detail label="Still owed">{formatNPR(c.payable_paisa)}</Detail>
+          {OWED.map(([k, label]) => c.payable_by_kind[k] !== 0 && (
+            <Detail key={k} label={`· ${label}`}><BalanceText paisa={c.payable_by_kind[k]} /></Detail>
+          ))}
           <Detail label="Current contract">{formatNPR(a?.contract_paisa)}</Detail>
           <Detail label="Planned margin">{formatNPR(a?.planned_margin_paisa)}</Detail>
           {finished && a?.contract_paisa != null && (

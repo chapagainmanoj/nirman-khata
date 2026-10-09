@@ -123,8 +123,8 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.goto('/projects')
   await page.getByRole('link', { name: /Ward 5 school building/ }).click()
   await expect(row(page, 'Recorded cost')).toContainText('Rs. 51,000')
-  await expect(row(page, 'Cash paid to suppliers')).toContainText('Rs. 51,000')
-  await expect(row(page, 'Owed to suppliers')).toContainText('Rs. 0')
+  await expect(row(page, 'Cash paid')).toContainText('Rs. 51,000')
+  await expect(row(page, 'Still owed')).toContainText('Rs. 0')
   await expect(row(page, 'Budget used')).toContainText('5.1%')
   await page.screenshot(shots('m2-08-project-cost'))
 

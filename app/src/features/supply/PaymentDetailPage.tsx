@@ -45,12 +45,20 @@ export function PaymentDetailPage() {
   const byProject = [...new Set(allocations.map((a) => a.project_id))]
     .map((id) => ({ id, amount: allocations.filter((a) => a.project_id === id).reduce((s, a) => s + a.amount_paisa, 0) }))
     .filter((r) => r.amount !== 0)
-  const matched = Object.values(settlements.reduce<Record<string, { bill_id: string; bill_no: string; project_id: string; amount: number }>>((acc, s) => {
-    const k = `${s.bill_id}:${s.project_id}`
-    acc[k] ??= { bill_id: s.bill_id, bill_no: s.supplier_bills?.bill_no ?? '', project_id: s.project_id, amount: 0 }
+  const matched = Object.values(settlements.reduce<Record<string, { doc_id: string; label: string; to: string | null; project_id: string; amount: number }>>((acc, s) => {
+    const docId = s.doc_id!
+    const k = `${docId}:${s.project_id}`
+    const [label, to] = s.bill_id ? [`Bill ${s.supplier_bills?.bill_no ?? ''}`, `/bills/${s.bill_id}`]
+      : s.charge_id ? [`Work charge ${s.subcontract_charges?.claim_no ?? ''}`.trim(), `/work/${s.subcontract_charges?.work_package_id}`]
+      : s.labour_cost_id ? [`Labour ${s.labour_costs?.work_type ?? ''}`.trim(), `/projects/${s.project_id}`]
+      : [`Expense: ${s.expenses?.description ?? ''}`, `/projects/${s.project_id}`]
+    acc[k] ??= { doc_id: docId, label, to, project_id: s.project_id, amount: 0 }
     acc[k].amount += s.amount_paisa
     return acc
   }, {})).filter((m) => m.amount > 0)
+  const party = p.suppliers ?? p.subcontractors ?? p.crews ?? p.payees
+  const partyPath = p.supplier_id ? `/suppliers/${p.supplier_id}` : p.subcontractor_id ? `/subcontractors/${p.subcontractor_id}`
+    : p.crew_id ? `/crews/${p.crew_id}` : `/payees/${p.payee_id}`
   const posted = p.status === 'posted'
 
   return (
@@ -59,7 +67,7 @@ export function PaymentDetailPage() {
         title={`Payment ${p.number}`}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Link className="text-brand" to={`/suppliers/${p.supplier_id}`}>{p.suppliers?.name}</Link>
+            <Link className="text-brand" to={partyPath}>{party?.name}</Link>
             {p.status === 'reversed' && <Badge tone="bad">Reversed</Badge>}
           </span>
         }
@@ -69,6 +77,7 @@ export function PaymentDetailPage() {
           <div className="mb-2 text-lg font-semibold text-ink tabular-nums">{formatNPR(p.amount_paisa)}</div>
           <Detail label="Paid on"><DateText value={p.payment_date} display={auth.dateDisplay} dual /></Detail>
           <Detail label="How">{PAYMENT_METHODS[p.method]}</Detail>
+          {p.work_packages && <Detail label="Work package"><Link className="text-brand" to={`/work/${p.work_package_id}`}>{p.work_packages.scope}</Link></Detail>}
           <Detail label="Reference">{p.reference}</Detail>
           <Detail label="Recorded by">{memberName(members.data, p.created_by)}</Detail>
           <Detail label="Notes">{p.notes}</Detail>
@@ -81,23 +90,25 @@ export function PaymentDetailPage() {
           {p.amount_paisa - p.allocated_paisa !== 0 && (
             <Detail label="Not assigned to a project">{formatNPR(p.amount_paisa - p.allocated_paisa)}</Detail>
           )}
-          {posted && canPost(auth) && <AllocationForm paymentId={p.id} />}
+          {posted && canPost(auth) && !p.work_package_id && <AllocationForm paymentId={p.id} />}
         </Card>
 
-        <Card title="Bills it paid">
-          {matched.length === 0 && <p className="text-sm text-subtle">Not matched to bills yet. It counts as advance until it is.</p>}
+        <Card title="What it paid">
+          {matched.length === 0 && <p className="text-sm text-subtle">Not matched to bills or charges yet. It counts as advance until it is.</p>}
           <ul>
             {matched.map((m) => (
-              <li key={`${m.bill_id}:${m.project_id}`} className="border-b border-line py-2 text-sm last:border-0">
+              <li key={`${m.doc_id}:${m.project_id}`} className="border-b border-line py-2 text-sm last:border-0">
                 <div className="flex items-start justify-between gap-2">
-                  <Link className="font-medium text-brand" to={`/bills/${m.bill_id}`}>Bill {m.bill_no} · {project(m.project_id)?.code}</Link>
+                  {m.to
+                    ? <Link className="font-medium text-brand" to={m.to}>{m.label} · {project(m.project_id)?.code}</Link>
+                    : <span className="font-medium text-ink">{m.label} · {project(m.project_id)?.code}</span>}
                   <span className="tabular-nums">{formatNPR(m.amount)}</span>
                 </div>
                 {posted && canRecordPayments(auth) && (
                   <div className="mt-1">
                     <ReasonButton variant="ghost" title="Unmatch from this bill" hint="The money stays with the project as advance."
                       confirmLabel="Unmatch" busy={unsettle.isPending} error={unsettle.error && friendlyError(unsettle.error)}
-                      onConfirm={(reason) => unsettle.mutate({ bill: m.bill_id, project: m.project_id, amount: m.amount, reason })}>
+                      onConfirm={(reason) => unsettle.mutate({ bill: m.doc_id, project: m.project_id, amount: m.amount, reason })}>
                       Unmatch
                     </ReasonButton>
                   </div>
@@ -106,7 +117,7 @@ export function PaymentDetailPage() {
             ))}
           </ul>
           {posted && canRecordPayments(auth) && (
-            <p className="mt-2 text-xs text-subtle">To match it to more bills, use "Match payments to bills" on the supplier page.</p>
+            <p className="mt-2 text-xs text-subtle">To match it to more, use "Match payments to bills" on the {p.supplier_id ? 'supplier' : 'party'} page.</p>
           )}
         </Card>
 

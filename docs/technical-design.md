@@ -437,6 +437,19 @@ connections), and `app/e2e/supplier-loop.spec.ts`. Not in milestone 2 yet: suppl
 (the ledger supports them; no screen or function), the full H3 property test, and
 as-known reports (the `p_as_known` switch exists in `project_cost_summary`; reports are milestone 5).
 
+Milestone 3 built: migrations `20261012000100`–`200` (subcontractors, work packages, charges,
+crews, labour batches, payees, expenses; payments, posting events, ledger, settlements, reversals
+and opening balances widened to any party and document), pgTAP files `013`–`014` (acceptance #7,
+#8, #18; L1, L3; L2 needs daily reports and moves to milestone 4), the L1 two-connection batch race and a concurrent charge
+approval race in `concurrency.sh`, and `app/e2e/other-costs.spec.ts`. Decisions made while
+building it:
+- X2: staff without finance access see their own labour and expense entries for 7 days or until
+  reversed. "Until settled" was dropped, because pay now settles an entry the moment it is saved.
+- Charges, labour and expenses are corrected by reversal only. Credits stay supplier-only in v1.
+- A payment made against a work package goes wholly to that package's project and settles only
+  that package's charges. Its project split cannot be changed.
+- Every project gets a default "Site crew" when it is created.
+
 ---
 
 ## 10. Tests

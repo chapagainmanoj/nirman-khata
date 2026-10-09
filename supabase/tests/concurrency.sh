@@ -145,5 +145,26 @@ race "select public.cancel_slip('$SLIP', 'race');" "$(deliver "$SLIP")"
 check "Slip: cancel first, then the concurrent delivery is refused" "yes no" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
 check "Slip: cancelled with no delivery" "cancelled:0" "$(slip_state "$SLIP")"
 
+# L1: the same weekly labour entry from two devices at once -> one batch of 7 days.
+KEY=$(uuidgen | tr 'A-Z' 'a-z'); BATCH=$(uuidgen | tr 'A-Z' 'a-z')
+WEEK="select public.save_labour_batch('$KEY', jsonb_build_object('id', '$BATCH', 'project_id', '$PROJECT',
+  'from_date', '2026-05-11', 'to_date', '2026-05-17', 'total_paisa', 7000000)) ->> 'batch_id';"
+race "$WEEK" "$WEEK"
+check "L1: both concurrent submissions succeed" "yes yes" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+check "L1: 7 daily records, not 14" 7 "$(q -c "select count(*) from public.labour_costs where batch_id = '$BATCH'")"
+
+# Concurrent approvals of one work charge with different keys -> approved once.
+SUB=$(q -c "$(as_user "insert into public.subcontractors (company_id, name) values ('$COMPANY', 'Race Plaster') returning id;")" | tail -1)
+PKG=$(uuidgen | tr 'A-Z' 'a-z'); CHARGE=$(uuidgen | tr 'A-Z' 'a-z')
+q -c "$(as_user "select public.save_work_package(jsonb_build_object('id', '$PKG', 'project_id', '$PROJECT',
+  'subcontractor_id', '$SUB', 'scope', 'Plaster'));
+  select public.save_charge_claim(jsonb_build_object('id', '$CHARGE', 'work_package_id', '$PKG',
+  'charge_date', '2026-05-10', 'claimed_paisa', 8000000));")" >/dev/null
+APPROVE="select public.approve_charge(gen_random_uuid(), '$CHARGE', 8000000, '2026-05-12');"
+race "$APPROVE" "$APPROVE"
+check "Charge: first approval succeeds" yes "$(succeeded "$RACE_A")"
+check "Charge: concurrent second approval is refused" no "$(succeeded "$RACE_B")"
+check "Charge: one cost event" 1 "$(q -c "select count(*) from public.posting_events where charge_id = '$CHARGE'")"
+
 if [ "$failures" -gt 0 ]; then echo "$failures concurrency test(s) failed"; exit 1; fi
 echo "All concurrency tests passed"

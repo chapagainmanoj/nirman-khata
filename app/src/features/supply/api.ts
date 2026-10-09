@@ -36,7 +36,8 @@ export function useRefreshMoney() {
   const queryClient = useQueryClient()
   return () =>
     Promise.all(
-      ['bills', 'bill', 'payments', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview']
+      ['bills', 'bill', 'payments', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview',
+        'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees']
         .map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
     )
 }
@@ -49,43 +50,6 @@ export function useSuppliers(companyId: string) {
     queryKey: ['suppliers', companyId],
     queryFn: async () => {
       const { data, error } = await supabase.from('suppliers').select('*').eq('company_id', companyId).order('name')
-      if (error) throw error
-      return data
-    },
-  })
-}
-
-export function useSupplierBalances(companyId: string, enabled: boolean) {
-  return useQuery({
-    queryKey: ['balances', companyId],
-    enabled,
-    queryFn: () => rpc('supplier_balances', { p_company: companyId }),
-  })
-}
-
-export function useKhata(supplierId: string, projectId: string | null, enabled: boolean) {
-  return useQuery({
-    queryKey: ['khata', supplierId, projectId],
-    enabled,
-    queryFn: () => rpc('supplier_khata', { p_supplier: supplierId, ...(projectId ? { p_project: projectId } : {}) }),
-  })
-}
-
-export function useOpenItems(supplierId: string, enabled: boolean) {
-  return useQuery({
-    queryKey: ['open-items', supplierId],
-    enabled,
-    queryFn: () => rpc('supplier_open_items', { p_supplier: supplierId }),
-  })
-}
-
-export function useOpeningBalance(supplierId: string, enabled: boolean) {
-  return useQuery({
-    queryKey: ['opening-balance', supplierId],
-    enabled,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('party_opening_balances').select('*').eq('supplier_id', supplierId).eq('status', 'posted').maybeSingle()
       if (error) throw error
       return data
     },
@@ -263,28 +227,17 @@ export function useCredits(billId: string, enabled: boolean) {
   })
 }
 
-export function usePayments(filter: { supplierId?: string; companyId?: string }) {
-  return useQuery({
-    queryKey: ['payments', filter],
-    queryFn: async () => {
-      let q = supabase.from('payment_summaries').select('*, suppliers(name)').order('payment_date', { ascending: false }).limit(200)
-      if (filter.supplierId) q = q.eq('supplier_id', filter.supplierId)
-      if (filter.companyId) q = q.eq('company_id', filter.companyId)
-      const { data, error } = await q
-      if (error) throw error
-      return data.map(paymentRow)
-    },
-  })
-}
-
 export function usePayment(paymentId: string) {
   return useQuery({
     queryKey: ['payment', paymentId],
     queryFn: async () => {
       const [payment, allocations, settlements] = await Promise.all([
-        supabase.from('payment_summaries').select('*, suppliers(name)').eq('id', paymentId).maybeSingle(),
+        supabase.from('payment_summaries')
+          .select('*, suppliers(name), subcontractors(name), crews(name), payees(name), work_packages(scope)').eq('id', paymentId).maybeSingle(),
         supabase.from('payment_allocation_events').select('*').eq('payment_id', paymentId).order('posted_at'),
-        supabase.from('settlement_events').select('*, supplier_bills(bill_no)').eq('payment_id', paymentId).order('posted_at'),
+        supabase.from('settlement_events')
+          .select('*, supplier_bills(bill_no), subcontract_charges(claim_no, work_package_id), labour_costs(work_type), expenses(description)')
+          .eq('payment_id', paymentId).order('posted_at'),
       ])
       for (const r of [payment, allocations, settlements]) if (r.error) throw r.error
       return { payment: payment.data && paymentRow(payment.data), allocations: allocations.data!, settlements: settlements.data! }
@@ -297,7 +250,7 @@ type PaymentSummary = Database['public']['Views']['payment_summaries']['Row']
 /** View columns are typed nullable; these are always set for a payment row. */
 function paymentRow<T extends PaymentSummary>(p: T) {
   return {
-    ...p, id: p.id!, number: p.number!, supplier_id: p.supplier_id!, payment_date: p.payment_date!, status: p.status!,
+    ...p, id: p.id!, number: p.number!, party_id: p.party_id!, payment_date: p.payment_date!, status: p.status!,
     method: p.method!, amount_paisa: p.amount_paisa ?? 0, allocated_paisa: p.allocated_paisa ?? 0, settled_paisa: p.settled_paisa ?? 0,
   }
 }
@@ -308,6 +261,7 @@ export type ProjectCost = {
   cost_paisa: number
   cash_paid_paisa: number
   payable_paisa: number
+  payable_by_kind: { supplier: number; subcontractor: number; crew: number; payee: number }
   by_heading: Array<{ heading_id: string; cost_paisa: number }>
   unbilled_delivery_lines: number
 }

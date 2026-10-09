@@ -1,12 +1,18 @@
 // Phone-only menu for the sections that do not fit in the bottom bar.
 import { Link } from 'react-router'
 import { useCompany } from '../auth/AuthProvider'
+import { canEnter } from '../features/supply/permissions'
 import { t, type MessageKey } from '../lib/i18n'
 import { PageHeader } from './ui'
 
 export function MorePage() {
   const auth = useCompany()
   const links: Array<[string, MessageKey, boolean]> = [
+    ['/labour/new', 'nav.labour', canEnter(auth)],
+    ['/expenses/new', 'nav.expense', canEnter(auth)],
+    ['/subcontractors', 'nav.subcontractors', true],
+    ['/crews', 'nav.crews', true],
+    ['/payees', 'nav.payees', true],
     ['/notifications', 'nav.notifications', true],
     ['/staff', 'nav.staff', auth.isAdmin],
     ['/catalog', 'nav.catalog', true],

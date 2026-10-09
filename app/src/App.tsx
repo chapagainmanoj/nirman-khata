@@ -20,6 +20,12 @@ import { SlipEditPage } from './features/supply/SlipEditPage'
 import { SlipsPage } from './features/supply/SlipsPage'
 import { SupplierDetailPage } from './features/supply/SupplierDetailPage'
 import { SuppliersPage } from './features/supply/SuppliersPage'
+import { ExpenseNewPage } from './features/costs/ExpenseNewPage'
+import { LabourNewPage } from './features/costs/LabourNewPage'
+import { PartiesPage } from './features/parties/PartiesPage'
+import { PartyDetailPage } from './features/parties/PartyDetailPage'
+import { WorkPackageDetailPage } from './features/subcontract/WorkPackageDetailPage'
+import { WorkPackageEditPage } from './features/subcontract/WorkPackageEditPage'
 import { AdminOnly, RedirectIfSignedIn, RequireCompany } from './routes/guards'
 
 export function App() {
@@ -49,6 +55,17 @@ export function App() {
           <Route path="/bills/:billId/edit" element={<BillEditPage />} />
           <Route path="/payments/new" element={<PaymentNewPage />} />
           <Route path="/payments/:paymentId" element={<PaymentDetailPage />} />
+          <Route path="/subcontractors" element={<PartiesPage key="subcontractor" kind="subcontractor" />} />
+          <Route path="/subcontractors/:partyId" element={<PartyDetailPage key="subcontractor" kind="subcontractor" />} />
+          <Route path="/crews" element={<PartiesPage key="crew" kind="crew" />} />
+          <Route path="/crews/:partyId" element={<PartyDetailPage key="crew" kind="crew" />} />
+          <Route path="/payees" element={<PartiesPage key="payee" kind="payee" />} />
+          <Route path="/payees/:partyId" element={<PartyDetailPage key="payee" kind="payee" />} />
+          <Route path="/work/new" element={<WorkPackageEditPage />} />
+          <Route path="/work/:packageId" element={<WorkPackageDetailPage />} />
+          <Route path="/work/:packageId/edit" element={<WorkPackageEditPage />} />
+          <Route path="/labour/new" element={<LabourNewPage />} />
+          <Route path="/expenses/new" element={<ExpenseNewPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/projects" replace />} />
       </Routes>
