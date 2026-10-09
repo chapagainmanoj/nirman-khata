@@ -32,6 +32,10 @@ Demo accounts (from `supabase/seed.sql`, recreated by `pnpm db:reset`), password
 | 9800000004 | Accounts | all projects and amounts |
 | 9800000005 | Viewer | P-2, no amounts |
 
+The demo company also has three suppliers, slip OS-0001 (approved, 60 of 100 bags of cement
+delivered to P-1), slip OS-0002 (sand, waiting for Sita's approval), bill 1187 posted by Gita
+(Rs 59,325) and a Rs 40,000 payment against it, so the khata shows Rs 19,325 still owed.
+
 Or register a new company at `/register`. Staff sign in with their mobile number and the password the admin gave them.
 
 ## Docker
@@ -48,9 +52,10 @@ Test a running build with `E2E_BASE_URL=http://localhost:8080 pnpm --dir app e2e
 ## Tests
 
 ```bash
-pnpm db:test                  # database: isolation, permissions, revisions (pgTAP)
+pnpm db:test                  # database: isolation, permissions, ledger invariants (pgTAP)
+pnpm db:test:race             # concurrency: two real connections (double post, over-settle, retries)
 pnpm --dir app test           # money, BS/AD dates, login IDs (Vitest)
-pnpm --dir app e2e            # phone-screen walk-through (Playwright; needs db + dev server)
+pnpm --dir app e2e            # phone-screen walk-throughs: setup, and order -> deliver -> bill -> pay (Playwright; needs db + dev server)
 ```
 
 After a schema change: `pnpm db:reset` then `pnpm db:types`.

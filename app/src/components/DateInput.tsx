@@ -20,17 +20,21 @@ export function DateInput({ value, onChange, display, id, allowEmpty }: Props) {
 
   return (
     <div>
-      <div className="flex gap-2">
-        {mode === 'ad' ? (
-          <Input id={id} type="date" value={iso} onChange={(e) => onChange(e.target.value)} />
-        ) : (
-          <BsSelects id={id} iso={iso} onChange={onChange} allowEmpty={allowEmpty} />
-        )}
+      {/* Selects keep at least 13.5rem (room for "Mangsir"); below that the toggle wraps. */}
+      <div className="flex flex-wrap gap-2">
+        <div className="flex min-w-[13.5rem] flex-1">
+          {mode === 'ad' ? (
+            <Input id={id} type="date" value={iso} onChange={(e) => onChange(e.target.value)} />
+          ) : (
+            <BsSelects id={id} iso={iso} onChange={onChange} allowEmpty={allowEmpty} />
+          )}
+        </div>
         <button
           type="button"
           onClick={() => setMode(mode === 'bs' ? 'ad' : 'bs')}
-          className="min-h-11 shrink-0 rounded-lg border border-line px-2.5 text-xs font-semibold text-brand"
-          aria-label={mode === 'bs' ? 'Switch to AD calendar' : 'Switch to BS calendar'}
+          className="min-h-11 min-w-11 shrink-0 rounded-lg border border-field px-2.5 text-xs font-semibold text-brand active:bg-muted"
+          // Name starts with the visible text so "tap BS" works for voice control users.
+          aria-label={mode === 'bs' ? 'BS, switch to AD calendar' : 'AD, switch to BS calendar'}
         >
           {mode === 'bs' ? 'BS' : 'AD'}
         </button>

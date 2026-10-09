@@ -11,6 +11,7 @@ import { Button, Card, ErrorBanner, Field, Notice, PageHeader } from '../../comp
 import { formatDual, todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
+import { focusFirstError } from '../../lib/forms'
 import { t } from '../../lib/i18n'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
@@ -36,6 +37,7 @@ export function ProjectNewPage() {
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
+    shouldFocusError: false,
     defaultValues: { ...emptyDetails, contract: '', budget: '', budget_edited: false, effective_date: todayKathmandu() },
   })
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: 'project-new' })
@@ -79,7 +81,7 @@ export function ProjectNewPage() {
     <>
       <PageHeader title={t('projects.new')} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved draft.</Notice></div>}
-      <form onSubmit={handleSubmit((v) => create.mutate(v))} className="flex flex-col gap-4">
+      <form onSubmit={handleSubmit((v) => create.mutate(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
         <Card title={t('project.details')}>
           <ProjectDetailsFields form={form} members={members.data ?? []} display={auth.dateDisplay} />
         </Card>
@@ -101,7 +103,7 @@ export function ProjectNewPage() {
             </Field>
             <div className="rounded-lg bg-muted p-3 text-sm">
               <div className="text-subtle">Planned margin (contract − budget)</div>
-              <div className="text-lg font-semibold text-ink">
+              <div className="text-lg font-semibold text-ink tabular-nums">
                 {contractPaisa !== null && budgetPaisa !== null ? formatNPR(contractPaisa - budgetPaisa) : '—'}
               </div>
               <div className="text-xs text-subtle">

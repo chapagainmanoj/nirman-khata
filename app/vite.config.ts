@@ -17,8 +17,8 @@ export default defineConfig({
         name: 'NirmanKhata',
         short_name: 'NirmanKhata',
         description: 'Construction site and cost register',
-        theme_color: '#c2410c',
-        background_color: '#fafaf9',
+        theme_color: '#9c3d26',
+        background_color: '#faf7f5',
         display: 'standalone',
         start_url: '/projects',
         icons: [
@@ -36,5 +36,6 @@ export default defineConfig({
   ],
   test: {
     environment: 'node',
+    include: ['src/**/*.test.ts'], // e2e/ is Playwright's
   },
 })

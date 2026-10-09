@@ -56,3 +56,56 @@ language sql as $$
 $$;
 
 grant execute on all functions in schema tests to authenticated;
+
+-- Milestone 2 helpers. Run as the current (logged in) user.
+create or replace function tests.supplier(p_company uuid, p_name text) returns uuid
+language sql as $$
+  insert into public.suppliers (company_id, name) values (p_company, p_name) returning id
+$$;
+
+create or replace function tests.material(p_company uuid, p_name text) returns uuid
+language sql stable as $$
+  select id from public.materials where company_id = p_company and name = p_name
+$$;
+
+create or replace function tests.unit(p_company uuid, p_code text) returns uuid
+language sql stable as $$
+  select id from public.units where company_id = p_company and code = p_code
+$$;
+
+create or replace function tests.heading(p_company uuid, p_name text) returns uuid
+language sql stable as $$
+  select id from public.cost_headings where company_id = p_company and name = p_name
+$$;
+
+-- A one-line posted bill: p_amount paisa on p_project under Cement, no delivery (reason given).
+create or replace function tests.posted_bill(
+  p_company uuid, p_supplier uuid, p_project uuid, p_amount bigint, p_date date default '2026-05-01',
+  p_bill_no text default null
+) returns uuid
+language plpgsql as $$
+declare v_id uuid := gen_random_uuid();
+begin
+  perform public.save_bill_draft(jsonb_build_object(
+    'id', v_id, 'supplier_id', p_supplier, 'bill_no', coalesce(p_bill_no, 'B-' || left(v_id::text, 8)),
+    'bill_date', p_date,
+    'lines', jsonb_build_array(jsonb_build_object(
+      'project_id', p_project, 'heading_id', tests.heading(p_company, 'Cement'),
+      'description', 'Cement', 'qty', 1, 'unit_id', tests.unit(p_company, 'bag'), 'amount_paisa', p_amount,
+      'unmatched_reason', 'test bill'))));
+  perform public.post_bill(gen_random_uuid(), v_id);
+  return v_id;
+end $$;
+
+-- Sum of ledger columns for a project (null = unallocated bucket), as the superuser.
+create or replace function tests.ledger(p_supplier uuid, p_project uuid, p_col text) returns bigint
+language plpgsql as $$
+declare v bigint;
+begin
+  execute format(
+    'select coalesce(sum(%I), 0) from public.ledger_entries where supplier_id = $1 and project_id is not distinct from $2', p_col)
+  into v using p_supplier, p_project;
+  return v;
+end $$;
+
+grant execute on all functions in schema tests to authenticated;

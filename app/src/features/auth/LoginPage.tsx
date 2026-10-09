@@ -42,7 +42,7 @@ export function LoginPage() {
         <ErrorBanner>{error}</ErrorBanner>
         <Button type="submit" busy={busy}>{t('auth.login')}</Button>
         <p className="text-xs text-subtle">{t('auth.forgot')}</p>
-        <Link to="/register" className="text-center text-sm font-medium text-brand">{t('auth.register')}</Link>
+        <Link to="/register" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">{t('auth.register')}</Link>
       </form>
     </AuthShell>
   )

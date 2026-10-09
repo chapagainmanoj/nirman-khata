@@ -1,7 +1,7 @@
 -- Catalog-level security checks (design §3.4, test S3).
 begin;
 \ir helpers/helpers.psql
-select plan(6);
+select plan(8);
 
 select is(
   (select array_agg(c.relname::text order by c.relname)
@@ -51,6 +51,22 @@ select ok(
 select ok(
   not has_function_privilege('anon', 'public.create_project(uuid, text, text, bigint, bigint, date, jsonb)', 'EXECUTE'),
   'anonymous users cannot call RPCs'
+);
+
+select is(
+  (select array_agg(p.oid::regprocedure::text order by 1)
+   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'EXECUTE')
+     and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')),
+  null,
+  'no public function is callable by anonymous users'
+);
+
+select ok(
+  not has_function_privilege('authenticated', 'private.add_ledger(uuid, text, uuid, uuid, bigint, bigint, bigint)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'private.begin_op(uuid, uuid, text, jsonb)', 'EXECUTE')
+  and not has_function_privilege('authenticated', 'private.settle_one(uuid, uuid, uuid, bigint, date, uuid, text)', 'EXECUTE'),
+  'ledger and settlement writers cannot be called directly'
 );
 
 select * from finish();

@@ -9,6 +9,9 @@ type Membership = Tables<'memberships'> & { companies: Tables<'companies'> }
 
 export type AuthState = {
   loading: boolean
+  /** Profile/company could not be loaded (usually no network); not the same as "no company". */
+  loadError: unknown
+  retryLoad: () => void
   session: Session | null
   userId: string | null
   profile: Tables<'profiles'> | null
@@ -48,6 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const me = useQuery({
     queryKey: ['me', userId],
     enabled: !!userId,
+    // supabase-js already retries network failures; a second layer only delays the error screen.
+    retry: false,
     queryFn: async () => {
       const [profile, membership] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId!).single(),
@@ -59,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   })
 
+  const refetchMe = me.refetch
   const value = useMemo<AuthState>(() => {
     const membership = me.data?.membership ?? null
     const roles = membership?.roles ?? []
@@ -67,6 +73,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const seesAllProjects = isAdmin || hasRole('accounts')
     return {
       loading: !sessionLoaded || (!!userId && me.isPending),
+      // A failed background refresh keeps the data we already have.
+      loadError: me.data ? null : me.error,
+      retryLoad: () => void refetchMe(),
       session,
       userId,
       profile: me.data?.profile ?? null,
@@ -94,7 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return true
       },
     }
-  }, [me.data, me.isPending, session, sessionLoaded, userId])
+  }, [me.data, me.isPending, me.error, refetchMe, session, sessionLoaded, userId])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

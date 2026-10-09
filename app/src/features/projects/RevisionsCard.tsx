@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Badge, Button, Card, ErrorBanner, Field, Input, Notice, Spinner } from '../../components/ui'
+import { Badge, Button, Card, Checkbox, ErrorBanner, Field, Input, Notice, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
@@ -55,18 +55,18 @@ export function RevisionsCard({ projectId, members }: { projectId: string; membe
     >
       {form && <RevisionForm kind={form} projectId={projectId} onDone={() => setForm(null)} />}
       {revisions.isPending && <Spinner />}
-      <ErrorBanner>{revisions.error && friendlyError(revisions.error)}</ErrorBanner>
+      <ErrorBanner onRetry={() => void revisions.refetch()}>{revisions.error && friendlyError(revisions.error)}</ErrorBanner>
       <ul>
         {rows.map((r) => (
           <li key={r.id} className="border-b border-line py-3 last:border-0">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
                 <Badge tone={r.kind === 'Contract' ? 'info' : 'neutral'}>{r.kind}</Badge>
-                <span className="font-semibold text-ink">{formatNPR(r.amount)}</span>
+                <span className="font-semibold text-ink tabular-nums">{formatNPR(r.amount)}</span>
               </div>
               <span className="text-sm text-subtle">from <DateText value={r.effective_date} display={auth.dateDisplay} dual /></span>
             </div>
-            <div className="mt-1 text-sm text-ink">{r.reason}</div>
+            <div className="mt-1 break-words text-sm text-ink">{r.reason}</div>
             {r.lines && r.lines.length > 0 && (
               <ul className="mt-1 text-xs text-subtle">
                 {r.lines.map((l) => <li key={l.heading_id}>{headingName(l.heading_id)}: {formatNPR(l.amount_paisa)}</li>)}
@@ -160,10 +160,7 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
         <Input id="rev-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
       {kind === 'budget' && (
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" className="size-5 accent-brand" checked={split} onChange={(e) => setSplit(e.target.checked)} />
-          Split by cost heading (optional)
-        </label>
+        <Checkbox label="Split by cost heading (optional)" checked={split} onChange={(e) => setSplit(e.target.checked)} />
       )}
       {kind === 'budget' && split && (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -172,7 +169,7 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
               <MoneyInput id={`line-${h.id}`} value={lines[h.id] ?? ''} onChange={(e) => setLines({ ...lines, [h.id]: e.target.value })} />
             </Field>
           ))}
-          <div className={`text-sm sm:col-span-2 ${totalPaisa !== null && linesSum !== totalPaisa ? 'text-warn' : 'text-subtle'}`}>
+          <div className={`text-sm sm:col-span-2 ${totalPaisa !== null && linesSum !== totalPaisa ? 'font-medium text-warn-ink' : 'text-subtle'}`}>
             Headings total {formatNPR(linesSum)}
             {totalPaisa !== null && linesSum !== totalPaisa && ` — differs from the total budget by ${formatNPR(totalPaisa - linesSum)}`}
           </div>

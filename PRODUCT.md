@@ -64,7 +64,8 @@ Today these companies run on paper khata and challan files, Excel / Google Sheet
 
 - Name: **NirmanKhata**. Descriptor in use: "Construction site and cost register".
 - Voice in existing copy: plain, direct, task-first English, using familiar Nepali trade terms alongside the English ones.
-- No logo or brand guide beyond the shipped app icon and theme colour; visual identity is owned by the codebase, not this file.
+- Brand colour: **Fired brick** (pakki eeta), the dusty red-brown of kiln-fired Nepali brick (`#9c3d26`), chosen by the product owner on 2026-10-10 over the earlier Tailwind orange (read as a common AI default). It marks actions and selection only; errors use a separate cool crimson.
+- No logo or brand guide beyond the shipped app icon; the token values live in `app/src/index.css`.
 
 ## Evidence on Hand
 

@@ -430,6 +430,13 @@ Nothing open blocks milestone 1 or 2.
 
 Milestone 2's invariant and concurrency tests are written before its screens.
 
+**Status (2026-10-10):** milestone 1 built. Milestone 2 built: migrations `20261010000100`–`300`,
+pgTAP files `008`–`011` (acceptance #2–#6, #12, #13, #16, #17, #20–#22; C3, C4, C6–C8; M1–M4; R1–R3;
+S2 for X1, S4, S5), `supabase/tests/concurrency.sh` (C1, C2, C5 and same-key retries on two
+connections), and `app/e2e/supplier-loop.spec.ts`. Not in milestone 2 yet: supplier refunds
+(the ledger supports them; no screen or function), the full H3 property test, and
+as-known reports (the `p_as_known` switch exists in `project_cost_summary`; reports are milestone 5).
+
 ---
 
 ## 10. Tests

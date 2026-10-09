@@ -1,57 +1,54 @@
 // Cost headings, materials and units (req §7, §8.1, §3.2). Admins edit; everyone reads.
 // Nothing is deleted: used entries stay visible in history, so they are deactivated instead.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { Badge, Button, Card, Checkbox, ErrorBanner, Field, Input, PageHeader, Select, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { supabase, type Tables } from '../../lib/supabase'
 import { useHeadings } from '../projects/api'
+import { useMaterials, useUnits } from './api'
 
 type Tab = 'headings' | 'materials' | 'units'
 
+const TABS: Array<[Tab, string]> = [['headings', 'Cost headings'], ['materials', 'Materials'], ['units', 'Units']]
+
 export function CatalogPage() {
   const [tab, setTab] = useState<Tab>('headings')
-  const tabs: Array<[Tab, string]> = [['headings', 'Cost headings'], ['materials', 'Materials'], ['units', 'Units']]
+  const ids = useId()
+  const tabId = (key: Tab) => `${ids}-tab-${key}`
+
+  // Arrow keys move between tabs (WAI-ARIA tabs pattern); Tab moves into the panel.
+  function onKeyDown(e: KeyboardEvent) {
+    const i = TABS.findIndex(([key]) => key === tab)
+    const step: Record<string, number> = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: TABS.length - 1 }
+    if (!(e.key in step)) return
+    e.preventDefault()
+    const [next] = TABS[(step[e.key] + TABS.length) % TABS.length]
+    setTab(next)
+    document.getElementById(tabId(next))?.focus()
+  }
+
   return (
     <>
       <PageHeader title={t('catalog.title')} />
-      <div className="mb-4 flex gap-1 rounded-lg bg-muted p-1" role="tablist">
-        {tabs.map(([key, label]) => (
-          <button key={key} role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
-            className={`min-h-10 flex-1 rounded-md text-sm font-medium ${tab === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
+      <div className="mb-4 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Catalog sections" onKeyDown={onKeyDown}>
+        {TABS.map(([key, label]) => (
+          <button key={key} id={tabId(key)} type="button" role="tab" aria-selected={tab === key} aria-controls={`${ids}-panel`}
+            tabIndex={tab === key ? 0 : -1} onClick={() => setTab(key)}
+            className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${tab === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
             {label}
           </button>
         ))}
       </div>
-      {tab === 'headings' && <HeadingsTab />}
-      {tab === 'materials' && <MaterialsTab />}
-      {tab === 'units' && <UnitsTab />}
+      <div role="tabpanel" id={`${ids}-panel`} aria-labelledby={tabId(tab)}>
+        {tab === 'headings' && <HeadingsTab />}
+        {tab === 'materials' && <MaterialsTab />}
+        {tab === 'units' && <UnitsTab />}
+      </div>
     </>
   )
-}
-
-function useUnits(companyId: string) {
-  return useQuery({
-    queryKey: ['units', companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('units').select('*').eq('company_id', companyId).order('name')
-      if (error) throw error
-      return data
-    },
-  })
-}
-
-function useMaterials(companyId: string) {
-  return useQuery({
-    queryKey: ['materials', companyId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('materials').select('*').eq('company_id', companyId).order('name')
-      if (error) throw error
-      return data
-    },
-  })
 }
 
 /** Insert/update on a catalog table, then refresh its list. */
@@ -93,16 +90,18 @@ function HeadingsTab() {
     <li key={h.id} className={`flex items-center justify-between gap-2 border-b border-line py-2 last:border-0 ${indent ? 'pl-5' : ''}`}>
       {editing?.id === h.id ? (
         <form className="flex flex-1 gap-2" onSubmit={(e) => { e.preventDefault(); write.mutate({ id: h.id, values: { name: editing.name.trim() } }, { onSuccess: () => setEditing(null) }) }}>
-          <Input value={editing.name} onChange={(e) => setEditing({ id: h.id, name: e.target.value })} autoFocus />
-          <Button type="submit" disabled={!editing.name.trim()}>{t('common.save')}</Button>
+          <Input aria-label={`New name for ${h.name}`} value={editing.name} onChange={(e) => setEditing({ id: h.id, name: e.target.value })} autoFocus />
+          <Button type="submit" disabled={!editing.name.trim()} busy={write.isPending}>{t('common.save')}</Button>
+          <Button type="button" variant="secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
         </form>
       ) : (
-        <span className={`text-sm ${indent ? 'text-ink' : 'font-semibold text-ink'} ${h.active ? '' : 'line-through opacity-60'}`}>{h.name}</span>
+        <span className={`min-w-0 break-words text-sm ${indent ? 'text-ink' : 'font-semibold text-ink'} ${h.active ? '' : 'line-through opacity-60'}`}>{h.name}</span>
       )}
       {auth.isAdmin && editing?.id !== h.id && (
         <span className="flex shrink-0 gap-1">
-          <Button variant="ghost" onClick={() => setEditing({ id: h.id, name: h.name })}>Rename</Button>
-          <Button variant="ghost" onClick={() => write.mutate({ id: h.id, values: { active: !h.active } })}>{h.active ? 'Deactivate' : 'Activate'}</Button>
+          <Button variant="ghost" aria-label={`Rename ${h.name}`} onClick={() => setEditing({ id: h.id, name: h.name })}>Rename</Button>
+          <Button variant="ghost" aria-label={`${h.active ? 'Deactivate' : 'Activate'} ${h.name}`} disabled={write.isPending}
+            onClick={() => write.mutate({ id: h.id, values: { active: !h.active } })}>{h.active ? 'Deactivate' : 'Activate'}</Button>
         </span>
       )}
     </li>
@@ -127,6 +126,8 @@ function HeadingsTab() {
       <ErrorBanner>{write.error && friendlyError(write.error)}</ErrorBanner>
       <Card>
         {headings.isPending && <Spinner />}
+        <ErrorBanner onRetry={() => void headings.refetch()}>{headings.error && friendlyError(headings.error)}</ErrorBanner>
+        {headings.data?.length === 0 && <p className="text-sm text-subtle">No cost headings yet.</p>}
         <ul>{top.flatMap((h) => [row(h, false), ...children(h.id).map((c) => row(c, true))])}</ul>
       </Card>
     </div>
@@ -188,10 +189,14 @@ function MaterialsTab() {
       <ErrorBanner>{write.error && friendlyError(write.error)}</ErrorBanner>
       <Card>
         {materials.isPending && <Spinner />}
+        <ErrorBanner onRetry={() => { void materials.refetch(); void units.refetch() }}>
+          {(materials.error || units.error) && friendlyError(materials.error || units.error)}
+        </ErrorBanner>
+        {materials.data?.length === 0 && <p className="text-sm text-subtle">No materials yet.</p>}
         <ul>
           {materials.data?.map((m) => (
             <li key={m.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0">
-              <div className={m.active ? '' : 'opacity-60'}>
+              <div className={`min-w-0 break-words ${m.active ? '' : 'opacity-60'}`}>
                 <div className="text-sm font-medium text-ink">
                   {m.name}{m.local_name && m.local_name !== m.name && <span className="text-subtle"> ({m.local_name})</span>}
                   {!m.active && <> <Badge>Inactive</Badge></>}
@@ -200,11 +205,12 @@ function MaterialsTab() {
               </div>
               {auth.isAdmin && (
                 <span className="flex shrink-0 gap-1">
-                  <Button variant="ghost" onClick={() => {
+                  <Button variant="ghost" aria-label={`Edit ${m.name}`} onClick={() => {
                     setEditId(m.id)
                     setForm({ name: m.name, local_name: m.local_name ?? '', spec: m.spec ?? '', default_unit_id: m.default_unit_id, default_heading_id: m.default_heading_id ?? '' })
                   }}>{t('common.edit')}</Button>
-                  <Button variant="ghost" onClick={() => write.mutate({ id: m.id, values: { active: !m.active } })}>{m.active ? 'Deactivate' : 'Activate'}</Button>
+                  <Button variant="ghost" aria-label={`${m.active ? 'Deactivate' : 'Activate'} ${m.name}`} disabled={write.isPending}
+                    onClick={() => write.mutate({ id: m.id, values: { active: !m.active } })}>{m.active ? 'Deactivate' : 'Activate'}</Button>
                 </span>
               )}
             </li>
@@ -247,16 +253,19 @@ function UnitsTab() {
       <ErrorBanner>{write.error && friendlyError(write.error)}</ErrorBanner>
       <Card>
         {units.isPending && <Spinner />}
+        <ErrorBanner onRetry={() => void units.refetch()}>{units.error && friendlyError(units.error)}</ErrorBanner>
+        {units.data?.length === 0 && <p className="text-sm text-subtle">No units yet.</p>}
         <ul>
           {units.data?.map((u) => (
             <li key={u.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0">
-              <div className={u.active ? '' : 'opacity-60'}>
+              <div className={`min-w-0 break-words ${u.active ? '' : 'opacity-60'}`}>
                 <span className="text-sm font-medium text-ink">{u.name}</span>
                 <span className="ml-2 text-xs text-subtle">{u.code}</span>
                 {u.needs_note && <> <Badge>needs description</Badge></>}
               </div>
               {auth.isAdmin && (
-                <Button variant="ghost" onClick={() => write.mutate({ id: u.id, values: { active: !u.active } })}>{u.active ? 'Deactivate' : 'Activate'}</Button>
+                <Button variant="ghost" aria-label={`${u.active ? 'Deactivate' : 'Activate'} ${u.name}`} disabled={write.isPending}
+                  onClick={() => write.mutate({ id: u.id, values: { active: !u.active } })}>{u.active ? 'Deactivate' : 'Activate'}</Button>
               )}
             </li>
           ))}

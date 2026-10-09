@@ -3,7 +3,7 @@ import { t } from '../../lib/i18n'
 
 export function AuthShell({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className="flex min-h-dvh items-start justify-center bg-page px-4 pt-16">
+    <main className="flex min-h-dvh items-start justify-center bg-page px-4 pt-16">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
           <div className="text-2xl font-bold text-brand">{t('app.name')}</div>
@@ -14,6 +14,6 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
           {children}
         </div>
       </div>
-    </div>
+    </main>
   )
 }

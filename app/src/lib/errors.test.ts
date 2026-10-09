@@ -1,0 +1,15 @@
+import { describe, expect, it } from 'vitest'
+import { friendlyError } from './errors'
+
+describe('friendlyError', () => {
+  it('names the duplicate by its unique constraint', () => {
+    const dup = (constraint: string) => ({ code: '23505', message: `duplicate key value violates unique constraint "${constraint}"` })
+    expect(friendlyError(dup('suppliers_unique_name'))).toBe('A supplier with this name already exists.')
+    expect(friendlyError(dup('projects_company_id_code_key'))).toBe('This project code is already used.')
+    expect(friendlyError(dup('units_company_id_code_key'))).toBe('This already exists. Use a different value.')
+  })
+
+  it('reports a dropped connection as a network problem', () => {
+    expect(friendlyError({ message: 'TypeError: Failed to fetch' })).toBe('No connection. Check your network and try again.')
+  })
+})

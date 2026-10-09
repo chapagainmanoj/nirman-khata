@@ -28,7 +28,7 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await page.screenshot(shots('01-projects-empty'))
 
   // New project: budget follows contract until edited
-  await page.getByRole('button', { name: 'New project' }).click()
+  await page.getByRole('link', { name: 'New project' }).click()
   await page.getByLabel('Project code').fill('P-1')
   await page.getByLabel('Project name').fill('Ward 5 school building')
   await page.getByLabel('District').fill('Kaski')
@@ -107,7 +107,7 @@ test('BS date picker fits on a phone', async ({ page }) => {
   await page.getByLabel('Mobile number or email').fill(phone)
   await page.getByLabel('Password').fill('owner-pass-1')
   await page.getByRole('button', { name: 'Create company' }).click()
-  await page.getByRole('button', { name: 'New project' }).click()
+  await page.getByRole('link', { name: 'New project' }).click()
   const effective = page.getByText('Effective from', { exact: true }).locator('..')
   await effective.scrollIntoViewIfNeeded()
   const year = effective.getByLabel('Year')

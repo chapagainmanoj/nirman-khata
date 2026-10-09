@@ -1,0 +1,181 @@
+// One order slip: lines by project with received vs remaining (req §9.2 step 7), approval,
+// sharing with the supplier, deliveries against it.
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate, useParams } from 'react-router'
+import { useCompany } from '../../auth/AuthProvider'
+import { DateText } from '../../components/DateInput'
+import { ReasonButton } from '../../components/ReasonButton'
+import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Notice, PageHeader, Spinner, Status } from '../../components/ui'
+import { formatDual } from '../../lib/dates'
+import { friendlyError } from '../../lib/errors'
+import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
+import { formatNPR } from '../../lib/money'
+import { platform } from '../../platform'
+import { memberName, useMembers, useProjects } from '../projects/api'
+import { rpc, useSlip } from './api'
+import { DeliveryList } from './DeliveryList'
+import { useState } from 'react'
+
+const qty = (n: number | null | undefined) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 }))
+
+export function SlipDetailPage() {
+  const { slipId = '' } = useParams()
+  const auth = useCompany()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const slip = useSlip(slipId)
+  const projects = useProjects(auth.companyId)
+  const members = useMembers(auth.companyId)
+  const [shareNote, setShareNote] = useState('')
+
+  const act = useMutation({
+    mutationFn: async (fn: () => Promise<unknown>) => fn(),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['slip', slipId] })
+      await queryClient.invalidateQueries({ queryKey: ['slips'] })
+    },
+  })
+
+  if (slip.isPending) return <Spinner />
+  if (slip.error) return <ErrorBanner onRetry={() => void slip.refetch()}>{friendlyError(slip.error)}</ErrorBanner>
+  if (!slip.data) return <EmptyState title="Slip not found"><Link className="text-brand" to="/slips">Back to slips</Link></EmptyState>
+
+  const { slip: s, lines, perms } = slip.data
+  const [statusLabel, statusTone] = SLIP_STATUS[s.status]
+  const [fLabel, fTone] = FULFILMENT[perms?.fulfilment ?? 'not_received']
+  const project = (id: string) => projects.data?.find((p) => p.id === id)
+  const byProject = [...new Set(lines.map((l) => l.project_id))].map((id) => ({ id, lines: lines.filter((l) => l.project_id === id) }))
+  const lineName = (l: (typeof lines)[number]) => l.materials?.name ?? l.material_text ?? 'Material'
+  const err = act.error && friendlyError(act.error)
+
+  async function share() {
+    const text = [
+      `ORDER SLIP ${s.number}`,
+      auth.company.name,
+      `To: ${s.suppliers?.name}`,
+      `Date: ${formatDual(s.request_date, auth.dateDisplay)}`,
+      s.required_date && `Needed by: ${formatDual(s.required_date, auth.dateDisplay)}`,
+      ...byProject.flatMap((g) => [
+        '',
+        `For ${project(g.id)?.code ?? ''} ${project(g.id)?.name ?? ''}:`,
+        ...g.lines.map((l, i) => `${i + 1}. ${lineName(l)}${l.spec ? ` (${l.spec})` : ''}: ${qty(l.qty)} ${l.units?.name ?? ''}${l.unit_note ? ` ${l.unit_note}` : ''}${l.note ? ` - ${l.note}` : ''}`),
+      ]),
+      '',
+      s.site_contact && `Site contact: ${s.site_contact}`,
+      s.delivery_instructions && `Instructions: ${s.delivery_instructions}`,
+    ].filter((x): x is string => typeof x === 'string').join('\n')
+    const result = await platform.share({ title: `Order slip ${s.number}`, text })
+    if (result === 'cancelled') return
+    if (result === 'unsupported') return setShareNote('Sharing is not available on this device. Copy the slip and send it yourself.')
+    setShareNote(result === 'copied' ? 'Copied. Paste it into WhatsApp or Viber.' : '')
+    act.mutate(() => rpc('mark_slip_sent', { p_slip: s.id, p_via: result === 'copied' ? 'copied' : 'share' }))
+  }
+
+  return (
+    <>
+      <PageHeader
+        title={`${s.number} · ${s.suppliers?.name ?? ''}`}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-2">
+            <Badge tone={statusTone}>{statusLabel}</Badge>
+            {s.status === 'approved' && <Badge tone={fTone}>{fLabel}</Badge>}
+            {s.status === 'approved' && <Badge tone={s.sent_at ? 'info' : 'warn'}>{s.sent_at ? 'Marked sent' : 'Not sent'}</Badge>}
+          </span>
+        }
+      />
+      {s.status === 'rejected' && s.rejected_reason && <div className="mb-4"><Notice>Rejected: {s.rejected_reason}</Notice></div>}
+      {s.closed_short_reason && <div className="mb-4"><Notice>Closed short: {s.closed_short_reason}</Notice></div>}
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        {perms?.can_edit && <ButtonLink variant="secondary" to={`/slips/${s.id}/edit`}>Edit</ButtonLink>}
+        {perms?.can_submit && (
+          <Button busy={act.isPending} onClick={() => act.mutate(() => rpc('submit_slip', { p_slip: s.id }))}>
+            {auth.company.slip_approval_required ? 'Submit for approval' : 'Submit'}
+          </Button>
+        )}
+        {perms?.can_approve && (
+          <Button busy={act.isPending} onClick={() => act.mutate(() => rpc('decide_slip', { p_slip: s.id, p_approve: true }))}>Approve</Button>
+        )}
+        {perms?.can_share && <Button variant={s.sent_at ? 'secondary' : 'primary'} onClick={() => void share()}>Share with supplier</Button>}
+        {perms?.can_delete && (
+          <ConfirmButton confirmLabel="Delete draft"
+            onConfirm={() => act.mutate(async () => { await rpc('delete_slip_draft', { p_slip: s.id }); navigate('/slips', { replace: true }) })}>
+            Delete
+          </ConfirmButton>
+        )}
+      </div>
+      <div className="mb-4 flex flex-col gap-2 empty:hidden">
+        {perms?.can_approve && (
+          <ReasonButton title="Reject this slip" confirmLabel="Reject" variant="danger" busy={act.isPending} error={err}
+            onConfirm={(reason) => act.mutate(() => rpc('decide_slip', { p_slip: s.id, p_approve: false, p_reason: reason }))}>
+            Reject
+          </ReasonButton>
+        )}
+        {perms?.can_close_short && (
+          <ReasonButton title="Close short" hint="e.g. Supplier out of stock, remaining not needed" confirmLabel="Close slip"
+            busy={act.isPending} error={err}
+            onConfirm={(reason) => act.mutate(() => rpc('close_slip_short', { p_slip: s.id, p_reason: reason }))}>
+            Close short
+          </ReasonButton>
+        )}
+        {perms?.can_cancel && (
+          <ReasonButton title="Cancel this slip" confirmLabel="Cancel slip" variant="danger" busy={act.isPending} error={err}
+            onConfirm={(reason) => act.mutate(() => rpc('cancel_slip', { p_slip: s.id, p_reason: reason }))}>
+            Cancel slip
+          </ReasonButton>
+        )}
+      </div>
+      <Status className="mb-4 text-sm text-subtle">{shareNote}</Status>
+      <ErrorBanner>{err}</ErrorBanner>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        {byProject.map((g) => (
+          <Card key={g.id} title={`${project(g.id)?.code ?? ''} · ${project(g.id)?.name ?? 'Project'}`}
+            actions={perms?.can_record_delivery && (
+              <ButtonLink variant="ghost" to={`/deliveries/new?slip=${s.id}&project=${g.id}`}>Record delivery</ButtonLink>
+            )}>
+            <ul>
+              {g.lines.map((l) => (
+                <li key={l.id} className="border-b border-line py-2 last:border-0">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 text-sm">
+                      <div className="font-medium break-words text-ink">{lineName(l)}{l.spec && <span className="text-subtle"> · {l.spec}</span>}</div>
+                      {l.note && <div className="text-xs text-subtle">{l.note}</div>}
+                      {l.est_rate_paisa !== null && <div className="text-xs text-subtle">Expected {formatNPR(l.est_rate_paisa)} per {l.units?.code}</div>}
+                    </div>
+                    <div className="shrink-0 text-right text-sm tabular-nums">
+                      <div className="font-semibold text-ink">{qty(l.qty)} {l.units?.name}{l.unit_note && <span className="font-normal text-subtle"> {l.unit_note}</span>}</div>
+                      {s.status === 'approved' && l.progress && (
+                        <div className="text-xs text-subtle">
+                          Received {qty(l.progress.received_qty)} · Pending {qty(l.progress.remaining_qty)}
+                        </div>
+                      )}
+                      {l.progress?.over_received && <Badge tone="warn">More than ordered</Badge>}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Card>
+        ))}
+        <Card title="Slip">
+          <Detail label="Requested"><DateText value={s.request_date} display={auth.dateDisplay} dual /></Detail>
+          <Detail label="Needed by"><DateText value={s.required_date} display={auth.dateDisplay} dual /></Detail>
+          <Detail label="Requested by">{memberName(members.data, s.created_by)}</Detail>
+          {s.decided_by && <Detail label={s.status === 'rejected' ? 'Rejected by' : 'Approved by'}>{memberName(members.data, s.decided_by)}</Detail>}
+          <Detail label="Site contact">{s.site_contact}</Detail>
+          <Detail label="Instructions">{s.delivery_instructions}</Detail>
+          <Detail label="Notes">{s.notes}</Detail>
+          {s.sent_at && <Detail label="Sent">{new Date(s.sent_at).toLocaleString('en-IN', { timeZone: 'Asia/Kathmandu' })}</Detail>}
+        </Card>
+      </div>
+
+      {s.status === 'approved' && (
+        <section className="mt-6">
+          <h2 className="mb-2 text-base font-semibold text-ink">Deliveries</h2>
+          <DeliveryList filter={{ slipId: s.id }} />
+        </section>
+      )}
+    </>
+  )
+}

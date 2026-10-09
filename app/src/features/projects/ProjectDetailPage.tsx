@@ -5,14 +5,18 @@ import { useForm } from 'react-hook-form'
 import { Link, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
-import { Badge, Button, Card, Detail, EmptyState, ErrorBanner, PageHeader, Select, Spinner } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Field, Notice, PageHeader, Select, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
+import { focusFirstError } from '../../lib/forms'
 import { t } from '../../lib/i18n'
 import { ROLE_LABELS, STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
-import { formatNPR } from '../../lib/money'
+import { formatNPR, percent } from '../../lib/money'
 import { supabase, type Tables } from '../../lib/supabase'
-import { memberName, useAmountsAsOf, useAssignments, useMembers, useProject, type Member } from './api'
+import { DeliveryList } from '../supply/DeliveryList'
+import { useProjectCost } from '../supply/api'
+import { canEnter } from '../supply/permissions'
+import { memberName, useAmountsAsOf, useAssignments, useHeadings, useMembers, useProject, type Member } from './api'
 import { ProjectDetailsFields } from './ProjectDetailsFields'
 import { detailsSchema, detailsToRow, type DetailsValues } from './projectDetails'
 import { RevisionsCard } from './RevisionsCard'
@@ -24,7 +28,7 @@ export function ProjectDetailPage() {
   const members = useMembers(auth.companyId)
 
   if (project.isPending) return <Spinner />
-  if (project.error) return <ErrorBanner>{friendlyError(project.error)}</ErrorBanner>
+  if (project.error) return <ErrorBanner onRetry={() => void project.refetch()}>{friendlyError(project.error)}</ErrorBanner>
   if (!project.data) {
     return <EmptyState title="Project not found">It does not exist or you are not assigned to it. <Link className="text-brand" to="/projects">Back to projects</Link></EmptyState>
   }
@@ -43,6 +47,13 @@ export function ProjectDetailPage() {
         <TeamCard projectId={p.id} members={members.data ?? []} />
         {auth.canSeeFinance && <RevisionsCard projectId={p.id} members={members.data ?? []} />}
       </div>
+      <section className="mt-6">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-base font-semibold text-ink">Deliveries</h2>
+          {canEnter(auth) && <ButtonLink variant="secondary" to={`/deliveries/new?project=${p.id}`}>Record delivery without slip</ButtonLink>}
+        </div>
+        <DeliveryList filter={{ projectId: p.id }} />
+      </section>
     </>
   )
 }
@@ -53,6 +64,7 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
   const [editing, setEditing] = useState(false)
   const form = useForm<DetailsValues>({
     resolver: zodResolver(detailsSchema),
+    shouldFocusError: false,
     values: {
       code: p.code, name: p.name, client_name: p.client_name ?? '', client_phone: p.client_phone ?? '',
       district: p.district ?? '', municipality: p.municipality ?? '', ward: p.ward ?? '', location_note: p.location_note ?? '',
@@ -77,7 +89,7 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
   if (editing) {
     return (
       <Card title={t('project.details')} className="lg:col-span-2">
-        <form onSubmit={form.handleSubmit((v) => save.mutate(v))} className="flex flex-col gap-4">
+        <form onSubmit={form.handleSubmit((v) => save.mutate(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
           <ProjectDetailsFields form={form} members={members} display={auth.dateDisplay} showActualDates />
           <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
           <div className="flex gap-2">
@@ -107,27 +119,58 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
   const auth = useCompany()
   const [asOf, setAsOf] = useState(todayKathmandu())
   const amounts = useAmountsAsOf(projectId, asOf, true)
+  const cost = useProjectCost(projectId, asOf, true)
+  const headings = useHeadings(auth.companyId)
   const a = amounts.data
+  const c = cost.data
   const finished = status === 'completed' || status === 'closed'
+  const budget = a?.budget_paisa ?? null
+  const headingName = (id: string) => {
+    const h = headings.data?.find((x) => x.id === id)
+    const parent = headings.data?.find((x) => x.id === h?.parent_id)
+    return h ? (parent ? `${parent.name} › ${h.name}` : h.name) : 'Heading'
+  }
 
   return (
     <Card title={t('project.amounts')}>
       <div className="mb-3">
-        <div className="mb-1 text-xs font-medium text-subtle">As of</div>
-        <DateInput value={asOf} onChange={(v) => v && setAsOf(v)} display={auth.dateDisplay} />
+        <Field label="As of" htmlFor="amounts-as-of">
+          <DateInput id="amounts-as-of" value={asOf} onChange={(v) => v && setAsOf(v)} display={auth.dateDisplay} />
+        </Field>
       </div>
-      {amounts.isPending && <Spinner />}
-      <ErrorBanner>{amounts.error && friendlyError(amounts.error)}</ErrorBanner>
-      {amounts.data !== undefined && (
+      {(amounts.isPending || cost.isPending) && <Spinner />}
+      <ErrorBanner onRetry={() => { void amounts.refetch(); void cost.refetch() }}>
+        {(amounts.error || cost.error) && friendlyError(amounts.error || cost.error)}
+      </ErrorBanner>
+      {amounts.data !== undefined && c && (
         <>
-          <Detail label="Original contract">{formatNPR(a?.original_contract_paisa)}</Detail>
+          {c.unbilled_delivery_lines > 0 && (
+            <div className="mb-3">
+              <Notice>{c.unbilled_delivery_lines} delivered item(s) are not billed yet, so recorded cost is not complete.</Notice>
+            </div>
+          )}
+          <Detail label="Current spending budget">{formatNPR(budget)}</Detail>
+          <Detail label="Recorded cost">{formatNPR(c.cost_paisa)}</Detail>
+          <Detail label="Budget used">{percent(c.cost_paisa, budget)}</Detail>
+          <Detail label="Budget remaining">{budget === null ? t('common.notAvailable') : formatNPR(budget - c.cost_paisa)}</Detail>
+          <Detail label="Cash paid to suppliers">{formatNPR(c.cash_paid_paisa)}</Detail>
+          <Detail label="Owed to suppliers">{formatNPR(c.payable_paisa)}</Detail>
           <Detail label="Current contract">{formatNPR(a?.contract_paisa)}</Detail>
-          <Detail label="Original spending budget">{formatNPR(a?.original_budget_paisa)}</Detail>
-          <Detail label="Current spending budget">{formatNPR(a?.budget_paisa)}</Detail>
           <Detail label="Planned margin">{formatNPR(a?.planned_margin_paisa)}</Detail>
+          {finished && a?.contract_paisa != null && (
+            <Detail label={a.contract_paisa - c.cost_paisa >= 0 ? 'Final profit' : 'Final loss'}>
+              {formatNPR(Math.abs(a.contract_paisa - c.cost_paisa))}
+            </Detail>
+          )}
+          {c.by_heading.length > 0 && (
+            <details className="mt-3 text-sm">
+              <summary className="min-h-11 cursor-pointer py-2 font-medium text-brand">Cost by heading</summary>
+              {c.by_heading.map((h) => <Detail key={h.heading_id} label={headingName(h.heading_id)}>{formatNPR(h.cost_paisa)}</Detail>)}
+            </details>
+          )}
           <p className="mt-3 text-xs text-subtle">
-            Recorded cost, budget used and budget remaining appear here once bills and expenses are recorded.
-            {finished ? ' Final profit or loss will be shown for this project.' : ' Profit is shown only after the project is completed or closed.'}
+            Original contract {formatNPR(a?.original_contract_paisa)}, original budget {formatNPR(a?.original_budget_paisa)}.
+            {!finished && ' Profit is shown only after the project is completed or closed.'}
           </p>
         </>
       )}
@@ -168,18 +211,24 @@ function TeamCard({ projectId, members }: { projectId: string; members: Member[]
   return (
     <Card title={t('project.team')}>
       <p className="mb-2 text-xs text-subtle">Admins and Accounts staff can see all projects without being assigned.</p>
+      {assignments.isPending && <Spinner />}
+      <ErrorBanner onRetry={() => void assignments.refetch()}>{assignments.error && friendlyError(assignments.error)}</ErrorBanner>
       {assignments.data?.length === 0 && <p className="text-sm text-subtle">Nobody is assigned yet.</p>}
       <ul>
         {assignments.data?.map((a) => {
           const m = members.find((x) => x.user_id === a.user_id)
+          const name = m?.profiles?.full_name ?? 'Former staff'
           return (
             <li key={a.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0">
-              <div>
-                <div className="text-sm font-medium text-ink">{m?.profiles?.full_name ?? 'Former staff'}</div>
+              <div className="min-w-0 break-words">
+                <div className="text-sm font-medium text-ink">{name}</div>
                 <div className="text-xs text-subtle">{m?.roles.map((r) => ROLE_LABELS[r]).join(', ')}{m && !m.active && ' · inactive'}</div>
               </div>
               {auth.isAdmin && (
-                <Button variant="ghost" onClick={() => remove.mutate(a.id)} disabled={remove.isPending}>Remove</Button>
+                <ConfirmButton label={`Remove ${name}`} confirmLabel="Yes, remove" disabled={remove.isPending}
+                  onConfirm={() => remove.mutate(a.id)}>
+                  Remove
+                </ConfirmButton>
               )}
             </li>
           )

@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
-import { Button, Card, Checkbox, Detail, ErrorBanner, Field, Input, Notice, PageHeader, Select } from '../../components/ui'
+import { Button, Card, Checkbox, Detail, ErrorBanner, Field, Input, Notice, PageHeader, Select, Status } from '../../components/ui'
 import { formatDual, todayKathmandu, type DateDisplay } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
@@ -55,7 +55,7 @@ function MyProfileCard() {
           </Select>
         </Field>
         <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
-        {saved && <Notice>Saved.</Notice>}
+        <Status>{saved && <Notice>Saved.</Notice>}</Status>
         <Button type="submit" busy={save.isPending} disabled={!name.trim()}>{t('common.save')}</Button>
       </form>
     </Card>
@@ -122,7 +122,7 @@ function CompanySettingsForm({ company }: { company: Tables<'companies'> }) {
           <Checkbox label="Show tax fields (VAT) on bills" checked={v.tax_fields_enabled} onChange={(e) => set('tax_fields_enabled', e.target.checked)} />
         </div>
         <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
-        {saved && <Notice>Saved.</Notice>}
+        <Status>{saved && <Notice>Saved.</Notice>}</Status>
         <Button type="submit" busy={save.isPending} disabled={!v.name.trim()}>{t('common.save')}</Button>
       </form>
     </Card>

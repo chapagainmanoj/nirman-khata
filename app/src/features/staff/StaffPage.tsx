@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
-import { Badge, Button, Card, Checkbox, ErrorBanner, Field, Input, Notice, PageHeader, Spinner } from '../../components/ui'
+import { Badge, Button, Card, Checkbox, ConfirmButton, ErrorBanner, Field, Input, Notice, PageHeader, Spinner, Status } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { callFunction } from '../../lib/functions'
 import { t } from '../../lib/i18n'
@@ -25,7 +25,7 @@ export function StaffPage() {
       <PageHeader title={t('staff.title')} actions={!adding && <Button onClick={() => setAdding(true)}>{t('staff.add')}</Button>} />
       {adding && <AddStaffForm onDone={() => setAdding(false)} />}
       {members.isPending && <Spinner />}
-      <ErrorBanner>{members.error && friendlyError(members.error)}</ErrorBanner>
+      <ErrorBanner onRetry={() => void members.refetch()}>{members.error && friendlyError(members.error)}</ErrorBanner>
       <div className="grid gap-3">
         {members.data?.map((m) => <MemberCard key={m.id} member={m} isSelf={m.user_id === auth.userId} />)}
       </div>
@@ -179,13 +179,14 @@ function MemberCard({ member: m, isSelf }: { member: Member; isSelf: boolean }) 
   })
 
   const contact = m.profiles?.phone ?? m.profiles?.email ?? ''
+  const name = m.profiles?.full_name ?? 'Staff member'
   const error = update.error || reset.error
 
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <div className="font-semibold text-ink">{m.profiles?.full_name} {isSelf && <span className="text-xs text-subtle">(you)</span>}</div>
+        <div className="min-w-0 break-words">
+          <div className="font-semibold text-ink">{name} {isSelf && <span className="text-xs text-subtle">(you)</span>}</div>
           <div className="text-sm text-subtle">{contact}</div>
           <div className="mt-1 flex flex-wrap gap-1">
             {m.roles.map((r) => <Badge key={r} tone="info">{ROLE_LABELS[r]}</Badge>)}
@@ -197,18 +198,25 @@ function MemberCard({ member: m, isSelf }: { member: Member; isSelf: boolean }) 
         </div>
         {mode === 'view' && (
           <div className="flex flex-wrap gap-1">
-            <Button variant="ghost" onClick={() => setMode('edit')}>{t('common.edit')}</Button>
-            <Button variant="ghost" onClick={() => { setDone(''); setMode('password') }}>Reset password</Button>
-            {!isSelf && (
-              <Button variant="ghost" onClick={() => update.mutate({ active: !m.active })} disabled={update.isPending}>
-                {m.active ? 'Deactivate' : 'Reactivate'}
+            <Button variant="ghost" aria-label={`Edit ${name}`} onClick={() => setMode('edit')}>{t('common.edit')}</Button>
+            <Button variant="ghost" aria-label={`Reset password for ${name}`} onClick={() => { setDone(''); setMode('password') }}>Reset password</Button>
+            {!isSelf && m.active && (
+              // Deactivating blocks their sign-in straight away, so it asks first.
+              <ConfirmButton label={`Deactivate ${name}`} confirmLabel="Yes, deactivate" disabled={update.isPending}
+                onConfirm={() => update.mutate({ active: false })}>
+                Deactivate
+              </ConfirmButton>
+            )}
+            {!isSelf && !m.active && (
+              <Button variant="ghost" aria-label={`Reactivate ${name}`} onClick={() => update.mutate({ active: true })} disabled={update.isPending}>
+                Reactivate
               </Button>
             )}
           </div>
         )}
       </div>
 
-      {done && <div className="mt-3"><Notice>{done}</Notice></div>}
+      <Status className="mt-3">{done && <Notice>{done}</Notice>}</Status>
 
       {mode === 'edit' && (
         <div className="mt-4 flex flex-col gap-4">
