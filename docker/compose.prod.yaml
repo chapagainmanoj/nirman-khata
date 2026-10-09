@@ -1,0 +1,28 @@
+# Production: static build served by nginx (non-root, read-only filesystem).
+# Database, auth, files and functions are the hosted Supabase project.
+#   cp docker/.env.example docker/.env     # fill in the hosted project's values
+#   docker compose -f docker/compose.prod.yaml up -d --build
+# Put a TLS-terminating proxy (Caddy, Traefik, Cloudflare Tunnel) in front:
+# the PWA install prompt and camera need HTTPS.
+name: nirmankhata
+
+services:
+  app:
+    build:
+      context: ../app
+      dockerfile: ../docker/app.Dockerfile
+      target: prod
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:?set VITE_SUPABASE_URL in docker/.env}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:?set VITE_SUPABASE_PUBLISHABLE_KEY in docker/.env}
+    image: nirmankhata-app:${APP_VERSION:-latest}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true

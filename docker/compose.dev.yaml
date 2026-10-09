@@ -1,0 +1,25 @@
+# Local development: the web app in a container with hot reload.
+# Supabase runs separately through its CLI (it manages its own containers):
+#   pnpm db:start            # from the repo root, once
+#   docker compose -f docker/compose.dev.yaml up --build
+# Open http://localhost:5173
+#
+# After changing app dependencies, recreate the node_modules volume:
+#   docker compose -f docker/compose.dev.yaml up --build --renew-anon-volumes
+name: nirmankhata-dev
+
+services:
+  app:
+    build:
+      context: ../app
+      dockerfile: ../docker/app.Dockerfile
+      target: dev
+    ports:
+      - "5173:5173"
+    volumes:
+      - ../app:/app
+      - /app/node_modules # keep the container's Linux modules, not the host's
+    environment:
+      # The browser on your machine calls Supabase, so localhost is correct here.
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-http://127.0.0.1:55321}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${VITE_SUPABASE_PUBLISHABLE_KEY:-sb_publishable_ACJWlzQHlZjBrEguHvfOxg_3BJgxAaH}

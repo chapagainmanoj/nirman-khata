@@ -22,8 +22,28 @@ cp app/.env.example app/.env.local   # put the PUBLISHABLE_KEY from `pnpm exec s
 pnpm dev                      # http://localhost:5173
 ```
 
-Register a company at `/register`, then add staff from the Staff page.
-Staff sign in with their mobile number and the password the admin gave them.
+Demo accounts (from `supabase/seed.sql`, recreated by `pnpm db:reset`), password `password123`:
+
+| Mobile | Role | Sees |
+|---|---|---|
+| 9800000001 | Owner / Admin | everything |
+| 9800000002 | Project Manager (+ money) | P-1, P-2 |
+| 9800000003 | Site Staff | P-1, no amounts |
+| 9800000004 | Accounts | all projects and amounts |
+| 9800000005 | Viewer | P-2, no amounts |
+
+Or register a new company at `/register`. Staff sign in with their mobile number and the password the admin gave them.
+
+## Docker
+
+```bash
+pnpm db:start && pnpm docker:dev     # app in a container with hot reload, Supabase via the CLI
+cp docker/.env.example docker/.env   # hosted Supabase URL + publishable key
+pnpm docker:prod                     # nginx serving the production build on :8080
+```
+
+Production needs HTTPS in front (Caddy, Traefik or Cloudflare Tunnel) for the PWA install prompt and camera.
+Test a running build with `E2E_BASE_URL=http://localhost:8080 pnpm --dir app e2e`.
 
 ## Tests
 
