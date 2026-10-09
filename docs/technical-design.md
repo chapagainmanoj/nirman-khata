@@ -398,6 +398,7 @@ All product decisions are confirmed by the product owner (2026-10-09) and listed
 | Dates | BS default, AD always available, AD stored | 7 |
 | Companies per login | One in v1 (unique active membership) | 3.1 |
 | Login / recovery | Password; admin creates staff and resets passwords; email self-reset where available; no SMS | 3.1, Edge Functions |
+| Phone login without SMS | Verified in milestone 1: Supabase refuses phone + password unless the phone provider (normally needing SMS) is on. So a phone number is stored as an internal login email `977XXXXXXXXXX@phone.nirmankhata.invalid`; users only ever type their phone. Public sign-up is disabled; accounts are created only by the `register` and `admin-users` Edge Functions | 3.1 |
 | Own-entry access | X1–X3 | 3.5 |
 | Slip approval | Configurable, on by default. Approver: PM with `can_approve_slips` + access to all projects on the slip, or Admin | 3.6 |
 | Slip notifications | In-app only. "Submitted" → eligible approvers; "approved/rejected" → creator | 4.2 `notifications` |

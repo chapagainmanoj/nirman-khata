@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            app/pnpm-lock.yaml
+
+      - name: Install
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm --dir app install --frozen-lockfile
+
+      - name: Start local Supabase
+        run: pnpm exec supabase start -x studio,imgproxy,vector,logflare
+
+      - name: Point the app at local Supabase
+        run: |
+          KEY=$(pnpm exec supabase status -o json | jq -r .PUBLISHABLE_KEY)
+          printf 'VITE_SUPABASE_URL=http://127.0.0.1:55321\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$KEY" > app/.env.local
+
+      - name: Database tests (RLS, isolation, revisions)
+        run: pnpm exec supabase test db
+
+      - name: App unit tests
+        run: pnpm --dir app test
+
+      - name: Typecheck and build
+        run: pnpm --dir app build
+
+      - name: End-to-end (phone screen)
+        run: |
+          pnpm --dir app exec playwright install --with-deps chromium
+          pnpm --dir app e2e

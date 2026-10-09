@@ -1,0 +1,16 @@
+{
+  "name": "nirman-khata",
+  "private": true,
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:types": "supabase gen types typescript --local > app/src/lib/database.types.ts",
+    "dev": "pnpm --dir app dev",
+    "test": "pnpm db:test && pnpm --dir app test"
+  },
+  "devDependencies": {
+    "supabase": "^2.120.0"
+  }
+}

@@ -1,0 +1,58 @@
+-- Shared pgTAP helpers. Included with \ir from each test file; everything is
+-- created inside the test transaction and rolled back.
+create extension if not exists pgtap with schema extensions;
+create schema if not exists tests;
+grant usage on schema tests to authenticated;
+
+create or replace function tests.create_user(p_name text) returns uuid
+language plpgsql security definer set search_path = '' as $$
+declare v_id uuid := gen_random_uuid();
+begin
+  insert into auth.users (id, instance_id, aud, role, email, raw_user_meta_data, raw_app_meta_data, created_at, updated_at)
+  values (v_id, '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+          lower(p_name) || '@test.local', jsonb_build_object('full_name', p_name), '{}', now(), now());
+  return v_id;
+end $$;
+
+-- Act as a signed-in user (RLS applies).
+create or replace function tests.login(p_user uuid) returns void
+language plpgsql as $$
+begin
+  perform set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
+  perform set_config('role', 'authenticated', true);
+end $$;
+
+-- Back to the test superuser (RLS bypassed).
+create or replace function tests.logout() returns void
+language plpgsql as $$
+begin
+  perform set_config('role', 'postgres', true);
+  perform set_config('request.jwt.claims', null, true);
+end $$;
+
+-- Create a company owned by a new admin user; returns the company id.
+create or replace function tests.create_company(p_name text, p_admin uuid) returns uuid
+language plpgsql as $$
+declare v uuid;
+begin
+  perform tests.login(p_admin);
+  v := public.create_company(p_name, p_name || ' owner');
+  perform tests.logout();
+  return v;
+end $$;
+
+-- Add a staff member (as the Edge Function would, with the service role).
+create or replace function tests.add_member(
+  p_company uuid, p_user uuid, p_roles public.app_role[], p_finance boolean default false
+) returns void
+language sql as $$
+  insert into public.memberships (company_id, user_id, roles, can_view_finance)
+  values (p_company, p_user, p_roles, p_finance)
+$$;
+
+create or replace function tests.assign(p_company uuid, p_project uuid, p_user uuid) returns void
+language sql as $$
+  insert into public.project_assignments (company_id, project_id, user_id) values (p_company, p_project, p_user)
+$$;
+
+grant execute on all functions in schema tests to authenticated;
