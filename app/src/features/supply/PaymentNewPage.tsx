@@ -72,10 +72,15 @@ export function PaymentNewPage() {
   const allocated = v.allocations.reduce((s, a) => s + (parseNPR(a.amount) ?? 0), 0)
   const unallocated = (amountPaisa ?? 0) - allocated
 
+  // Only bills shown now count: ticks left behind by a supplier or project change are ignored.
+  const shownSettle = (vals: Values) => {
+    const shown = new Set(openBills.filter((b) => vals.allocations.some((a) => a.project_id === b.project_id)).map((b) => `${b.doc_id}:${b.project_id}`))
+    return Object.entries(vals.settle).filter(([k, a]) => shown.has(k) && (parseNPR(a) ?? 0) > 0)
+  }
+
   const save = useMutation({
     mutationFn: async (vals: Values) => {
-      const settlements = Object.entries(vals.settle)
-        .filter(([, a]) => (parseNPR(a) ?? 0) > 0)
+      const settlements = shownSettle(vals)
         .map(([key, a]) => { const [bill_id, project_id] = key.split(':'); return { bill_id, project_id, amount_paisa: parseNPR(a) } })
       return rpc('record_payment', { p_op_key: vals.op_key, p_payment: {
         id: vals.id, supplier_id: vals.supplier_id, payment_date: vals.payment_date, amount_paisa: parseNPR(vals.amount),
@@ -93,7 +98,7 @@ export function PaymentNewPage() {
 
   function submit() {
     const vals = getValues()
-    const settleSum = (projectId: string) => Object.entries(vals.settle)
+    const settleSum = (projectId: string) => shownSettle(vals)
       .filter(([k]) => k.endsWith(`:${projectId}`)).reduce((s, [, a]) => s + (parseNPR(a) ?? 0), 0)
     const problem =
       !vals.supplier_id ? 'Choose the supplier.'
@@ -103,8 +108,6 @@ export function PaymentNewPage() {
       : allocated > amountPaisa ? 'The project split is more than the payment.'
       : !accounts && allocated !== amountPaisa ? 'Split the whole payment across your projects.'
       : vals.allocations.some((a) => settleSum(a.project_id) > (parseNPR(a.amount) ?? 0)) ? 'Bills matched for a project are more than that project\'s share.'
-      : Object.entries(vals.settle).some(([k, a]) => (parseNPR(a) ?? 0) > 0 && !vals.allocations.some((x) => k.endsWith(`:${x.project_id}`)))
-        ? 'A matched bill is for a project this payment is not split to.'
       : ''
     setError(problem)
     if (!problem) save.mutate(vals)

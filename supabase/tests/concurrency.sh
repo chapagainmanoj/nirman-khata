@@ -118,5 +118,32 @@ check "C5: bill cost nets to zero" 0 \
   "$(q -c "select sum(l.cost_paisa) from public.ledger_entries l join public.posting_events e on e.id = l.event_id
            left join public.reversals r on r.id = e.reversal_id where e.bill_id = '$BILL2' or r.bill_id = '$BILL2'")"
 
+# Slip cancel vs delivery at the same moment: never a cancelled slip with a delivery on it.
+new_slip() { # approved slip for 100 bags; prints its id
+  local id; id=$(uuidgen | tr 'A-Z' 'a-z')
+  q -c "$(as_user "select public.save_slip_draft(jsonb_build_object('id', '$id', 'supplier_id', '$SUPPLIER',
+    'lines', jsonb_build_array(jsonb_build_object('id', '$id', 'project_id', '$PROJECT', 'material_text', 'Cement', 'qty', 100,
+      'unit_id', (select id from public.units where company_id = '$COMPANY' and code = 'bag')))));
+    select public.submit_slip('$id');
+    select public.decide_slip('$id', true) where (select status from public.order_slips where id = '$id') = 'pending';")" >/dev/null
+  echo "$id"
+}
+deliver() { # SQL recording 10 bags against slip $1
+  echo "select public.record_delivery(jsonb_build_object('id', gen_random_uuid(), 'supplier_id', '$SUPPLIER',
+    'project_id', '$PROJECT', 'slip_id', '$1', 'lines', jsonb_build_array(jsonb_build_object('slip_line_id', '$1', 'received_qty', 10))));"
+}
+slip_state() {
+  q -c "select s.status || ':' || count(d.id) from public.order_slips s left join public.deliveries d on d.slip_id = s.id
+        where s.id = '$1' group by s.status"
+}
+SLIP=$(new_slip)
+race "$(deliver "$SLIP")" "select public.cancel_slip('$SLIP', 'race');"
+check "Slip: delivery first, then the concurrent cancel is refused" "yes no" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+check "Slip: still approved with its delivery" "approved:1" "$(slip_state "$SLIP")"
+SLIP=$(new_slip)
+race "select public.cancel_slip('$SLIP', 'race');" "$(deliver "$SLIP")"
+check "Slip: cancel first, then the concurrent delivery is refused" "yes no" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+check "Slip: cancelled with no delivery" "cancelled:0" "$(slip_state "$SLIP")"
+
 if [ "$failures" -gt 0 ]; then echo "$failures concurrency test(s) failed"; exit 1; fi
 echo "All concurrency tests passed"

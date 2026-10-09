@@ -2,12 +2,14 @@
 // Against a slip, lines are pre-filled with what is still pending, so staff only correct numbers.
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
+import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Attachments } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { Button, ButtonLink, Card, ErrorBanner, Field, Input, Notice, PageHeader, Select, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
+import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
@@ -27,6 +29,19 @@ type Line = {
   rejected: string
   issue: string
   note: string
+}
+
+// Kept on the phone until saved; the id stays the same so a retry after a lost reply
+// returns the delivery already saved instead of recording it twice.
+type Values = {
+  id: string
+  supplierId: string
+  projectId: string
+  date: string
+  challan: string
+  reason: string
+  note: string
+  lines: Line[]
 }
 
 export function DeliveryNewPage() {
@@ -50,14 +65,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
   const projects = useProjects(auth.companyId)
   const materials = useMaterials(auth.companyId)
   const units = useUnits(auth.companyId)
-  const [id] = useState(newId)
   const [saved, setSaved] = useState(false)
-  const [supplierId, setSupplierId] = useState(slip?.slip.supplier_id ?? supplierParam)
-  const [projectId, setProjectId] = useState(projectParam || (slip ? '' : ''))
-  const [date, setDate] = useState(todayKathmandu())
-  const [challan, setChallan] = useState('')
-  const [reason, setReason] = useState('')
-  const [note, setNote] = useState('')
   const [error, setError] = useState('')
 
   const slipLines = (pid: string): Line[] =>
@@ -70,7 +78,19 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
     id: newId(), slip_line_id: null, label: '', material_id: '', material_text: '', unit_id: '', unit_note: '',
     received: '', rejected: '', issue: '', note: '',
   })
-  const [lines, setLines] = useState<Line[]>(() => (slip ? slipLines(projectParam) : [blank()]))
+  const form = useForm<Values>({
+    defaultValues: {
+      id: newId(), supplierId: slip?.slip.supplier_id ?? supplierParam, projectId: projectParam, date: todayKathmandu(),
+      challan: '', reason: '', note: '', lines: slip ? slipLines(projectParam) : [blank()],
+    },
+  })
+  const draft = useFormDraft(form, {
+    userId: auth.userId, companyId: auth.companyId, formKey: `delivery-${slip?.slip.id ?? 'no-slip'}-${projectParam}`,
+  })
+  const { id, supplierId, projectId, date, challan, reason, note, lines } = form.watch()
+  const set = <K extends keyof Values>(k: K) => (value: Values[K]) => form.setValue(k, value as never)
+  const [setSupplierId, setProjectId, setDate, setChallan, setReason, setNote, setLines] =
+    [set('supplierId'), set('projectId'), set('date'), set('challan'), set('reason'), set('note'), set('lines')]
   const setLine = (i: number, patch: Partial<Line>) => setLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const slipProjects = slip ? [...new Set(slip.lines.map((l) => l.project_id))] : []
 
@@ -86,6 +106,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
       })),
     } }),
     onSuccess: async () => {
+      await draft.clear()
       setSaved(true)
       await queryClient.invalidateQueries({ queryKey: ['deliveries'] })
       await queryClient.invalidateQueries({ queryKey: ['slip'] })
@@ -130,6 +151,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
   return (
     <>
       <PageHeader title="Record delivery" subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : 'Without an order slip'} />
+      {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved delivery.</Notice></div>}
       <form onSubmit={submit} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -220,7 +242,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <div className="flex gap-2">
           <Button type="submit" busy={save.isPending}>Save delivery</Button>
-          <Button type="button" variant="secondary" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button type="button" variant="secondary" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
         </div>
       </form>
     </>

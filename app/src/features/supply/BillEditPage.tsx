@@ -69,7 +69,8 @@ export function BillEditPage() {
 
   const initial: BillValues | undefined = d?.bill ? {
     id: d.bill.id, supplier_id: d.bill.supplier_id, bill_no: d.bill.bill_no, bill_date: d.bill.bill_date,
-    cost_date: d.bill.cost_date, due_date: d.bill.due_date ?? '', notes: d.bill.notes ?? '',
+    // Saved as the bill date when left empty; keep it empty so a corrected bill date carries it along.
+    cost_date: d.bill.cost_date === d.bill.bill_date ? '' : d.bill.cost_date, due_date: d.bill.due_date ?? '', notes: d.bill.notes ?? '',
     discount: rupees(d.charges?.discount_paisa), transport: rupees(d.charges?.transport_paisa), vat: rupees(d.charges?.vat_paisa),
     vat_rate: String(d.charges?.vat_rate_pct ?? 13), split_charges: d.overrides.length > 0,
     overrides: d.overrides.map((o) => ({ charge: o.charge, project_id: o.project_id, amount: rupees(o.amount_paisa) })),

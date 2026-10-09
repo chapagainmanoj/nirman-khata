@@ -278,7 +278,7 @@ function CreditForm({ billId, lines }: { billId: string; lines: Line[] }) {
         credited_qty: returns[bill_line_id]?.return_line ? Number(returns[bill_line_id].qty) : null,
       })),
     } }),
-    { onSuccess: async () => { setOpen(false); setAmounts({}); setReason(''); setId(newId()); await refresh() } },
+    { onSuccess: async () => { setOpen(false); setAmounts({}); setReturns({}); setReason(''); setSupplierNo(''); setId(newId()); await refresh() } },
   )
 
   function submit(e: FormEvent) {

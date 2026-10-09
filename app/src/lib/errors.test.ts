@@ -12,4 +12,9 @@ describe('friendlyError', () => {
   it('reports a dropped connection as a network problem', () => {
     expect(friendlyError({ message: 'TypeError: Failed to fetch' })).toBe('No connection. Check your network and try again.')
   })
+
+  it('explains a reused request key instead of showing it raw', () => {
+    const reused = { code: 'P0001', message: 'op_key_reused: this request key was already used for a different request' }
+    expect(friendlyError(reused)).toMatch(/^This may already be saved/)
+  })
 })

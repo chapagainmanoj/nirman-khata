@@ -61,6 +61,12 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByLabel(/^Received/)).toHaveValue('100')
   await page.getByLabel(/^Received/).fill('60')
   await page.getByLabel('Challan number').fill('CH-501')
+  // The phone reloads mid-entry: the challan is still there.
+  await page.waitForTimeout(800)
+  await page.reload()
+  await expect(page.getByText('Restored your unsaved delivery.')).toBeVisible()
+  await expect(page.getByLabel('Challan number')).toHaveValue('CH-501')
+  await expect(page.getByLabel(/^Received/)).toHaveValue('60')
   await page.getByRole('button', { name: 'Save delivery' }).click()
   await expect(page.getByRole('heading', { name: 'Delivery recorded' })).toBeVisible()
   await page.getByRole('link', { name: 'Back to slip' }).click()
@@ -85,12 +91,31 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByText('Unpaid', { exact: true })).toBeVisible()
   await page.screenshot(shots('m2-06-bill-posted'))
 
-  // Payment of the whole bill, matched to it
+  // Payment of the whole bill. The user drops the project split after the bill was ticked:
+  // the hidden tick must not block saving; the money is kept as "not assigned".
   await page.getByRole('link', { name: 'Record payment' }).click()
   await expect(page.getByLabel('Amount paid')).toHaveValue(/51,?000/)
+  await expect(page.getByText('Which bills does it pay? (optional)')).toBeVisible()
+  await page.getByRole('button', { name: 'Remove project' }).click()
+  await expect(page.getByText('Which bills does it pay? (optional)')).toBeHidden()
   await page.getByLabel('Reference').fill('Cheque 000123')
   await page.getByRole('button', { name: 'Record payment' }).click()
   await expect(page.getByRole('heading', { name: /Payment PAY-0001/ })).toBeVisible()
+  await expect(row(page, 'Not assigned to a project')).toContainText('Rs. 51,000')
+
+  // Accounts assigns it to the project, then matches it to the bill.
+  await page.getByRole('button', { name: 'Change split' }).click()
+  await page.getByLabel('Project').selectOption({ label: 'P-1 · Ward 5 school building' })
+  await page.getByLabel('Amount').fill('51,000')
+  await page.getByLabel('Reason').fill('Paid for the school')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByText('Not assigned to a project')).toBeHidden()
+  await page.getByRole('link', { name: 'Shrestha Suppliers' }).click()
+  await page.getByLabel('Bill', { exact: true }).selectOption({ index: 1 }) // the only unpaid bill, 1001
+  await page.getByLabel('Paid from').selectOption({ index: 1 })
+  await page.getByRole('button', { name: 'Match', exact: true }).click()
+  await expect(page.getByText('Matched.')).toBeVisible()
+  await page.getByRole('link', { name: 'Payment PAY-0001' }).first().click()
   await expect(page.getByRole('link', { name: /Bill 1001/ })).toBeVisible()
   await page.screenshot(shots('m2-07-payment'))
 

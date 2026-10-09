@@ -26,8 +26,11 @@ select is((select created_by from public.units where company_id = :'co' and code
 
 select tests.login(:'site');
 select is((select count(*) from public.audit_log), 0::bigint, 'non-admins cannot read the audit log');
+-- Only document-creating functions take numbers (they run as the owner); the caller is still the member.
+reset role;
 select is(public.next_doc_number(:'co', 'order_slip', 'OS'), 'OS-0001', 'first slip number');
 select is(public.next_doc_number(:'co', 'order_slip', 'OS'), 'OS-0002', 'numbers increase');
+set role authenticated;
 select is((select count(*) from public.doc_sequences), 0::bigint, 'sequences are not readable directly');
 
 select * from finish();

@@ -1,10 +1,11 @@
 // One supplier: contact, balance, khata, bills, payments, and matching payments to bills.
-import { useState, type FormEvent } from 'react'
+import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { Link, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Field, Input, PageHeader, Select, Spinner, Status } from '../../components/ui'
+import { ReasonButton } from '../../components/ReasonButton'
+import { Badge, Button, ButtonLink, Card, Detail, EmptyState, ErrorBanner, Field, Input, PageHeader, Select, Spinner, Status } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { BILL_STATUS, PAYMENT_METHODS, settlementLabel } from '../../lib/labels'
@@ -14,7 +15,7 @@ import {
   rpc, useBills, useKhata, useOpenItems, useOpeningBalance, usePayments, usePosting, useRefreshMoney,
   useSupplierBalances, useSuppliers,
 } from './api'
-import { canManageSuppliers, canRecordPayments } from './permissions'
+import { canEnter, canManageSuppliers, canRecordPayments } from './permissions'
 import { BalanceText, SupplierForm } from './SuppliersPage'
 
 type Tab = 'khata' | 'bills' | 'payments'
@@ -26,6 +27,8 @@ export function SupplierDetailPage() {
   const [editing, setEditing] = useState(false)
   const [tab, setTab] = useState<Tab>(auth.canSeeFinance ? 'khata' : 'bills')
 
+  const ids = useId()
+  const tabId = (key: Tab) => `${ids}-tab-${key}`
   if (suppliers.isPending) return <Spinner />
   if (suppliers.error) return <ErrorBanner onRetry={() => void suppliers.refetch()}>{friendlyError(suppliers.error)}</ErrorBanner>
   const s = suppliers.data.find((x) => x.id === supplierId)
@@ -35,6 +38,17 @@ export function SupplierDetailPage() {
     ? [['khata', 'Khata'], ['bills', 'Bills'], ['payments', 'Payments']]
     : [['bills', 'My bill drafts']]
 
+  // Arrow keys move between tabs (WAI-ARIA tabs pattern), as on the catalog page.
+  function onKeyDown(e: KeyboardEvent) {
+    const i = tabs.findIndex(([key]) => key === tab)
+    const step: Record<string, number> = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: tabs.length - 1 }
+    if (!(e.key in step)) return
+    e.preventDefault()
+    const [next] = tabs[(step[e.key] + tabs.length) % tabs.length]
+    setTab(next)
+    document.getElementById(tabId(next))?.focus()
+  }
+
   return (
     <>
       <PageHeader
@@ -42,8 +56,8 @@ export function SupplierDetailPage() {
         subtitle={s.categories.join(' · ') || undefined}
         actions={
           <div className="flex flex-wrap gap-2">
-            <ButtonLink variant="secondary" to={`/slips/new?supplier=${s.id}`}>New slip</ButtonLink>
-            <ButtonLink variant="secondary" to={`/bills/new?supplier=${s.id}`}>Enter bill</ButtonLink>
+            {canEnter(auth) && <ButtonLink variant="secondary" to={`/slips/new?supplier=${s.id}`}>New slip</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant="secondary" to={`/bills/new?supplier=${s.id}`}>Enter bill</ButtonLink>}
             {canRecordPayments(auth) && <ButtonLink to={`/payments/new?supplier=${s.id}`}>Record payment</ButtonLink>}
           </div>
         }
@@ -64,15 +78,16 @@ export function SupplierDetailPage() {
         {auth.canSeeFinance && canRecordPayments(auth) && <MatchCard supplierId={s.id} />}
       </div>
 
-      <div className="mt-6 mb-3 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Supplier records">
+      <div className="mt-6 mb-3 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Supplier records" onKeyDown={onKeyDown}>
         {tabs.map(([key, label]) => (
-          <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}
+          <button key={key} id={tabId(key)} type="button" role="tab" aria-selected={tab === key} aria-controls={`${ids}-panel`}
+            tabIndex={tab === key ? 0 : -1} onClick={() => setTab(key)}
             className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${tab === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
             {label}
           </button>
         ))}
       </div>
-      <div role="tabpanel">
+      <div role="tabpanel" id={`${ids}-panel`} aria-labelledby={tabId(tab)}>
         {tab === 'khata' && <Khata supplierId={s.id} />}
         {tab === 'bills' && <BillList supplierId={s.id} />}
         {tab === 'payments' && <PaymentList supplierId={s.id} />}
@@ -119,7 +134,8 @@ function OpeningBalance({ supplierId }: { supplierId: string }) {
     { onSuccess: async () => { setOpen(false); await ob.refetch(); await refresh() } },
   )
   const reverse = usePosting(
-    (key) => rpc('reverse_opening_balance', { p_op_key: key, p_opening_balance: ob.data!.id, p_date: todayKathmandu(), p_reason: 'Opening balance corrected' }),
+    (key, a: { reason: string; date: string }) =>
+      rpc('reverse_opening_balance', { p_op_key: key, p_opening_balance: ob.data!.id, p_date: a.date, p_reason: a.reason }),
     { onSuccess: async () => { await ob.refetch(); await refresh() } },
   )
 
@@ -135,8 +151,12 @@ function OpeningBalance({ supplierId }: { supplierId: string }) {
           Opening balance <BalanceText paisa={ob.data.amount_paisa} /> on <DateText value={ob.data.cutover_date} display={auth.dateDisplay} />
           <span className="block text-xs text-subtle">{ob.data.note}</span>
         </span>
-        <ConfirmButton confirmLabel="Reverse it" onConfirm={() => reverse.mutate()}>Correct</ConfirmButton>
-        <ErrorBanner>{reverse.error && friendlyError(reverse.error)}</ErrorBanner>
+        <ReasonButton variant="ghost" title="Correct the opening balance" hint="It is reversed and kept in history; then set the right amount."
+          confirmLabel="Reverse it" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
+          withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
+          onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
+          Correct
+        </ReasonButton>
       </div>
     )
   }
@@ -203,7 +223,7 @@ function MatchCard({ supplierId }: { supplierId: string }) {
   }
 
   if (items.isPending) return <Card title="Match payments to bills"><Spinner /></Card>
-  if (!bills.length && !unallocated.length) return null
+  if (!bills.length && !unallocated.length && !done) return null
 
   return (
     <Card title="Match payments to bills">
@@ -245,12 +265,12 @@ function MatchCard({ supplierId }: { supplierId: string }) {
             <Field label="Amount" htmlFor="m-amount"><MoneyInput id="m-amount" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
           )}
           <ErrorBanner>{settle.error && friendlyError(settle.error)}</ErrorBanner>
-          <Status className="text-sm text-good-ink">{done}</Status>
           {bill && payment && (
             <div><Button busy={settle.isPending} disabled={!parseNPR(amount)} onClick={() => settle.mutate()}>Match</Button></div>
           )}
         </div>
       )}
+      <Status className="mt-3 text-sm text-good-ink">{done}</Status>
     </Card>
   )
 }

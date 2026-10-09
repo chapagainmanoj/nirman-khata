@@ -17,6 +17,10 @@ export function friendlyError(error: unknown): string {
   const e = error as ErrorLike
   if (!e) return 'Something went wrong.'
   if (e.message?.includes('Failed to fetch')) return 'No connection. Check your network and try again.'
+  // A save whose reply was lost, then resubmitted with changes (design §5.1).
+  if (e.message?.startsWith('op_key_reused')) {
+    return 'This may already be saved. Check the supplier\'s bills and payments before entering it again.'
+  }
   // Our own RPC errors (P0001, 22023, ...) already carry a readable message.
   if (e.code && BY_CODE[e.code]) {
     if (e.code === '23505') {
