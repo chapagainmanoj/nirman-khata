@@ -25,10 +25,12 @@ type CurrentProject = {
   project: Project | null
   /** Projects that can be chosen (not completed, closed or cancelled). */
   choices: Project[]
+  /** The project list has loaded (so an empty `choices` really means none). */
+  ready: boolean
   setProjectId: (id: string | null) => void
 }
 
-const Ctx = createContext<CurrentProject>({ projectId: null, project: null, choices: [], setProjectId: () => {} })
+const Ctx = createContext<CurrentProject>({ projectId: null, project: null, choices: [], ready: false, setProjectId: () => {} })
 
 const storageKey = (userId: string, companyId: string) => `nk:current-project:${userId}:${companyId}`
 
@@ -61,6 +63,7 @@ export function CurrentProjectProvider({ children }: { children: ReactNode }) {
     projectId,
     project: choices.find((p) => p.id === projectId) ?? null,
     choices,
+    ready: projects.isSuccess,
     setProjectId: (id) => {
       setStored(id)
       write(key, id)

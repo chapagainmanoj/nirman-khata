@@ -6,7 +6,7 @@ import { Button, ErrorBanner, Field, Input } from './ui'
 import type { DateDisplay } from '../lib/dates'
 
 export function ReasonButton({
-  children, title, confirmLabel, hint, onConfirm, busy, error, variant = 'secondary', withDate,
+  children, title, confirmLabel, hint, onConfirm, busy, error, variant = 'secondary', withDate, open: openProp, onOpenChange,
 }: {
   children: ReactNode
   title: string
@@ -18,9 +18,14 @@ export function ReasonButton({
   variant?: 'secondary' | 'danger' | 'ghost'
   /** Ask for a business date too (reversals), defaulting to this value. */
   withDate?: { value: string; display: DateDisplay; label: string }
+  /** Controlled: a page that allows one open form at a time owns this. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const id = useId()
-  const [open, setOpen] = useState(false)
+  const [ownOpen, setOwnOpen] = useState(false)
+  const open = openProp ?? ownOpen
+  const setOpen = (o: boolean) => { setOwnOpen(o); onOpenChange?.(o) }
   const [reason, setReason] = useState('')
   const [date, setDate] = useState(withDate?.value ?? '')
 

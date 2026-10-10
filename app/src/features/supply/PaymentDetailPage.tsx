@@ -24,6 +24,9 @@ export function PaymentDetailPage() {
   const projects = useProjects(auth.companyId)
   const members = useMembers(auth.companyId)
   const refresh = useRefreshMoney()
+  // One change form open at a time: "split", "reverse" or "unmatch:<bill>:<project>".
+  const [form, setForm] = useState<string | null>(null)
+  const formProps = (key: string) => ({ open: form === key, onOpenChange: (o: boolean) => setForm(o ? key : null) })
   const reverse = usePosting(
     (key, a: { reason: string; date: string }) => rpc('reverse_payment', { p_op_key: key, p_payment: paymentId, p_date: a.date, p_reason: a.reason }),
     { onSuccess: () => refresh() },
@@ -95,7 +98,9 @@ export function PaymentDetailPage() {
           {p.amount_paisa - p.allocated_paisa !== 0 && (
             <Detail label="Not assigned to a project">{formatNPR(p.amount_paisa - p.allocated_paisa)}</Detail>
           )}
-          {posted && canPost(auth) && !p.work_package_id && <AllocationForm paymentId={p.id} />}
+          {posted && canPost(auth) && !p.work_package_id && (
+            <AllocationForm paymentId={p.id} split={byProject} {...formProps('split')} />
+          )}
         </Card>
 
         <Card title="What it paid">
@@ -111,7 +116,7 @@ export function PaymentDetailPage() {
                 </div>
                 {posted && canRecordPayments(auth) && (
                   <div className="mt-1">
-                    <ReasonButton variant="ghost" title="Unmatch from this bill" hint="The money stays with the project as advance."
+                    <ReasonButton variant="ghost" {...formProps(`unmatch:${m.doc_id}:${m.project_id}`)} title="Unmatch from this bill" hint="The money stays with the project as advance."
                       confirmLabel="Unmatch" busy={unsettle.isPending} error={unsettle.error && friendlyError(unsettle.error)}
                       onConfirm={(reason) => unsettle.mutate({ bill: m.doc_id, project: m.project_id, amount: m.amount, reason })}>
                       Unmatch
@@ -133,7 +138,7 @@ export function PaymentDetailPage() {
 
       {posted && canPost(auth) && (
         <div className="mt-6">
-          <ReasonButton variant="danger" title="Reverse this payment" hint="e.g. Cheque bounced. Bills it paid become unpaid again."
+          <ReasonButton variant="danger" {...formProps('reverse')} title="Reverse this payment" hint="e.g. Cheque bounced. Bills it paid become unpaid again."
             confirmLabel="Reverse payment" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
             withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
             onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
@@ -145,53 +150,70 @@ export function PaymentDetailPage() {
   )
 }
 
-/** Move money between "not assigned" and a project (dated on the payment, I-9). */
-function AllocationForm({ paymentId }: { paymentId: string }) {
+const UNASSIGNED = 'unassigned'
+
+/**
+ * Move money from one place to another: "not assigned" or any project. A project-to-project
+ * move is two changes in one call, so it happens all at once (dated on the payment, I-9).
+ */
+function AllocationForm({ paymentId, split, open, onOpenChange }: {
+  paymentId: string
+  split: Array<{ id: string; amount: number }>
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
   const auth = useCompany()
   const projects = useProjects(auth.companyId)
   const refresh = useRefreshMoney()
-  const [open, setOpen] = useState(false)
-  const [projectId, setProjectId] = useState('')
-  const [direction, setDirection] = useState<'to' | 'from'>('to')
+  const [from, setFrom] = useState(split.length === 1 ? split[0].id : UNASSIGNED)
+  const [to, setTo] = useState('')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
+  const paisa = parseNPR(amount) ?? 0
+  const changes = [
+    from !== UNASSIGNED && { project_id: from, amount_paisa: -paisa },
+    to && to !== UNASSIGNED && { project_id: to, amount_paisa: paisa },
+  ].filter((c): c is { project_id: string; amount_paisa: number } => !!c)
   const allocate = usePosting(
-    (key) => rpc('allocate_payment', {
-      p_op_key: key, p_payment: paymentId, p_reason: reason,
-      p_changes: [{ project_id: projectId, amount_paisa: (parseNPR(amount) ?? 0) * (direction === 'to' ? 1 : -1) }],
-    }),
-    { onSuccess: async () => { setOpen(false); setAmount(''); setReason(''); await refresh() } },
+    (key) => rpc('allocate_payment', { p_op_key: key, p_payment: paymentId, p_reason: reason, p_changes: changes }),
+    { onSuccess: async () => { onOpenChange(false); setAmount(''); setReason(''); setTo(''); await refresh() } },
   )
+  const ready = !!to && from !== to && paisa > 0 && !!reason.trim()
+  const name = (id: string) => {
+    const p = projects.data?.find((x) => x.id === id)
+    return p ? `${p.code} · ${p.name}` : 'Project'
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (projectId && parseNPR(amount) && reason.trim()) allocate.mutate()
+    if (ready) allocate.mutate()
   }
 
-  if (!open) return <Button variant="ghost" className="mt-2" onClick={() => setOpen(true)}>Change split</Button>
+  if (!open) return <Button variant="ghost" className="mt-2" onClick={() => onOpenChange(true)}>Change split</Button>
   return (
     <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
+      <div className="font-semibold text-ink">Move money</div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Move" htmlFor="al-dir">
-          <Select id="al-dir" value={direction} onChange={(e) => setDirection(e.target.value as 'to' | 'from')}>
-            <option value="to">From "not assigned" to a project</option>
-            <option value="from">From a project back to "not assigned"</option>
+        <Field label="From" htmlFor="al-from">
+          <Select id="al-from" value={from} onChange={(e) => setFrom(e.target.value)}>
+            <option value={UNASSIGNED}>Not assigned</option>
+            {split.map((r) => <option key={r.id} value={r.id}>{name(r.id)} ({formatNPR(r.amount)})</option>)}
           </Select>
         </Field>
-        <Field label="Project" htmlFor="al-project">
-          <Select id="al-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
+        <Field label="To" htmlFor="al-to">
+          <Select id="al-to" value={to} onChange={(e) => setTo(e.target.value)}>
             <option value="">Choose</option>
-            {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+            {from !== UNASSIGNED && <option value={UNASSIGNED}>Not assigned</option>}
+            {projects.data?.filter((p) => p.id !== from).map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
           </Select>
         </Field>
         <Field label="Amount" htmlFor="al-amount"><MoneyInput id="al-amount" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
         <Field label="Reason" htmlFor="al-reason"><Input id="al-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       </div>
-      <p className="text-xs text-subtle">To move between two projects, move it back to "not assigned" first, then to the other project.</p>
       <ErrorBanner>{allocate.error && friendlyError(allocate.error)}</ErrorBanner>
       <div className="flex gap-2">
-        <Button type="submit" busy={allocate.isPending} disabled={!projectId || !parseNPR(amount) || !reason.trim()}>Save</Button>
-        <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>
+        <Button type="submit" busy={allocate.isPending} disabled={!ready}>Move</Button>
+        <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
       </div>
     </form>
   )

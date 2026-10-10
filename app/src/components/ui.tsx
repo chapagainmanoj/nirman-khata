@@ -193,7 +193,11 @@ export function Breadcrumbs({ trail }: { trail: Crumb[] }) {
   )
 }
 
-export function PageHeader({ title, subtitle, actions, crumbs }: { title: string; subtitle?: ReactNode; actions?: ReactNode; crumbs?: Crumb[] }) {
+export function PageHeader({ title, subtitle, actions, crumbs, after }: {
+  title: string; subtitle?: ReactNode; actions?: ReactNode; crumbs?: Crumb[]
+  /** A line in body colour under the subtitle: the one fact this page turns on. */
+  after?: ReactNode
+}) {
   return (
     <div className="mb-4">
       {crumbs && <Breadcrumbs trail={crumbs} />}
@@ -201,6 +205,7 @@ export function PageHeader({ title, subtitle, actions, crumbs }: { title: string
         <div className="min-w-0">
           <h1 className="break-words text-xl font-bold text-ink">{title}</h1>
           {subtitle && <div className="text-sm text-subtle">{subtitle}</div>}
+          {after}
         </div>
         {actions && <div className="flex gap-2">{actions}</div>}
       </div>

@@ -64,6 +64,11 @@ export function BillDetailPage() {
   const blockers = preview.data?.checks.filter((c) => c.severity !== 'warning') ?? []
   const canEdit = isDraft && ((b.status === 'draft' && b.created_by === auth.userId) || canPost(auth))
   const subtotal = lines.reduce((s, l) => s + l.amount_paisa, 0)
+  // Each line's share of the bill-level charges, named: "Incl. transport + VAT".
+  const chargeNames = [
+    charges?.transport_paisa && 'transport', charges?.vat_paisa && 'VAT', charges?.discount_paisa && 'less discount',
+  ].filter(Boolean).join(' + ')
+  const chargesNote = chargeNames ? `Incl. ${chargeNames}` : 'With charges'
 
   return (
     <>
@@ -146,7 +151,7 @@ export function BillDetailPage() {
                   <div className="shrink-0 text-right text-sm tabular-nums">
                     <div className="font-semibold text-ink">{formatNPR(l.amount_paisa)}</div>
                     {payable !== undefined && payable !== null && payable !== l.amount_paisa && (
-                      <div className="text-xs text-subtle">With charges {formatNPR(payable)}</div>
+                      <div className="text-xs text-subtle">{chargesNote} {formatNPR(payable)}</div>
                     )}
                     {cost !== undefined && cost !== null && cost !== payable && <div className="text-xs text-subtle">Cost {formatNPR(cost)}</div>}
                   </div>
@@ -160,9 +165,10 @@ export function BillDetailPage() {
               {charges.discount_paisa > 0 && <Detail label="Discount">-{formatNPR(charges.discount_paisa)}</Detail>}
               {charges.transport_paisa > 0 && <Detail label="Transport">{formatNPR(charges.transport_paisa)}</Detail>}
               {charges.vat_paisa > 0 && <Detail label={`VAT${b.vat_treatment === 'vat_recoverable' ? ' (recoverable, not project cost)' : ''}`}>{formatNPR(charges.vat_paisa)}</Detail>}
-              <Detail label="Bill total">
-                {formatNPR(charges.total_paisa ?? subtotal - charges.discount_paisa + charges.transport_paisa + charges.vat_paisa)}
-              </Detail>
+              <div className="flex justify-between gap-4 pt-2 text-base font-bold text-ink tabular-nums">
+                <span>Bill total</span>
+                <span>{formatNPR(charges.total_paisa ?? subtotal - charges.discount_paisa + charges.transport_paisa + charges.vat_paisa)}</span>
+              </div>
             </div>
           )}
         </Card>
@@ -176,10 +182,6 @@ export function BillDetailPage() {
           <Detail label="Notes">{b.notes}</Detail>
         </Card>
 
-        <Card title="Bill photo">
-          <Attachments owner={{ bill_id: b.id }} canAdd={isDraft && canEdit && canEnter(auth)} canRemove={b.status === 'draft' && canEdit} label="Take bill photo" />
-        </Card>
-
         {b.status !== 'draft' && b.status !== 'under_review' && status.data && status.data.length > 0 && (
           <Card title="Paid so far">
             {status.data.map((r) => (
@@ -187,16 +189,21 @@ export function BillDetailPage() {
                 <div className="font-medium text-ink">{project(r.project_id!)?.code} · {project(r.project_id!)?.name}</div>
                 <Detail label="Owed on this bill">{formatNPR(r.payable_paisa)}</Detail>
                 {r.credited_paisa > 0 && <Detail label="Credits">-{formatNPR(r.credited_paisa)}</Detail>}
-                <Detail label="Matched to payments">{formatNPR(r.settled_paisa)}</Detail>
-                <Detail label="Still owed">{formatNPR(r.outstanding_paisa)}</Detail>
+                <Detail label="Paid">{formatNPR(r.settled_paisa)}</Detail>
+                <div className="flex justify-between gap-4 pt-2 font-semibold text-ink tabular-nums">
+                  <span>Still owed</span><span>{formatNPR(r.outstanding_paisa)}</span>
+                </div>
               </div>
             ))}
           </Card>
         )}
 
-        {b.status !== 'draft' && b.status !== 'under_review' && auth.canSeeFinance && (
+        <Card title="Bill photo">
+          <Attachments owner={{ bill_id: b.id }} canAdd={isDraft && canEdit && canEnter(auth)} canRemove={b.status === 'draft' && canEdit} label="Take bill photo" />
+        </Card>
+
+        {b.status !== 'draft' && b.status !== 'under_review' && auth.canSeeFinance && !!credits.data?.length && (
           <Card title="Credits" className="lg:col-span-2">
-            {credits.data?.length === 0 && <p className="text-sm text-subtle">No credit notes.</p>}
             <ul>
               {credits.data?.map((c) => (
                 <CreditRow key={c.id} credit={c} billPosted={b.status === 'posted'} />
@@ -208,7 +215,8 @@ export function BillDetailPage() {
       </div>
 
       {b.status === 'posted' && canPost(auth) && (
-        <div className="mt-6">
+        <div className="mt-6 flex flex-wrap items-start gap-2">
+          {credits.data?.length === 0 && <CreditForm billId={b.id} lines={lines} />}
           <ReasonButton variant="danger" title="Reverse this bill"
             hint="Credits on the bill are reversed with it, and payments matched to it become advance."
             confirmLabel="Reverse bill" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
@@ -294,9 +302,9 @@ function CreditForm({ billId, lines }: { billId: string; lines: Line[] }) {
     if (!problem) post.mutate()
   }
 
-  if (!open) return <Button variant="secondary" className="mt-3" onClick={() => setOpen(true)}>Add credit note</Button>
+  if (!open) return <Button variant="secondary" onClick={() => setOpen(true)}>Add credit note</Button>
   return (
-    <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
+    <form onSubmit={submit} className="flex w-full flex-col gap-3 rounded-lg bg-muted p-3">
       <div className="font-semibold text-ink">Credit note from the supplier</div>
       {lines.map((l) => {
         const rl = returnLines.data?.filter((r) => r.bill_line_id === l.id) ?? []

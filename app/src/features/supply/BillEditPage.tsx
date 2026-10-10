@@ -250,9 +250,9 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
   return (
     <>
-      <PageHeader title={initial ? 'Edit bill' : 'Enter supplier bill'} subtitle="Nothing counts as cost until Accounts posts the bill." />
+      <PageHeader title={initial ? 'Edit bill' : 'Enter supplier bill'} subtitle={accounts ? 'Check the lines against the paper bill, then post it.' : 'Nothing counts as cost until Accounts posts the bill.'} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved bill.</Notice></div>}
-      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)] lg:items-start lg:gap-6">
+      <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start lg:gap-6">
       <Card title="Bill photo" className="lg:sticky lg:top-4">
         {initial ? (
           <Attachments owner={{ bill_id: initial.id }} canAdd={canEnter(auth)} canRemove label="Take bill photo" large />
@@ -280,13 +280,13 @@ function BillForm({ initial }: { initial?: BillValues }) {
             <Field label="Bill number" htmlFor="b-no" hint={accounts ? undefined : 'Optional when you send the photo'}>
               <Input id="b-no" {...register('bill_no', { onBlur: () => void checkDuplicate() })} />
             </Field>
-            <Field label="Bill date" htmlFor="b-date">
+            <div className="sm:col-span-2"><Field label="Bill date" htmlFor="b-date">
               <Controller control={control} name="bill_date" render={({ field }) => (
                 <DateInput id="b-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
               )} />
-            </Field>
+            </Field></div>
             {showDue && (
-              <Field label="Due date" htmlFor="b-due" hint={
+              <div className="sm:col-span-2"><Field label="Due date" htmlFor="b-due" hint={
                 <span className="flex gap-3">
                   {[15, 30].map((n) => (
                     <button key={n} type="button" className="underline underline-offset-4"
@@ -297,14 +297,14 @@ function BillForm({ initial }: { initial?: BillValues }) {
                 <Controller control={control} name="due_date" render={({ field }) => (
                   <DateInput id="b-due" value={field.value} onChange={field.onChange} display={auth.dateDisplay} allowEmpty />
                 )} />
-              </Field>
+              </Field></div>
             )}
             {showCostDate && (
-              <Field label="Counts as cost on" htmlFor="b-cost" hint="Leave empty to use the bill date.">
+              <div className="sm:col-span-2"><Field label="Counts as cost on" htmlFor="b-cost" hint="Leave empty to use the bill date.">
                 <Controller control={control} name="cost_date" render={({ field }) => (
                   <DateInput id="b-cost" value={field.value} onChange={field.onChange} display={auth.dateDisplay} allowEmpty />
                 )} />
-              </Field>
+              </Field></div>
             )}
           </div>
           {(!showDue || !showCostDate) && (

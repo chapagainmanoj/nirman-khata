@@ -120,10 +120,10 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
 
   // Accounts assigns it to the project, then matches it to the bill.
   await page.getByRole('button', { name: 'Change split' }).click()
-  await page.getByLabel('Project').selectOption({ label: 'P-1 · Ward 5 school building' })
+  await page.getByLabel('To', { exact: true }).selectOption({ label: 'P-1 · Ward 5 school building' })
   await page.getByLabel('Amount').fill('51,000')
   await page.getByLabel('Reason').fill('Paid for the school')
-  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Move', exact: true }).click()
   await expect(page.getByText('Not assigned to a project')).toBeHidden()
   await page.getByRole('link', { name: 'Shrestha Suppliers' }).click()
   await page.getByLabel('Bill', { exact: true }).selectOption({ index: 1 }) // the only unpaid bill, 1001

@@ -71,6 +71,21 @@ const rowClass = 'flex min-h-11 w-full flex-col justify-center px-4 py-2 text-le
 
 function RecordList({ role, onPick }: { role: NavRole; onPick?: () => void }) {
   const current = useCurrentProject()
+  // Every record belongs to a project: with none open, point at the one step that unblocks it.
+  if (current.ready && !current.choices.length) {
+    return (
+      <div className="px-4 py-3">
+        <p className="text-sm font-semibold text-ink">{t('record.noProject')}</p>
+        {role.isAdmin ? (
+          <Link to="/projects/new" onClick={onPick} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4">
+            {t('projects.new')}
+          </Link>
+        ) : (
+          <p className="mt-1 text-xs text-subtle">{t('record.noProject.ask')}</p>
+        )}
+      </div>
+    )
+  }
   return (
     <ul>
       {recordActionsFor(role).map((a) => (
@@ -171,6 +186,7 @@ export function AccountMenu({ className, alignRight }: { className?: string; ali
       {() => (
         <>
           <div className="border-b border-line px-4 py-2 text-xs text-subtle">{roles}</div>
+          <Link to="/settings" className={cx(rowClass, 'text-sm font-medium text-ink')}>{t('nav.myAccount')}</Link>
           <button type="button" className={cx(rowClass, 'text-sm font-medium text-ink')}
             onClick={async () => { if (await auth.signOut()) navigate('/login') }}>
             {t('nav.signOut')}

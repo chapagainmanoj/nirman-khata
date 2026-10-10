@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { ButtonLink, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
+import { formatNPR } from '../../lib/money'
 import { Tabs } from '../parties/PartyParts'
 import { useBills } from '../supply/api'
 import { BillRow } from '../supply/BillRow'
@@ -30,13 +31,18 @@ export function BillsPage() {
   const posts = canPost(auth)
   const [tab, setTab] = useState<Tab>(posts ? 'to_post' : 'drafts')
   const { projectId, chip } = useProjectFilter()
-  const statuses = STATUSES[tab]
-  const bills = useBills({ companyId: auth.companyId, projectId: projectId ?? undefined, statuses: statuses && [...statuses] })
+  // One query for every tab, so each tab can say how many bills it holds.
+  const all = useBills({ companyId: auth.companyId, projectId: projectId ?? undefined })
+  const inTab = (t: Tab) => (all.data ?? []).filter((b) => !STATUSES[t] || (STATUSES[t] as readonly string[]).includes(b.status))
+  const shown = all.data && inTab(tab)
+  const named = (t: Tab, text: string): [Tab, string] => [t, all.data && t !== 'all' ? `${text} (${inTab(t).length})` : text]
   const tabs: Array<[Tab, string]> = posts
-    ? [['to_post', 'To post'], ['drafts', 'Drafts'], ['posted', 'Posted'], ['all', 'All']]
+    ? [named('to_post', 'To post'), named('drafts', 'Drafts'), named('posted', 'Posted'), ['all', 'All']]
     : auth.canSeeFinance
-      ? [['drafts', 'My drafts'], ['posted', 'Posted'], ['all', 'All']]
-      : [['drafts', 'My drafts']]
+      ? [named('drafts', 'My drafts'), named('posted', 'Posted'), ['all', 'All']]
+      : [named('drafts', 'My drafts')]
+  const owed = (shown ?? []).filter((b) => b.status === 'posted')
+    .reduce((t, b) => t + Math.max(0, b.payable_paisa - b.credited_paisa - b.settled_paisa), 0)
 
   return (
     <>
@@ -45,10 +51,13 @@ export function BillsPage() {
       {chip}
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Bills">
         <Card>
-          {bills.isPending && <Spinner />}
-          <ErrorBanner onRetry={() => void bills.refetch()}>{bills.error && friendlyError(bills.error)}</ErrorBanner>
-          {bills.data?.length === 0 && <EmptyState title={EMPTY[tab]} />}
-          <ul>{bills.data?.map((b) => <BillRow key={b.id} bill={b} showSupplier />)}</ul>
+          {all.isPending && <Spinner />}
+          <ErrorBanner onRetry={() => void all.refetch()}>{all.error && friendlyError(all.error)}</ErrorBanner>
+          {shown?.length === 0 && <EmptyState title={EMPTY[tab]} />}
+          {owed > 0 && (tab === 'posted' || tab === 'all') && (
+            <p className="mb-2 border-b border-line pb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
+          )}
+          <ul>{shown?.map((b) => <BillRow key={b.id} bill={b} showSupplier />)}</ul>
         </Card>
       </Tabs>
     </>

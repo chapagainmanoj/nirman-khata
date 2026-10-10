@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  relativeDay,
   addDays, adToBs, BS_FIRST_YEAR, BS_LAST_YEAR, BS_RANGE, bsMonthDays, bsToAd, dateRange, fiscalYear, fiscalYearRange, formatAd, formatBs,
   formatDate, formatDateTime, formatDual, todayKathmandu,
 } from './dates'
@@ -109,5 +110,15 @@ describe('BS range', () => {
   it('shows dates outside it in AD instead of failing', () => {
     expect(formatDual('2040-01-05', 'bs')).toBe('5 Jan 2040')
     expect(formatDate('2040-01-05', 'bs')).toBe('5 Jan 2040')
+  })
+})
+
+describe('relativeDay', () => {
+  it('names nearby days and counts the rest', () => {
+    expect(relativeDay('2026-10-10', '2026-10-10')).toBe('today')
+    expect(relativeDay('2026-10-11', '2026-10-10')).toBe('tomorrow')
+    expect(relativeDay('2026-10-09', '2026-10-10')).toBe('yesterday')
+    expect(relativeDay('2026-10-12', '2026-10-10')).toBe('in 2 days')
+    expect(relativeDay('2026-10-01', '2026-10-10')).toBe('9 days ago')
   })
 })

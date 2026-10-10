@@ -329,11 +329,11 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, children 
   return (
     <>
       {/* Scrolls sideways on narrow phones instead of squeezing the labels. */}
-      <div className="mt-6 mb-3 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+      <div className="mt-6 mb-3 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1 sm:w-fit" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
         {tabs.map(([key, text]) => (
           <button key={key} id={tabId(key)} type="button" role="tab" aria-selected={value === key} aria-controls={`${ids}-panel`}
             tabIndex={value === key ? 0 : -1} onClick={() => onChange(key)}
-            className={`min-h-11 flex-1 shrink-0 whitespace-nowrap rounded-md px-3 text-sm font-medium ${value === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
+            className={`min-h-11 flex-1 shrink-0 whitespace-nowrap rounded-md px-3 sm:flex-none sm:px-4 text-sm font-medium ${value === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
             {text}
           </button>
         ))}

@@ -6,7 +6,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
 import { ReasonButton } from '../../components/ReasonButton'
 import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Notice, PageHeader, Spinner, Status } from '../../components/ui'
-import { formatDateTime, formatDual } from '../../lib/dates'
+import { formatDate, formatDateTime, formatDual, relativeDay } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
@@ -54,6 +54,14 @@ export function SlipDetailPage() {
   const byProject = [...new Set(lines.map((l) => l.project_id))].map((id) => ({ id, lines: lines.filter((l) => l.project_id === id) }))
   const lineName = (l: (typeof lines)[number]) => l.materials?.name ?? l.material_text ?? 'Material'
   const err = act.error && friendlyError(act.error)
+  // What an approver weighs: when it is needed and roughly what it costs.
+  const priced = lines.filter((l) => l.est_rate_paisa !== null)
+  const estimate = priced.reduce((t, l) => t + Math.round(Number(l.est_rate_paisa) * Number(l.qty)), 0)
+  const facts = [
+    s.required_date && s.status !== 'cancelled' && !['fully_received', 'closed_short'].includes(perms?.fulfilment ?? '') &&
+      `Needed by ${formatDate(s.required_date, auth.dateDisplay)} (${relativeDay(s.required_date)})`,
+    priced.length > 0 && `Est. ${formatNPR(estimate)}${priced.length < lines.length ? ` for ${priced.length} of ${lines.length} lines` : ''}`,
+  ].filter(Boolean).join(' · ')
 
   async function share() {
     const text = [
@@ -95,11 +103,13 @@ export function SlipDetailPage() {
             </ol>
           ) : <Badge tone={statusTone}>{statusLabel}</Badge>
         }
+        after={facts && <p className="mt-1 text-sm font-medium text-ink">{facts}</p>}
       />
       {s.status === 'rejected' && s.rejected_reason && <div className="mb-4"><Notice>Rejected: {s.rejected_reason}</Notice></div>}
       {s.closed_short_reason && <div className="mb-4"><Notice>Closed short: {s.closed_short_reason}</Notice></div>}
 
-      <div className="mb-4 flex flex-wrap gap-2">
+      {/* One row of actions; a reason form that opens takes the full width below them. */}
+      <div className="mb-4 flex flex-wrap items-start gap-2 empty:hidden">
         {perms?.can_edit && <ButtonLink variant="secondary" to={`/slips/${s.id}/edit`}>Edit</ButtonLink>}
         {perms?.can_submit && (
           <Button busy={act.isPending} onClick={() => act.mutate(() => rpc('submit_slip', { p_slip: s.id }))}>
@@ -116,8 +126,6 @@ export function SlipDetailPage() {
             Delete
           </ConfirmButton>
         )}
-      </div>
-      <div className="mb-4 flex flex-col items-start gap-2 empty:hidden">
         {perms?.can_approve && (
           <ReasonButton title="Reject this slip" confirmLabel="Reject" variant="danger" busy={act.isPending} error={err}
             onConfirm={(reason) => act.mutate(() => rpc('decide_slip', { p_slip: s.id, p_approve: false, p_reason: reason }))}>
@@ -125,7 +133,7 @@ export function SlipDetailPage() {
           </ReasonButton>
         )}
         {(perms?.can_close_short || perms?.can_cancel) && !moreActions && (
-          <div><Button variant="ghost" aria-expanded={false} onClick={() => setMoreActions(true)}>More actions ▾</Button></div>
+          <Button variant="ghost" aria-expanded={false} onClick={() => setMoreActions(true)}>More actions</Button>
         )}
         {perms?.can_close_short && moreActions && (
           <ReasonButton title="Close short" hint="e.g. Supplier out of stock, remaining not needed" confirmLabel="Close slip"

@@ -60,7 +60,7 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
   }, [picking])
 
   return (
-    <div ref={wrapper}>
+    <div ref={wrapper} className="max-w-md">
       {/* Selects keep at least 13.5rem (room for "Mangsir"); below that the toggle wraps. */}
       <div className="relative flex flex-wrap gap-2">
         <div className="flex min-w-[13.5rem] flex-1">

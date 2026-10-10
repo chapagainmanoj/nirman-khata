@@ -14,6 +14,7 @@ export function BillRow({ bill: b, showSupplier }: { bill: Bill; showSupplier?: 
   const [label, tone] = BILL_STATUS[b.status]
   const outstanding = b.payable_paisa - b.credited_paisa - b.settled_paisa
   const [paidLabel, paidTone] = settlementLabel(outstanding, b.settled_paisa)
+  const total = b.total_paisa ?? (b.status === 'posted' ? b.payable_paisa : b.lines_paisa)
   return (
     <li className="border-b border-line last:border-0">
       <Link to={`/bills/${b.id}`} className="flex items-start justify-between gap-3 py-2">
@@ -25,11 +26,14 @@ export function BillRow({ bill: b, showSupplier }: { bill: Bill; showSupplier?: 
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">
-          <span>{formatNPR(b.total_paisa ?? (b.status === 'posted' ? b.payable_paisa : b.lines_paisa))}</span>
-          <span className="flex gap-1">
-            <Badge tone={tone}>{label}</Badge>
-            {b.status === 'posted' && <Badge tone={paidTone}>{paidLabel}</Badge>}
-          </span>
+          {/* A posted bill that is part paid leads with what is still due. */}
+          {b.status === 'posted' && outstanding > 0 && b.settled_paisa > 0 ? (
+            <span><span className="font-semibold text-ink">{formatNPR(outstanding)} due</span> <span className="text-xs text-subtle">of {formatNPR(total)}</span></span>
+          ) : (
+            <span>{formatNPR(total)}</span>
+          )}
+          {/* Posted is the normal state, so it shows only how much is paid. */}
+          {b.status === 'posted' ? <Badge tone={paidTone}>{paidLabel}</Badge> : <Badge tone={tone}>{label}</Badge>}
         </div>
       </Link>
     </li>

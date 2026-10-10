@@ -80,10 +80,12 @@ function Frame() {
   return (
     <div className="min-h-dvh bg-page pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 lg:flex">
       {/* Desktop sidebar */}
-      <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 flex-col gap-3 overflow-y-auto border-r border-line bg-surface p-3 lg:flex">
+      {/* Only the section list scrolls, so the menus at the top can open past the sidebar's edge. */}
+      <aside className="sticky top-0 z-30 hidden h-dvh w-64 shrink-0 flex-col gap-3 border-r border-line bg-surface p-3 lg:flex">
         <AccountMenu />
         <RecordMenu role={role} />
         <ProjectSwitcher />
+        <div className="-mx-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3">
         <nav aria-label="Main" className="flex flex-col gap-4">
           {work.map((g) => (
             <div key={g.key}>
@@ -98,6 +100,7 @@ function Frame() {
             className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium ${pathname.startsWith('/notifications') ? 'bg-brand-soft text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
             <BellIcon />{t('nav.notifications')}<Count n={unread} label={`${unread} new`} />
           </NavLink>
+        </div>
         </div>
       </aside>
 

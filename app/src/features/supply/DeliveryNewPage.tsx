@@ -3,7 +3,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useForm } from 'react-hook-form'
-import { useNavigate, useSearchParams } from 'react-router'
+import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
@@ -15,7 +15,7 @@ import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useProjects } from '../projects/api'
-import { rpc, useSlip, useSuppliers } from './api'
+import { rpc, useSlip, useSlips, useSuppliers } from './api'
 
 type Line = {
   id: string
@@ -51,7 +51,8 @@ export function DeliveryNewPage() {
   const slip = useSlip(slipId)
   if (slipId && slip.isPending) return <Spinner />
   if (slipId && (slip.error || !slip.data)) return <ErrorBanner>{slip.error ? friendlyError(slip.error) : 'Slip not found.'}</ErrorBanner>
-  return <DeliveryForm slip={slip.data ?? null} projectParam={params.get('project') ?? ''} supplierParam={params.get('supplier') ?? ''} />
+  // Keyed so picking an open slip below starts a fresh form with that slip's lines.
+  return <DeliveryForm key={`${slipId}:${params.get('project') ?? ''}`} slip={slip.data ?? null} projectParam={params.get('project') ?? ''} supplierParam={params.get('supplier') ?? ''} />
 }
 
 function DeliveryForm({ slip, projectParam, supplierParam }: {
@@ -157,9 +158,10 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
 
   return (
     <>
-      <PageHeader title="Record delivery" subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : 'Without an order slip'} />
+      <PageHeader title="Record delivery" subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : undefined} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved delivery.</Notice></div>}
       <form onSubmit={submit} className="flex flex-col gap-4">
+        {!slip && <OpenSlips supplierId={supplierId} projectId={projectId} />}
         <Card title="Challan photo">
           <PhotoPicker value={photos} onChange={(v) => form.setValue('photos', v)} label="Take challan photo" what="Challan photo" />
         </Card>
@@ -256,5 +258,38 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
         </FormActions>
       </form>
     </>
+  )
+}
+
+/**
+ * Most deliveries answer an order slip. Before typing a delivery "without a slip", offer the
+ * open slips that fit the supplier and project chosen so far; picking one pre-fills its lines.
+ */
+function OpenSlips({ supplierId, projectId }: { supplierId: string; projectId: string }) {
+  const auth = useCompany()
+  const slips = useSlips(auth.companyId)
+  const open = (slips.data ?? []).filter((s) =>
+    s.status === 'approved' && !['fully_received', 'closed_short'].includes(s.fulfilment) &&
+    (!supplierId || s.supplier_id === supplierId) &&
+    (!projectId || s.order_slip_lines.some((l) => l.project_id === projectId)))
+  if (!open.length) return null
+  return (
+    <Card title="Is this for an order slip?">
+      <p className="mb-2 text-sm text-subtle">Pick the slip and its pending items fill in for you.</p>
+      <ul className="divide-y divide-line">
+        {open.slice(0, 5).map((s) => {
+          const project = projectId || s.order_slip_lines[0]?.project_id || ''
+          return (
+            <li key={s.id}>
+              <Link to={`/deliveries/new?slip=${s.id}&project=${project}`}
+                className="flex min-h-12 items-center justify-between gap-3 py-2 text-sm hover:text-brand-dark">
+                <span className="min-w-0 truncate"><span className="font-semibold text-ink">{s.number}</span> · {s.suppliers?.name}</span>
+                <span className="shrink-0 font-medium text-brand">Receive against it ›</span>
+              </Link>
+            </li>
+          )
+        })}
+      </ul>
+    </Card>
   )
 }

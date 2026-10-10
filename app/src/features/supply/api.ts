@@ -65,7 +65,7 @@ export function useSlips(companyId: string) {
     queryFn: async () => {
       const [slips, progress] = await Promise.all([
         supabase.from('order_slips')
-          .select('id, number, status, request_date, required_date, created_by, sent_at, suppliers(name), order_slip_lines(project_id)')
+          .select('id, number, status, supplier_id, request_date, required_date, created_by, sent_at, suppliers(name), order_slip_lines(project_id)')
           .eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
         supabase.from('order_slip_progress').select('id, fulfilment').eq('company_id', companyId),
       ])

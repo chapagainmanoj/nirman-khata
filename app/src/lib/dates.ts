@@ -135,6 +135,15 @@ export function addDays(iso: IsoDate, n: number): IsoDate {
   return d.toISOString().slice(0, 10)
 }
 
+/** "today", "in 2 days", "3 days ago": how far a date is from today (Kathmandu). */
+export function relativeDay(iso: IsoDate, today: IsoDate = todayKathmandu()): string {
+  const n = Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000)
+  if (n === 0) return 'today'
+  if (n === 1) return 'tomorrow'
+  if (n === -1) return 'yesterday'
+  return n > 0 ? `in ${n} days` : `${-n} days ago`
+}
+
 /** Every AD date from `from` to `to`, inclusive; empty when `to` is before `from`. */
 export function dateRange(from: IsoDate, to: IsoDate): IsoDate[] {
   const out: IsoDate[] = []
