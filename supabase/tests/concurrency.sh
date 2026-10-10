@@ -166,5 +166,15 @@ check "Charge: first approval succeeds" yes "$(succeeded "$RACE_A")"
 check "Charge: concurrent second approval is refused" no "$(succeeded "$RACE_B")"
 check "Charge: one cost event" 1 "$(q -c "select count(*) from public.posting_events where charge_id = '$CHARGE'")"
 
+# L2: the same daily report with labour from two devices at once -> one report, one labour cost.
+KEY=$(uuidgen | tr 'A-Z' 'a-z'); REPORT=$(uuidgen | tr 'A-Z' 'a-z')
+SEND="select public.submit_daily_report('$KEY', jsonb_build_object('id', '$REPORT', 'project_id', '$PROJECT',
+  'work_date', '2026-05-20', 'work_done', 'Slab casting', 'headcount', 10,
+  'labour', jsonb_build_object('amount_paisa', 1200000, 'confirm_duplicate', true))) ->> 'id';"
+race "$SEND" "$SEND"
+check "L2: both concurrent submissions succeed" "yes yes" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+check "L2: one report" 1 "$(q -c "select count(*) from public.daily_reports where id = '$REPORT'")"
+check "L2: one labour cost" 1 "$(q -c "select count(*) from public.labour_costs where daily_report_id = '$REPORT'")"
+
 if [ "$failures" -gt 0 ]; then echo "$failures concurrency test(s) failed"; exit 1; fi
 echo "All concurrency tests passed"

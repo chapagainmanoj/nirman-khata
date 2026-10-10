@@ -40,6 +40,9 @@ const BillsPage = page(() => import('./features/lists/BillsPage'), 'BillsPage')
 const DeliveriesPage = page(() => import('./features/lists/DeliveriesPage'), 'DeliveriesPage')
 const PartiesHubPage = page(() => import('./features/lists/PartiesPage'), 'PartiesHubPage')
 const PaymentsPage = page(() => import('./features/lists/PaymentsPage'), 'PaymentsPage')
+const DailyReportPage = page(() => import('./features/site/DailyReportPage'), 'DailyReportPage')
+const ReportDetailPage = page(() => import('./features/site/ReportDetailPage'), 'ReportDetailPage')
+const CalendarPage = page(() => import('./features/calendar/CalendarPage'), 'CalendarPage')
 
 export function App() {
   return (
@@ -83,6 +86,9 @@ export function App() {
           <Route path="/work/:packageId/edit" element={<WorkPackageEditPage />} />
           <Route path="/labour/new" element={<LabourNewPage />} />
           <Route path="/expenses/new" element={<ExpenseNewPage />} />
+          <Route path="/reports/new" element={<DailyReportPage />} />
+          <Route path="/reports/:reportId" element={<ReportDetailPage />} />
+          <Route path="/calendar" element={<CalendarPage />} />
         </Route>
         <Route path="*" element={<Navigate to="/projects" replace />} />
       </Routes>

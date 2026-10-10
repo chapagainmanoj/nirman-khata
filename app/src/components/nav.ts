@@ -11,9 +11,12 @@ export type NavRole = {
   canSeeFinance: boolean
   canRecordPayments: boolean
   canApproveSlips: boolean
+  /** Company setting "Track own labour (jyala)". */
+  labourEnabled: boolean
 }
 
-export type NavKey = 'projects' | 'slips' | 'deliveries' | 'bills' | 'payments' | 'parties' | 'staff' | 'catalog' | 'settings'
+export type NavKey =
+  | 'projects' | 'calendar' | 'slips' | 'deliveries' | 'bills' | 'payments' | 'parties' | 'staff' | 'catalog' | 'settings'
 
 export type NavItem = {
   key: NavKey
@@ -28,7 +31,8 @@ export type NavGroup = { key: 'site' | 'money' | 'setup'; label: MessageKey; ite
 const canEnter = (r: NavRole) => r.roles.some((x) => x !== 'viewer')
 
 const ITEMS: Record<NavKey, NavItem> = {
-  projects: { key: 'projects', to: '/projects', label: 'nav.projects', match: ['/projects', '/labour', '/expenses'] },
+  projects: { key: 'projects', to: '/projects', label: 'nav.projects', match: ['/projects', '/labour', '/expenses', '/reports'] },
+  calendar: { key: 'calendar', to: '/calendar', label: 'nav.calendar', match: ['/calendar'] },
   slips: { key: 'slips', to: '/slips', label: 'nav.slips', match: ['/slips'] },
   deliveries: { key: 'deliveries', to: '/deliveries', label: 'nav.deliveries', match: ['/deliveries'] },
   bills: { key: 'bills', to: '/bills', label: 'nav.bills', match: ['/bills'] },
@@ -46,6 +50,7 @@ const ITEMS: Record<NavKey, NavItem> = {
 export function sectionsFor(r: NavRole): NavGroup[] {
   const show: Record<NavKey, boolean> = {
     projects: true,
+    calendar: true,
     slips: true,
     deliveries: true,
     // Site staff see their own bill drafts; finance sees posted bills.
@@ -57,7 +62,7 @@ export function sectionsFor(r: NavRole): NavGroup[] {
     settings: true,
   }
   const groups: NavGroup[] = [
-    { key: 'site', label: 'nav.group.site', items: [ITEMS.projects, ITEMS.slips, ITEMS.deliveries] },
+    { key: 'site', label: 'nav.group.site', items: [ITEMS.projects, ITEMS.calendar, ITEMS.slips, ITEMS.deliveries] },
     { key: 'money', label: 'nav.group.money', items: [ITEMS.bills, ITEMS.payments, ITEMS.parties] },
     { key: 'setup', label: 'nav.group.setup', items: [ITEMS.staff, ITEMS.catalog, ITEMS.settings] },
   ]
@@ -86,10 +91,11 @@ export function phoneBarFor(r: NavRole): NavKey[] {
   return ['projects', 'slips', 'deliveries']
 }
 
-export type RecordKey = 'delivery' | 'bill' | 'slip' | 'labour' | 'expense' | 'payment'
+export type RecordKey = 'report' | 'delivery' | 'bill' | 'slip' | 'labour' | 'expense' | 'payment'
 export type RecordAction = { key: RecordKey; path: string; label: MessageKey; hint: MessageKey }
 
 const RECORD: Record<RecordKey, RecordAction> = {
+  report: { key: 'report', path: '/reports/new', label: 'record.report', hint: 'record.report.hint' },
   delivery: { key: 'delivery', path: '/deliveries/new', label: 'record.delivery', hint: 'record.delivery.hint' },
   bill: { key: 'bill', path: '/bills/new', label: 'record.billPhoto', hint: 'record.billPhoto.hint' },
   slip: { key: 'slip', path: '/slips/new', label: 'record.slip', hint: 'record.slip.hint' },
@@ -101,11 +107,13 @@ const RECORD: Record<RecordKey, RecordAction> = {
 /** "+ Record" actions in the order this person needs them. Viewers get none. */
 export function recordActionsFor(r: NavRole): RecordAction[] {
   if (!canEnter(r)) return []
+  // Site staff start the day's record with the daily report; the office with bills and payments.
   const order: RecordKey[] = r.seesAllProjects
-    ? ['bill', 'payment', 'delivery', 'slip', 'labour', 'expense']
-    : ['delivery', 'bill', 'slip', 'labour', 'expense', 'payment']
+    ? ['bill', 'payment', 'delivery', 'report', 'slip', 'labour', 'expense']
+    : ['report', 'delivery', 'bill', 'slip', 'labour', 'expense', 'payment']
   return order
     .filter((k) => k !== 'payment' || r.canRecordPayments)
+    .filter((k) => k !== 'labour' || r.labourEnabled)
     .map((k) => {
       const a = RECORD[k]
       // Accounts type the bill; everyone else photographs it and sends it on.

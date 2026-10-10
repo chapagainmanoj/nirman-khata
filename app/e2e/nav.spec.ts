@@ -74,7 +74,7 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await expect(page.getByRole('button', { name: /Working on.*P-2/ })).toBeVisible()
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Record' })
-  await expect(sheet.getByRole('link').first()).toHaveText(/Record delivery/)
+  await expect(sheet.getByRole('link').first()).toHaveText(/Daily report/)
   await page.screenshot(shots('nav-01-record-sheet'))
   await sheet.getByRole('link', { name: /New order slip/ }).click()
   await expect(page).toHaveURL(new RegExp(`project=${p2}`))

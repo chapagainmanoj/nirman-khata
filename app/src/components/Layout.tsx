@@ -8,7 +8,7 @@ import { useCompany } from '../auth/AuthProvider'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import {
-  BellIcon, BillIcon, CatalogIcon, DeliveryIcon, MoreIcon, PaymentIcon, ProjectsIcon, SettingsIcon, SlipIcon, StaffIcon, SupplierIcon,
+  BellIcon, BillIcon, CalendarIcon, CatalogIcon, DeliveryIcon, MoreIcon, PaymentIcon, ProjectsIcon, SettingsIcon, SlipIcon, StaffIcon, SupplierIcon,
 } from './icons'
 import { AccountMenu, ProjectSwitcher, RecordMenu, RecordSheetButton, SetupMenu } from './menus'
 import { activeSection, navItem, phoneBarFor, recordActionsFor, sectionsFor, type NavKey } from './nav'
@@ -17,7 +17,7 @@ import { Spinner } from './ui'
 import { useNavRole } from './useNavRole'
 
 const ICONS: Record<NavKey, ComponentType> = {
-  projects: ProjectsIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon,
+  projects: ProjectsIcon, calendar: CalendarIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon,
   parties: SupplierIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
 }
 

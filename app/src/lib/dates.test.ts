@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addDays, adToBs, bsMonthDays, bsToAd, dateRange, fiscalYear, fiscalYearRange, formatAd, formatBs, formatDateTime, formatDual, todayKathmandu,
+  addDays, adToBs, BS_FIRST_YEAR, BS_LAST_YEAR, BS_RANGE, bsMonthDays, bsToAd, dateRange, fiscalYear, fiscalYearRange, formatAd, formatBs,
+  formatDate, formatDateTime, formatDual, todayKathmandu,
 } from './dates'
 
 // Reference dates from the official calendar (Nepali new year and fiscal-year start).
@@ -96,5 +97,17 @@ describe('addDays and dateRange', () => {
     expect(dateRange('2026-05-11', '2026-05-17')).toHaveLength(7)
     expect(dateRange('2026-05-11', '2026-05-11')).toEqual(['2026-05-11'])
     expect(dateRange('2026-05-12', '2026-05-11')).toEqual([])
+  })
+})
+
+describe('BS range', () => {
+  it('matches the library: first and last supported days', () => {
+    expect(adToBs(BS_RANGE.first)).toEqual({ year: BS_FIRST_YEAR, month: 1, day: 1 })
+    expect(adToBs(BS_RANGE.last)).toEqual({ year: BS_LAST_YEAR, month: 12, day: bsMonthDays(BS_LAST_YEAR, 12) })
+    expect(() => adToBs(addDays(BS_RANGE.last, 1))).toThrow()
+  })
+  it('shows dates outside it in AD instead of failing', () => {
+    expect(formatDual('2040-01-05', 'bs')).toBe('5 Jan 2040')
+    expect(formatDate('2040-01-05', 'bs')).toBe('5 Jan 2040')
   })
 })

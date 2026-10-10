@@ -25,14 +25,14 @@ export type Database = {
           Tables: {
             "attachments": {
                   Row: {
-                    "bill_id": string | null,"budget_revision_id": string | null,"charge_id": string | null,"company_id": string,"content_type": string | null,"contract_revision_id": string | null,"created_at": string,"created_by": string | null,"delivery_id": string | null,"expense_id": string | null,"file_name": string | null,"id": string,"kind": string,"labour_cost_id": string | null,"payment_id": string | null,"removed_at": string | null,"size_bytes": number | null,"updated_at": string,"uploaded_at": string | null,"work_package_id": string | null
+                    "bill_id": string | null,"budget_revision_id": string | null,"charge_id": string | null,"company_id": string,"content_type": string | null,"contract_revision_id": string | null,"created_at": string,"created_by": string | null,"daily_report_id": string | null,"delivery_id": string | null,"expense_id": string | null,"file_name": string | null,"id": string,"kind": string,"labour_cost_id": string | null,"payment_id": string | null,"progress_update_id": string | null,"removed_at": string | null,"size_bytes": number | null,"updated_at": string,"uploaded_at": string | null,"work_package_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"company_id": string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
+                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"company_id": string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"daily_report_id"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"progress_update_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
                   }
                   Update: {
-                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"company_id"?: string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
+                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"company_id"?: string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"daily_report_id"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"progress_update_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -70,6 +70,12 @@ isOneToOne: false
       columns: ["company_id","contract_revision_id"]
 isOneToOne: false
       referencedRelation: "contract_revisions"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attachments_company_id_daily_report_id_fkey"
+      columns: ["company_id","daily_report_id"]
+isOneToOne: false
+      referencedRelation: "daily_reports"
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "attachments_company_id_delivery_id_fkey"
@@ -118,6 +124,12 @@ isOneToOne: false
       columns: ["company_id","payment_id"]
 isOneToOne: false
       referencedRelation: "payments"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attachments_company_id_progress_update_id_fkey"
+      columns: ["company_id","progress_update_id"]
+isOneToOne: false
+      referencedRelation: "progress_updates"
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "attachments_company_id_work_package_id_fkey"
@@ -523,6 +535,70 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"daily_report_lines": {
+                  Row: {
+                    "company_id": string,"description": string,"id": string,"qty": number | null,"report_id": string,"sort_order": number,"unit_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"description": string,"id"?: string,"qty"?: number | null,"report_id": string,"sort_order"?: number,"unit_id"?: string | null
+                  }
+                  Update: {
+                    "company_id"?: string,"description"?: string,"id"?: string,"qty"?: number | null,"report_id"?: string,"sort_order"?: number,"unit_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "daily_report_lines_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "daily_report_lines_company_id_report_id_fkey"
+      columns: ["company_id","report_id"]
+isOneToOne: false
+      referencedRelation: "daily_reports"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "daily_report_lines_company_id_unit_id_fkey"
+      columns: ["company_id","unit_id"]
+isOneToOne: false
+      referencedRelation: "units"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"daily_reports": {
+                  Row: {
+                    "area": string | null,"company_id": string,"created_at": string,"created_by": string | null,"equipment": string | null,"headcount": number | null,"id": string,"issues": string | null,"labour_note": string | null,"project_id": string,"stage_id": string | null,"submitted_at": string,"weather": string | null,"work_date": string,"work_done": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "area"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"equipment"?: string | null,"headcount"?: number | null,"id": string,"issues"?: string | null,"labour_note"?: string | null,"project_id": string,"stage_id"?: string | null,"submitted_at"?: string,"weather"?: string | null,"work_date": string,"work_done": string
+                  }
+                  Update: {
+                    "area"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"equipment"?: string | null,"headcount"?: number | null,"id"?: string,"issues"?: string | null,"labour_note"?: string | null,"project_id"?: string,"stage_id"?: string | null,"submitted_at"?: string,"weather"?: string | null,"work_date"?: string,"work_done"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "daily_reports_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "daily_reports_company_id_project_id_fkey"
+      columns: ["company_id","project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "daily_reports_company_id_stage_id_fkey"
+      columns: ["company_id","stage_id"]
+isOneToOne: false
+      referencedRelation: "stages"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
                 },"deliveries": {
                   Row: {
                     "challan_no": string | null,"company_id": string,"created_at": string,"created_by": string | null,"id": string,"no_slip_reason": string | null,"note": string | null,"project_id": string,"receipt_date": string,"received_by": string,"slip_id": string | null,"supplier_id": string,"updated_at": string
@@ -709,14 +785,14 @@ isOneToOne: false
                   ]
                 },"labour_costs": {
                   Row: {
-                    "amount_paisa": number,"batch_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"description": string | null,"headcount": number | null,"heading_id": string,"id": string,"person_days": number | null,"posted_at": string,"project_id": string,"rate_paisa": number | null,"status": Database["public"]['Enums']["doc_status"],"updated_at": string,"work_date": string,"work_type": string | null
+                    "amount_paisa": number,"batch_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"daily_report_id": string | null,"description": string | null,"headcount": number | null,"heading_id": string,"id": string,"person_days": number | null,"posted_at": string,"project_id": string,"rate_paisa": number | null,"status": Database["public"]['Enums']["doc_status"],"updated_at": string,"work_date": string,"work_type": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa": number,"batch_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"description"?: string | null,"headcount"?: number | null,"heading_id": string,"id": string,"person_days"?: number | null,"posted_at"?: string,"project_id": string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date": string,"work_type"?: string | null
+                    "amount_paisa": number,"batch_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"daily_report_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id": string,"id": string,"person_days"?: number | null,"posted_at"?: string,"project_id": string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date": string,"work_type"?: string | null
                   }
                   Update: {
-                    "amount_paisa"?: number,"batch_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string,"id"?: string,"person_days"?: number | null,"posted_at"?: string,"project_id"?: string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date"?: string,"work_type"?: string | null
+                    "amount_paisa"?: number,"batch_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"daily_report_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string,"id"?: string,"person_days"?: number | null,"posted_at"?: string,"project_id"?: string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date"?: string,"work_type"?: string | null
                   }
                   Relationships: [
                     {
@@ -730,6 +806,12 @@ isOneToOne: false
       columns: ["company_id","crew_id"]
 isOneToOne: false
       referencedRelation: "crews"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "labour_costs_company_id_daily_report_id_fkey"
+      columns: ["company_id","daily_report_id"]
+isOneToOne: false
+      referencedRelation: "daily_reports"
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "labour_costs_company_id_fkey"
@@ -1331,6 +1413,38 @@ isOneToOne: false
                   Relationships: [
                     
                   ]
+                },"progress_updates": {
+                  Row: {
+                    "company_id": string,"created_at": string,"created_by": string | null,"effective_date": string,"id": string,"notes": string | null,"pct": number,"project_id": string,"reason": string | null,"stage_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"created_by"?: string | null,"effective_date": string,"id": string,"notes"?: string | null,"pct": number,"project_id": string,"reason"?: string | null,"stage_id"?: string | null
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"effective_date"?: string,"id"?: string,"notes"?: string | null,"pct"?: number,"project_id"?: string,"reason"?: string | null,"stage_id"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "progress_updates_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "progress_updates_company_id_project_id_fkey"
+      columns: ["company_id","project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "progress_updates_company_id_stage_id_fkey"
+      columns: ["company_id","stage_id"]
+isOneToOne: false
+      referencedRelation: "stages"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
                 },"project_assignments": {
                   Row: {
                     "company_id": string,"created_at": string,"created_by": string | null,"id": string,"project_id": string,"updated_at": string,"user_id": string
@@ -1585,6 +1699,32 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "settlement_events_company_id_project_id_fkey"
+      columns: ["company_id","project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"stages": {
+                  Row: {
+                    "active": boolean,"company_id": string,"created_at": string,"created_by": string | null,"id": string,"name": string,"planned_end": string | null,"planned_start": string | null,"project_id": string,"sort_order": number,"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"company_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name": string,"planned_end"?: string | null,"planned_start"?: string | null,"project_id": string,"sort_order"?: number,"updated_at"?: string
+                  }
+                  Update: {
+                    "active"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name"?: string,"planned_end"?: string | null,"planned_start"?: string | null,"project_id"?: string,"sort_order"?: number,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "stages_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "stages_company_id_project_id_fkey"
       columns: ["company_id","project_id"]
 isOneToOne: false
       referencedRelation: "projects"
@@ -2223,6 +2363,9 @@ isOneToOne: false
 "add_contract_revision":
 { Args: { "p_amount_paisa": number,"p_effective_date": string,"p_project": string,"p_reason": string }; Returns: string
                            },
+"add_progress_update":
+{ Args: { "p_update": Json }; Returns: Json
+                           },
 "allocate_payment":
 { Args: { "p_changes": Json,"p_op_key": string,"p_payment": string,"p_reason": string }; Returns: Json
                            },
@@ -2237,17 +2380,28 @@ isOneToOne: false
               "credited_paisa": number,"outstanding_paisa": number,"payable_paisa": number,"project_id": string,"settled_paisa": number
             }[]
                            },
+"calendar_events":
+{ Args: { "p_company": string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
+              "at": string,"cash_paisa": number,"cost_paisa": number,"created_by": string,"detail": string,"event_date": string,"kind": string,"label": string,"link_id": string,"link_kind": string,"money": string,"party_name": string,"project_id": string
+            }[]
+                           },
 "cancel_slip":
 { Args: { "p_reason": string,"p_slip": string }; Returns: undefined
                            },
 "close_slip_short":
 { Args: { "p_reason": string,"p_slip": string }; Returns: undefined
                            },
+"copy_stages":
+{ Args: { "p_from": string,"p_to": string }; Returns: number
+                           },
 "create_company":
 { Args: { "p_full_name": string,"p_name": string,"p_phone"?: string }; Returns: string
                            },
 "create_project":
 { Args: { "p_budget_paisa"?: number,"p_code": string,"p_company": string,"p_contract_paisa": number,"p_details"?: Json,"p_effective_date"?: string,"p_name": string }; Returns: string
+                           },
+"create_stages":
+{ Args: { "p_names": (string)[],"p_project": string }; Returns: number
                            },
 "decide_slip":
 { Args: { "p_approve": boolean,"p_reason"?: string,"p_slip": string }; Returns: Database["public"]['Enums']["slip_status"]
@@ -2299,6 +2453,11 @@ isOneToOne: false
 "post_credit":
 { Args: { "p_credit": Json,"p_op_key": string }; Returns: Json
                            },
+"progress_as_of":
+{ Args: { "p_date"?: string,"p_project": string }; Returns: {
+              "effective_date": string,"name": string,"overdue": boolean,"pct": number,"planned_end": string,"planned_start": string,"sort_order": number,"stage_id": string,"updated_by": string
+            }[]
+                           },
 "project_amounts_as_of":
 { Args: { "p_as_of"?: string,"p_project": string }; Returns: {
               "as_of": string,"budget_paisa": number,"budget_revision_id": string,"contract_paisa": number,"contract_revision_id": string,"original_budget_paisa": number,"original_contract_paisa": number,"planned_margin_paisa": number,"project_id": string
@@ -2324,6 +2483,11 @@ isOneToOne: false
                            },
 "remove_attachment":
 { Args: { "p_attachment": string }; Returns: undefined
+                           },
+"report_day":
+{ Args: { "p_date": string,"p_project": string }; Returns: {
+              "at": string,"created_by": string,"detail": string,"id": string,"kind": string,"label": string
+            }[]
                            },
 "reverse_bill":
 { Args: { "p_bill": string,"p_date": string,"p_op_key": string,"p_reason": string }; Returns: Json
@@ -2372,6 +2536,9 @@ isOneToOne: false
                            },
 "submit_bill":
 { Args: { "p_bill": string }; Returns: undefined
+                           },
+"submit_daily_report":
+{ Args: { "p_op_key": string,"p_report": Json }; Returns: Json
                            },
 "submit_slip":
 { Args: { "p_slip": string }; Returns: Database["public"]['Enums']["slip_status"]

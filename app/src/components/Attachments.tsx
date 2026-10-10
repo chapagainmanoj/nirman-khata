@@ -11,7 +11,9 @@ import { platform } from '../platform'
 import { Button, ConfirmButton, ErrorBanner, Status } from './ui'
 
 // keyof on a union of single-key objects is `never`, so the owner column is named explicitly.
-type OwnerColumn = 'delivery_id' | 'bill_id' | 'payment_id' | 'work_package_id' | 'charge_id' | 'labour_cost_id' | 'expense_id'
+type OwnerColumn =
+  | 'delivery_id' | 'bill_id' | 'payment_id' | 'work_package_id' | 'charge_id' | 'labour_cost_id' | 'expense_id'
+  | 'daily_report_id' | 'progress_update_id'
 export type AttachmentOwner = { [K in OwnerColumn]: { [P in K]: string } }[OwnerColumn]
 
 const BUCKET = 'attachments'
@@ -19,7 +21,7 @@ const BUCKET = 'attachments'
 // Screen readers hear "Challan photo 1 of 2", not "IMG_20261010_143022.jpg".
 const WHAT: Record<OwnerColumn, string> = {
   delivery_id: 'Challan', bill_id: 'Bill', payment_id: 'Payment proof', work_package_id: 'Agreement',
-  charge_id: 'Claim', labour_cost_id: 'Labour', expense_id: 'Receipt',
+  charge_id: 'Claim', labour_cost_id: 'Labour', expense_id: 'Receipt', daily_report_id: 'Site', progress_update_id: 'Progress',
 }
 
 /** A photo picked before its record exists. Blobs survive in the device draft (IndexedDB). */

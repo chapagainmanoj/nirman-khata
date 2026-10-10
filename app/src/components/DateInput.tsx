@@ -1,7 +1,13 @@
 // Date picker with a BS/AD switch (req v1.1 §3.3). Either way the value is an
 // AD "YYYY-MM-DD" string, so the form never deals with BS.
-import { useState } from 'react'
-import { addDays, adToBs, bsMonthDays, bsToAd, BS_MONTHS, formatDate, formatDual, todayKathmandu, type DateDisplay } from '../lib/dates'
+import { useEffect, useRef, useState } from 'react'
+import {
+  addDays, adToBs, BS_LAST_YEAR, BS_MONTHS, BS_RANGE, bsMonthDays, bsToAd, formatDate, formatDual, inBsRange, todayKathmandu,
+  type DateDisplay,
+} from '../lib/dates'
+import { CalendarIcon } from './icons'
+import { MonthGrid } from './MonthGrid'
+import { monthOf } from '../lib/months'
 import { Input, Select } from './ui'
 
 type Props = {
@@ -19,19 +25,47 @@ const QUICK: Record<'past' | 'future', Array<[string, number]>> = {
   future: [['Tomorrow', 1], ['In 3 days', 3]],
 }
 
-const BS_YEARS = Array.from({ length: 21 }, (_, i) => 2075 + i)
+// From 2075 (opening balances, older bills) to the last year the BS library knows.
+const BS_YEARS = Array.from({ length: BS_LAST_YEAR - 2075 + 1 }, (_, i) => 2075 + i)
 
 export function DateInput({ value, onChange, display, id, allowEmpty, quick = allowEmpty ? 'none' : 'past' }: Props) {
-  const [mode, setMode] = useState<DateDisplay>(display)
+  const [chosenMode, setMode] = useState<DateDisplay>(display)
+  const [picking, setPicking] = useState(false)
   const iso = value || ''
+  // A date the BS calendar cannot show (typed in AD) stays in AD rather than failing.
+  const mode = iso && !inBsRange(iso) ? 'ad' : chosenMode
+  const [month, setMonth] = useState(() => monthOf(todayKathmandu(), display))
+  const wrapper = useRef<HTMLDivElement>(null)
+  const popup = useRef<HTMLDivElement>(null)
+  const toggle = useRef<HTMLButtonElement>(null)
+
+  // The month popup closes on Escape (focus back to its button) or a tap outside it.
+  useEffect(() => {
+    if (!picking) return
+    popup.current?.querySelector<HTMLButtonElement>('button[aria-pressed="true"], button[aria-current="date"]')?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setPicking(false)
+      toggle.current?.focus()
+    }
+    const onDown = (e: PointerEvent) => {
+      if (!wrapper.current?.contains(e.target as Node)) setPicking(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onDown)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onDown)
+    }
+  }, [picking])
 
   return (
-    <div>
+    <div ref={wrapper}>
       {/* Selects keep at least 13.5rem (room for "Mangsir"); below that the toggle wraps. */}
-      <div className="flex flex-wrap gap-2">
+      <div className="relative flex flex-wrap gap-2">
         <div className="flex min-w-[13.5rem] flex-1">
           {mode === 'ad' ? (
-            <Input id={id} type="date" value={iso} onChange={(e) => onChange(e.target.value)} />
+            <Input id={id} type="date" min={BS_RANGE.first} max={BS_RANGE.last} value={iso} onChange={(e) => onChange(e.target.value)} />
           ) : (
             <BsSelects id={id} iso={iso} onChange={onChange} allowEmpty={allowEmpty} />
           )}
@@ -45,6 +79,26 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
         >
           {mode === 'bs' ? 'BS' : 'AD'}
         </button>
+        <button
+          ref={toggle}
+          type="button"
+          aria-label="Pick on calendar"
+          aria-haspopup="dialog"
+          aria-expanded={picking}
+          onClick={() => { setMonth(monthOf(iso && inBsRange(iso) ? iso : todayKathmandu(), mode)); setPicking(!picking) }}
+          className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-field text-brand active:bg-muted ${picking ? 'bg-brand-soft' : ''}`}
+        >
+          <CalendarIcon />
+        </button>
+        {picking && (
+          <div ref={popup} role="dialog" aria-label="Choose date"
+            className="absolute top-full right-0 z-30 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-2 shadow-lg">
+            <MonthGrid month={month} onMonth={setMonth} selected={iso || null}
+              max={quick === 'past' ? todayKathmandu() : undefined}
+              dayLabel={(d) => formatDual(d, month.display)}
+              onSelect={(d) => { onChange(d); setPicking(false); toggle.current?.focus() }} />
+          </div>
+        )}
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
         {iso && <span className="text-subtle">{formatDual(iso, mode)}</span>}

@@ -29,6 +29,7 @@ export function useFormDraft<T extends FieldValues>(
   const key = keyFor(ids.userId, ids.companyId, ids.formKey)
   const [restoredAt, setRestoredAt] = useState<string | null>(null)
   const ready = useRef(false)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   useEffect(() => {
     let cancelled = false
@@ -46,16 +47,16 @@ export function useFormDraft<T extends FieldValues>(
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined
     const sub = form.watch((values) => {
       if (!ready.current) return
-      clearTimeout(timer)
-      timer = setTimeout(() => {
-        void platform.storage.set(key, { values, savedAt: new Date().toISOString() } satisfies Draft<unknown>)
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => {
+        // Re-checked: a save that was waiting when the form was sent must not bring the draft back.
+        if (ready.current) void platform.storage.set(key, { values, savedAt: new Date().toISOString() } satisfies Draft<unknown>)
       }, 400)
     })
     return () => {
-      clearTimeout(timer)
+      clearTimeout(timer.current)
       sub.unsubscribe()
     }
   }, [form, key])
@@ -64,6 +65,7 @@ export function useFormDraft<T extends FieldValues>(
     restoredAt,
     clear: async () => {
       ready.current = false
+      clearTimeout(timer.current)
       await platform.storage.del(key)
       setRestoredAt(null)
     },

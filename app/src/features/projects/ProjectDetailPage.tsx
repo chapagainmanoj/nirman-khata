@@ -22,11 +22,13 @@ import { memberName, useAmountsAsOf, useAssignments, useHeadings, useMembers, us
 import { ProjectDetailsFields } from './ProjectDetailsFields'
 import { detailsSchema, detailsToRow, type DetailsValues } from './projectDetails'
 import { RevisionsCard } from './RevisionsCard'
+import { SiteSection } from '../site/SiteSection'
+import { useProgress } from '../site/api'
 
-type Tab = 'overview' | 'deliveries' | 'subcontract' | 'labour' | 'history'
+type Tab = 'overview' | 'site' | 'deliveries' | 'subcontract' | 'labour' | 'history'
 
 // Summary first, then today's work, then money detail, then setup (details, staff), then history.
-// The long lists (deliveries, subcontract, labour) each get a tab so the page stays short.
+// The long lists (site, deliveries, subcontract, labour) each get a tab so the page stays short.
 export function ProjectDetailPage() {
   const { projectId = '' } = useParams()
   const auth = useCompany()
@@ -42,8 +44,10 @@ export function ProjectDetailPage() {
   }
   const p = project.data
   const canEdit = auth.isAdmin || auth.hasRole('project_manager')
+  const labourOn = auth.company.labour_module_enabled
   const tabs: Array<[Tab, string]> = [
-    ['overview', 'Overview'], ['deliveries', 'Deliveries'], ['subcontract', 'Subcontract'], ['labour', 'Labour & costs'],
+    ['overview', 'Overview'], ['site', 'Site'], ['deliveries', 'Deliveries'], ['subcontract', 'Subcontract'],
+    ['labour', labourOn ? 'Labour & costs' : 'Other costs'],
     ...(auth.canSeeFinance ? [['history', 'History'] as [Tab, string]] : []),
   ]
 
@@ -53,12 +57,13 @@ export function ProjectDetailPage() {
         title={p.name}
         crumbs={[{ to: '/projects', label: 'Projects' }]}
         subtitle={<span className="flex items-center gap-2">{p.code} <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge></span>}
-        actions={canEnter(auth) && (
+        actions={
           <div className="flex flex-wrap gap-2">
-            <ButtonLink to={`/slips/new?project=${p.id}`}>New slip</ButtonLink>
-            <ButtonLink variant="secondary" to={`/labour/new?project=${p.id}`}>Enter labour</ButtonLink>
+            {canEnter(auth) && <ButtonLink to={`/reports/new?project=${p.id}`}>Daily report</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant="secondary" to={`/slips/new?project=${p.id}`}>New slip</ButtonLink>}
+            <ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>Calendar</ButtonLink>
           </div>
-        )}
+        }
       />
       <ScheduleWarnings project={p} />
       {auth.canSeeFinance && <SummaryStrip projectId={p.id} />}
@@ -76,6 +81,7 @@ export function ProjectDetailPage() {
             </div>
           </>
         )}
+        {tab === 'site' && <SiteSection projectId={p.id} />}
         {tab === 'deliveries' && (
           <section>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -88,7 +94,7 @@ export function ProjectDetailPage() {
         {tab === 'subcontract' && <SubcontractSection projectId={p.id} />}
         {tab === 'labour' && (
           <>
-            <LabourSection projectId={p.id} />
+            {labourOn && <LabourSection projectId={p.id} />}
             <ExpenseSection projectId={p.id} />
           </>
         )}
@@ -120,6 +126,8 @@ function SummaryStrip({ projectId }: { projectId: string }) {
   const today = todayKathmandu()
   const amounts = useAmountsAsOf(projectId, today, true)
   const cost = useProjectCost(projectId, today, true)
+  const progress = useProgress(projectId)
+  const done = progress.data?.find((r) => r.stage_id === null)?.pct ?? null
   const a = amounts.data
   const c = cost.data
   if (!a || !c) return null
@@ -127,7 +135,7 @@ function SummaryStrip({ projectId }: { projectId: string }) {
   const used = budget ? Math.min(100, (c.cost_paisa / budget) * 100) : 0
   const over = budget !== null && c.cost_paisa > budget
   return (
-    <section aria-label="Summary" className="grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-3">
+    <section aria-label="Summary" className="grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="sm:col-span-1">
         <div className="text-xs font-medium text-subtle">Cost so far</div>
         <div className="text-2xl font-semibold text-ink tabular-nums">{formatNPR(c.cost_paisa)}</div>
@@ -142,6 +150,18 @@ function SummaryStrip({ projectId }: { projectId: string }) {
             </div>
           </>
         )}
+      </div>
+      {/* Work done is entered on site, not worked out from cost (acceptance #10). */}
+      <div>
+        <div className="text-xs font-medium text-subtle">Work done</div>
+        <div className="text-2xl font-semibold text-ink tabular-nums">{done === null ? 'Not set' : `${Number(done)}%`}</div>
+        {done !== null && (
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Work done"
+            aria-valuenow={Number(done)} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full rounded-full bg-good-ink" style={{ width: `${Number(done)}%` }} />
+          </div>
+        )}
+        <div className="mt-1 text-xs text-subtle">Overall progress from site updates</div>
       </div>
       <div>
         <div className="text-xs font-medium text-subtle">Paid</div>

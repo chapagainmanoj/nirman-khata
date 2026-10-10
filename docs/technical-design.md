@@ -458,6 +458,28 @@ constraint `supplier_bills_number_before_posting`). Accounts may record the pape
 not add up to it (`paper_total_mismatch`). Payments are now entered from the bills they pay;
 the project split follows from the ticked bills, with "pay as advance" keeping the free split.
 
+Navigation (2026-10-10): sections, the phone bottom bar and the "+ Record" actions are chosen by
+role in `app/src/components/nav.ts` (groups Site work / Money / Setup). New records start on the
+"current project" (`features/projects/current.tsx`), and the bar shows counts of work waiting.
+"Track own labour" now hides the labour record action and the project's labour list. The
+`/labour/new` route stays, so existing records still open.
+
+Milestone 4 built: migration `20261014000100` (stages, progress updates, daily reports and
+lines, `labour_costs.daily_report_id`, site attachments, `submit_daily_report`, `progress_as_of`,
+`report_day`, `calendar_events`), pgTAP `016` (acceptance #10, #11, #23; L2; H2 for progress), the
+L2 same-key race in `concurrency.sh`, and `app/e2e/site.spec.ts`. Decisions made while building it:
+- Daily reports have no server-side drafts. Unsent work stays in the device draft, and a report
+  cannot be changed once sent (the `no_change` trigger), like progress updates.
+- A report's labour part creates the labour cost through `private.post_labour`, with near-duplicate
+  confirmation and pay now. It is ignored when the company does not track own labour.
+- Stages come from a built-in list or are copied from another project; only Admin or the project
+  manager sets them up. Overall progress is its own entry, not an average of stages.
+- Progress is corrected only by a newer update. A lower figure needs a reason.
+- The calendar runs as security invoker, so ledger visibility decides who sees amounts. A
+  payment not matched to any bill shows as "advance".
+- A device-draft autosave that was still pending when a form was sent no longer brings the
+  draft back (`lib/drafts.ts`).
+
 ---
 
 ## 10. Tests

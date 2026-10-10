@@ -3,6 +3,7 @@ import { activeSection, phoneBarFor, recordActionsFor, recordHref, sectionsFor, 
 
 const base: NavRole = {
   roles: [], isAdmin: false, seesAllProjects: false, canSeeFinance: false, canRecordPayments: false, canApproveSlips: false,
+  labourEnabled: true,
 }
 const viewer: NavRole = { ...base, roles: ['viewer'] }
 const site: NavRole = { ...base, roles: ['site_staff'] }
@@ -14,8 +15,8 @@ const keys = (r: NavRole) => sectionsFor(r).flatMap((g) => g.items.map((i) => i.
 
 describe('sectionsFor', () => {
   it('hides money sections from people who cannot see them', () => {
-    expect(keys(viewer)).toEqual(['projects', 'slips', 'deliveries', 'parties', 'catalog', 'settings'])
-    expect(keys(site)).toEqual(['projects', 'slips', 'deliveries', 'bills', 'parties', 'catalog', 'settings'])
+    expect(keys(viewer)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'parties', 'catalog', 'settings'])
+    expect(keys(site)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'bills', 'parties', 'catalog', 'settings'])
   })
   it('shows payments with finance access, and staff only to admins', () => {
     expect(keys(pmFinance)).toContain('payments')
@@ -39,6 +40,8 @@ describe('activeSection', () => {
     ['/labour/new', 'projects'],
     ['/projects/abc', 'projects'],
     ['/slips/abc/edit', 'slips'],
+    ['/calendar', 'calendar'],
+    ['/reports/new', 'projects'],
   ])('%s belongs to %s', (path, key) => {
     expect(activeSection(path)).toBe(key)
   })
@@ -60,9 +63,9 @@ describe('recordActionsFor', () => {
   it('gives viewers nothing to record', () => {
     expect(recordActionsFor(viewer)).toEqual([])
   })
-  it('puts deliveries first for site staff, with a bill photo and no payment', () => {
+  it('puts the daily report first for site staff, with a bill photo and no payment', () => {
     const a = recordActionsFor(site)
-    expect(a.map((x) => x.key)).toEqual(['delivery', 'bill', 'slip', 'labour', 'expense'])
+    expect(a.map((x) => x.key)).toEqual(['report', 'delivery', 'bill', 'slip', 'labour', 'expense'])
     expect(a.find((x) => x.key === 'bill')?.label).toBe('record.billPhoto')
   })
   it('puts bills and payments first for Accounts, who type the bill', () => {
@@ -70,9 +73,12 @@ describe('recordActionsFor', () => {
     expect(a.slice(0, 2).map((x) => x.key)).toEqual(['bill', 'payment'])
     expect(a[0].label).toBe('record.bill')
   })
+  it('hides labour when the company does not track own labour', () => {
+    expect(recordActionsFor({ ...site, labourEnabled: false }).map((x) => x.key)).not.toContain('labour')
+  })
   it('starts new records on the current project', () => {
-    const [delivery] = recordActionsFor(site)
-    expect(recordHref(delivery, null)).toBe('/deliveries/new')
-    expect(recordHref(delivery, 'p1')).toBe('/deliveries/new?project=p1')
+    const [report] = recordActionsFor(site)
+    expect(recordHref(report, null)).toBe('/reports/new')
+    expect(recordHref(report, 'p1')).toBe('/reports/new?project=p1')
   })
 })

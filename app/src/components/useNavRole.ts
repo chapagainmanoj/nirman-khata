@@ -12,5 +12,6 @@ export function useNavRole(): NavRole {
     canSeeFinance: auth.canSeeFinance,
     canRecordPayments: canRecordPayments(auth),
     canApproveSlips: !!auth.membership?.can_approve_slips,
+    labourEnabled: auth.company.labour_module_enabled,
   }
 }

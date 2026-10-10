@@ -15,6 +15,10 @@ const AD_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'
 
 export type BsDate = { year: number; month: number; day: number } // month 1-12
 
+/** Years the BS library has month lengths for (nepali-date-converter: 2000-2090). */
+export const BS_FIRST_YEAR = 2000
+export const BS_LAST_YEAR = 2090
+
 const ISO_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 function parseIso(iso: IsoDate): { y: number; m: number; d: number } {
@@ -67,6 +71,12 @@ export function bsMonthDays(year: number, month: number): number {
   throw new Error(`Unknown BS month ${year}-${month}`)
 }
 
+/** First and last AD dates the BS calendar can show. */
+export const BS_RANGE = { first: '1943-04-14', last: '2034-04-13' } as const
+
+/** Whether a date can be shown in BS; outside it, dates show in AD only instead of failing. */
+export const inBsRange = (iso: IsoDate) => iso >= BS_RANGE.first && iso <= BS_RANGE.last
+
 export function formatBs(iso: IsoDate, style: 'numeric' | 'long' = 'numeric'): string {
   const bs = adToBs(iso)
   return style === 'numeric'
@@ -82,14 +92,15 @@ export function formatAd(iso: IsoDate): string {
 /** One calendar, as the user prefers (lists). */
 export function formatDate(iso: IsoDate | null | undefined, display: DateDisplay): string {
   if (!iso) return ''
-  return display === 'bs' ? formatBs(iso, 'long') : formatAd(iso)
+  return display === 'bs' && inBsRange(iso) ? formatBs(iso, 'long') : formatAd(iso)
 }
 
 /** Both calendars, preferred first (documents, key screens): "23 Asoj 2083 · 9 Oct 2026". */
 export function formatDual(iso: IsoDate | null | undefined, display: DateDisplay): string {
   if (!iso) return ''
-  const bs = formatBs(iso, 'long')
   const ad = formatAd(iso)
+  if (!inBsRange(iso)) return ad
+  const bs = formatBs(iso, 'long')
   return display === 'bs' ? `${bs} · ${ad}` : `${ad} · ${bs}`
 }
 

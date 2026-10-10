@@ -41,6 +41,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   const projectUrl = page.url()
 
   // Labour for today, paid in cash on the spot.
+  await page.getByRole('tab', { name: 'Labour & costs' }).click()
   await page.getByRole('link', { name: 'Enter labour' }).click()
   await page.getByLabel('Crew').selectOption({ label: 'Site crew' })
   await page.getByLabel('People', { exact: true }).fill('5')
