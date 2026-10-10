@@ -33,6 +33,8 @@ export default defineConfig({
         // Only the app shell is cached; API calls always go to the network.
         navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/(rest|auth|storage|functions)\//],
+        // The HEIC converter (3 MB) loads only when someone picks an iPhone photo on a computer.
+        globIgnores: ['**/heic-to-*.js'],
       },
     }),
   ],

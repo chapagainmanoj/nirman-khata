@@ -64,6 +64,7 @@ export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Pho
   value: PendingPhoto[]; onChange: (photos: PendingPhoto[]) => void; label?: string; what?: string; large?: boolean
 }) {
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<unknown>(null)
   const urls = useMemo(() => Object.fromEntries(value.map((p) => [p.id, URL.createObjectURL(p.blob)])), [value])
   useEffect(() => () => Object.values(urls).forEach((u) => URL.revokeObjectURL(u)), [urls])
 
@@ -71,9 +72,12 @@ export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Pho
     const file = await platform.pickPhoto()
     if (!file) return
     setBusy(true)
+    setError(null)
     try {
       const blob = await compressImage(file)
       onChange([...value, { id: newId(), name: file.name, blob }])
+    } catch (e) {
+      setError(e)
     } finally {
       setBusy(false)
     }
@@ -93,6 +97,7 @@ export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Pho
         </ul>
       )}
       <div><Button type="button" variant="secondary" busy={busy} onClick={() => void pick()}>{!busy && <CameraIcon size={18} />}{value.length ? 'Add another photo' : label}</Button></div>
+      <ErrorBanner>{error ? friendlyError(error) : null}</ErrorBanner>
     </div>
   )
 }
@@ -109,6 +114,8 @@ export function Attachments({
   const [column, ownerId] = Object.entries(owner)[0] as [OwnerColumn, string]
   const queryKey = ['attachments', column, ownerId]
   const [status, setStatus] = useState('')
+  // Files this browser cannot draw (an older HEIC upload) show as a named tile that opens the file.
+  const [unshowable, setUnshowable] = useState<Set<string>>(() => new Set())
 
   const files = useQuery({
     queryKey,
@@ -167,8 +174,9 @@ export function Attachments({
             <li key={f.id} className={large ? 'flex w-full flex-col items-center gap-1' : 'flex flex-col items-center gap-1'}>
               {f.url && (
                 <a href={f.url} target="_blank" rel="noreferrer" className={large ? 'block w-full' : 'block'}>
-                  {f.content_type?.startsWith('image/') ? (
-                    <img src={f.url} alt={name} className={large ? IMG_LARGE : IMG_SMALL} />
+                  {f.content_type?.startsWith('image/') && !unshowable.has(f.id) ? (
+                    <img src={f.url} alt={name} className={large ? IMG_LARGE : IMG_SMALL}
+                      onError={() => setUnshowable((s) => new Set(s).add(f.id))} />
                   ) : (
                     <span className="flex size-24 items-center justify-center break-all rounded-lg border border-line p-1 text-center text-xs text-subtle">
                       {f.file_name ?? name}

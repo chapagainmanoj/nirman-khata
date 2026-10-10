@@ -3,18 +3,44 @@
 const MAX_SIDE = 1600
 const QUALITY = 0.7
 
-export async function compressImage(file: File): Promise<Blob> {
-  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file
+// Formats every browser can show. Anything else is converted, never uploaded as is.
+const SHOWABLE = /^image\/(jpeg|png|webp)$/
+const HEIC = /\.(heic|heif)$/i
+
+const UNREADABLE = 'This photo could not be read. Take it again with the camera, or pick a JPEG or PNG.'
+
+/**
+ * Decode a picked file. Chrome and Firefox cannot read HEIC (iPhone photos copied to a
+ * computer), so those go through a converter that is about 3 MB and loads only when needed.
+ */
+async function decode(file: File): Promise<ImageBitmap | null> {
   const bitmap = await createImageBitmap(file).catch(() => null)
-  if (!bitmap) return file
+  if (bitmap || !(/hei[cf]/.test(file.type) || HEIC.test(file.name))) return bitmap
+  const { heicTo } = await import('heic-to')
+  return heicTo({ blob: file, type: 'bitmap' }).catch(() => null)
+}
+
+export async function compressImage(file: File): Promise<Blob> {
+  if (file.type === 'image/gif') return file
+  const bitmap = await decode(file)
+  if (!bitmap) throw new Error(UNREADABLE)
   const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
   canvas.width = Math.round(bitmap.width * scale)
   canvas.height = Math.round(bitmap.height * scale)
-  canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  const ctx = canvas.getContext('2d')
+  if (ctx) {
+    // JPEG has no transparency: without a white backing, a transparent PNG turns black.
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  }
   bitmap.close()
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', QUALITY))
-  return blob && blob.size < file.size ? blob : file
+  // Keep the original only when it is already small and in a format every browser shows.
+  if (blob && (blob.size < file.size || !SHOWABLE.test(file.type))) return blob
+  if (SHOWABLE.test(file.type)) return file
+  throw new Error(UNREADABLE)
 }
 
 const LOGO_SIDE = 512
@@ -24,7 +50,7 @@ const LOGO_SIDE = 512
  * cannot write WebP) so a transparent background stays transparent; JPEG would turn it black.
  */
 export async function resizeLogo(file: File): Promise<{ blob: Blob; ext: 'webp' | 'png' | 'jpg' }> {
-  const bitmap = await createImageBitmap(file).catch(() => null)
+  const bitmap = await decode(file)
   if (!bitmap) throw new Error('This file is not a picture we can read. Use a PNG, JPEG or WebP image.')
   const scale = Math.min(1, LOGO_SIDE / Math.max(bitmap.width, bitmap.height))
   const canvas = document.createElement('canvas')
