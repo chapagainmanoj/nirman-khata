@@ -95,7 +95,9 @@ jobs:
           VITE_EMAIL_RESET: 'false'
 
       - name: Deploy to Cloudflare Pages
-        run: npx wrangler pages deploy app/dist --project-name nirman-khata
+        run: |
+          npx wrangler pages project create nirman-khata --production-branch=master || true
+          npx wrangler pages deploy app/dist --project-name nirman-khata
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
