@@ -153,7 +153,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
   function blankLine(type: 'material' | 'charge'): BillLine {
     const last = getValues('lines').at(-1)
     return {
-      id: newId(), line_type: type, project_id: last?.project_id ?? (workable.length === 1 ? workable[0].id : ''),
+      id: newId(), line_type: type, project_id: last?.project_id ?? params.get('project') ?? (workable.length === 1 ? workable[0].id : ''),
       heading_id: type === 'charge' ? transportHeading?.id ?? '' : '', material_id: '', description: type === 'charge' ? 'Transport' : '',
       qty: '', unit_id: '', unit_note: '', rate: '', amount: '', amount_edited: false, unmatched_reason: '', rate_variance_reason: '', matches: [],
     }

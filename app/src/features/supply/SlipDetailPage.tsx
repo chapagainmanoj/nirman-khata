@@ -82,6 +82,7 @@ export function SlipDetailPage() {
     <>
       <PageHeader
         title={`${s.number} · ${s.suppliers?.name ?? ''}`}
+        crumbs={[{ to: '/slips', label: 'Order slips' }]}
         subtitle={
           s.status === 'approved' ? (
             // One progress line instead of three badges: Approved → Sent → Received.
@@ -116,7 +117,7 @@ export function SlipDetailPage() {
           </ConfirmButton>
         )}
       </div>
-      <div className="mb-4 flex flex-col gap-2 empty:hidden">
+      <div className="mb-4 flex flex-col items-start gap-2 empty:hidden">
         {perms?.can_approve && (
           <ReasonButton title="Reject this slip" confirmLabel="Reject" variant="danger" busy={act.isPending} error={err}
             onConfirm={(reason) => act.mutate(() => rpc('decide_slip', { p_slip: s.id, p_approve: false, p_reason: reason }))}>

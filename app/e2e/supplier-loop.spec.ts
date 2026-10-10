@@ -36,7 +36,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Ward 5 school building' })).toBeVisible()
 
   // Supplier
-  await page.getByRole('navigation').getByRole('link', { name: 'Suppliers' }).last().click()
+  await page.goto('/suppliers')
   await page.getByRole('button', { name: 'Add supplier' }).click()
   await page.getByLabel('Business name').fill('Shrestha Suppliers')
   await page.getByLabel('Materials supplied').fill('Cement, Rod')

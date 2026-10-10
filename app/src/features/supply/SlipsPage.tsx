@@ -6,6 +6,7 @@ import { DateText } from '../../components/DateInput'
 import { Badge, ButtonLink, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
+import { useProjectFilter } from '../lists/ProjectFilter'
 import { useProjects } from '../projects/api'
 import { useSlips } from './api'
 import { canEnter } from './permissions'
@@ -19,18 +20,21 @@ export function SlipsPage() {
   const projects = useProjects(auth.companyId)
   const [filter, setFilter] = useState<Filter>('open')
   const code = (id: string) => projects.data?.find((p) => p.id === id)?.code
+  const { projectId, chip } = useProjectFilter()
+  const mine = slips.data?.filter((s) => !projectId || s.order_slip_lines.some((l) => l.project_id === projectId))
 
-  const list = slips.data?.filter((s) => {
+  const list = mine?.filter((s) => {
     if (filter === 'open') return s.status === 'approved' && !['fully_received', 'closed_short'].includes(s.fulfilment)
     if (filter === 'pending') return s.status === 'pending'
     if (filter === 'draft') return s.status === 'draft' || s.status === 'rejected'
     return true
   })
-  const count = (f: Filter) => slips.data?.filter((s) => (f === 'pending' ? s.status === 'pending' : f === 'draft' ? ['draft', 'rejected'].includes(s.status) : false)).length
+  const count = (f: Filter) => mine?.filter((s) => (f === 'pending' ? s.status === 'pending' : f === 'draft' ? ['draft', 'rejected'].includes(s.status) : false)).length
 
   return (
     <>
-      <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink to="/slips/new">New slip</ButtonLink>} />
+      <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink to={projectId ? `/slips/new?project=${projectId}` : '/slips/new'}>New slip</ButtonLink>} />
+      {chip}
       <div className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="group" aria-label="Show slips">
         {FILTERS.map(([key, label]) => {
           const n = key === 'pending' || key === 'draft' ? count(key) : 0

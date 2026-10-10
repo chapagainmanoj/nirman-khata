@@ -42,6 +42,7 @@ export function WorkPackageDetailPage() {
     <>
       <PageHeader
         title={w.scope}
+        crumbs={[{ to: '/parties', label: 'Parties' }, { to: '/subcontractors', label: 'Subcontractors' }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Link className="text-brand" to={`/subcontractors/${w.subcontractor_id}`}>{w.subcontractors?.name}</Link>

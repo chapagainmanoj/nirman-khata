@@ -1,32 +1,45 @@
+import { lazy, type ComponentType } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
-import { MorePage } from './components/MorePage'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
-import { CatalogPage } from './features/catalog/CatalogPage'
-import { ProjectDetailPage } from './features/projects/ProjectDetailPage'
-import { ProjectNewPage } from './features/projects/ProjectNewPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
-import { SettingsPage } from './features/settings/SettingsPage'
-import { StaffPage } from './features/staff/StaffPage'
-import { NotificationsPage } from './features/notifications/NotificationsPage'
-import { BillDetailPage } from './features/supply/BillDetailPage'
-import { BillEditPage } from './features/supply/BillEditPage'
-import { DeliveryNewPage } from './features/supply/DeliveryNewPage'
-import { PaymentDetailPage } from './features/supply/PaymentDetailPage'
-import { PaymentNewPage } from './features/supply/PaymentNewPage'
-import { SlipDetailPage } from './features/supply/SlipDetailPage'
-import { SlipEditPage } from './features/supply/SlipEditPage'
-import { SlipsPage } from './features/supply/SlipsPage'
-import { SupplierDetailPage } from './features/supply/SupplierDetailPage'
-import { SuppliersPage } from './features/supply/SuppliersPage'
-import { ExpenseNewPage } from './features/costs/ExpenseNewPage'
-import { LabourNewPage } from './features/costs/LabourNewPage'
-import { PartiesPage } from './features/parties/PartiesPage'
-import { PartyDetailPage } from './features/parties/PartyDetailPage'
-import { WorkPackageDetailPage } from './features/subcontract/WorkPackageDetailPage'
-import { WorkPackageEditPage } from './features/subcontract/WorkPackageEditPage'
 import { AdminOnly, RedirectIfSignedIn, RequireCompany } from './routes/guards'
+
+// Each screen is its own chunk, so the first load is only sign-in, the frame and Projects
+// (/impeccable optimize). The service worker precaches the rest for later visits.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function page<M extends Record<K, ComponentType<any>>, K extends keyof M>(load: () => Promise<M>, name: K) {
+  return lazy(async () => ({ default: (await load())[name] as M[K] }))
+}
+
+const MorePage = page(() => import('./components/MorePage'), 'MorePage')
+const CatalogPage = page(() => import('./features/catalog/CatalogPage'), 'CatalogPage')
+const ProjectDetailPage = page(() => import('./features/projects/ProjectDetailPage'), 'ProjectDetailPage')
+const ProjectNewPage = page(() => import('./features/projects/ProjectNewPage'), 'ProjectNewPage')
+const SettingsPage = page(() => import('./features/settings/SettingsPage'), 'SettingsPage')
+const StaffPage = page(() => import('./features/staff/StaffPage'), 'StaffPage')
+const NotificationsPage = page(() => import('./features/notifications/NotificationsPage'), 'NotificationsPage')
+const BillDetailPage = page(() => import('./features/supply/BillDetailPage'), 'BillDetailPage')
+const BillEditPage = page(() => import('./features/supply/BillEditPage'), 'BillEditPage')
+const DeliveryNewPage = page(() => import('./features/supply/DeliveryNewPage'), 'DeliveryNewPage')
+const PaymentDetailPage = page(() => import('./features/supply/PaymentDetailPage'), 'PaymentDetailPage')
+const PaymentNewPage = page(() => import('./features/supply/PaymentNewPage'), 'PaymentNewPage')
+const SlipDetailPage = page(() => import('./features/supply/SlipDetailPage'), 'SlipDetailPage')
+const SlipEditPage = page(() => import('./features/supply/SlipEditPage'), 'SlipEditPage')
+const SlipsPage = page(() => import('./features/supply/SlipsPage'), 'SlipsPage')
+const SupplierDetailPage = page(() => import('./features/supply/SupplierDetailPage'), 'SupplierDetailPage')
+const SuppliersPage = page(() => import('./features/supply/SuppliersPage'), 'SuppliersPage')
+const ExpenseNewPage = page(() => import('./features/costs/ExpenseNewPage'), 'ExpenseNewPage')
+const LabourNewPage = page(() => import('./features/costs/LabourNewPage'), 'LabourNewPage')
+const PartiesPage = page(() => import('./features/parties/PartiesPage'), 'PartiesPage')
+const PartyDetailPage = page(() => import('./features/parties/PartyDetailPage'), 'PartyDetailPage')
+const WorkPackageDetailPage = page(() => import('./features/subcontract/WorkPackageDetailPage'), 'WorkPackageDetailPage')
+const WorkPackageEditPage = page(() => import('./features/subcontract/WorkPackageEditPage'), 'WorkPackageEditPage')
+const BillsPage = page(() => import('./features/lists/BillsPage'), 'BillsPage')
+const DeliveriesPage = page(() => import('./features/lists/DeliveriesPage'), 'DeliveriesPage')
+const PartiesHubPage = page(() => import('./features/lists/PartiesPage'), 'PartiesHubPage')
+const PaymentsPage = page(() => import('./features/lists/PaymentsPage'), 'PaymentsPage')
 
 export function App() {
   return (
@@ -49,7 +62,11 @@ export function App() {
           <Route path="/slips/new" element={<SlipEditPage />} />
           <Route path="/slips/:slipId" element={<SlipDetailPage />} />
           <Route path="/slips/:slipId/edit" element={<SlipEditPage />} />
+          <Route path="/deliveries" element={<DeliveriesPage />} />
           <Route path="/deliveries/new" element={<DeliveryNewPage />} />
+          <Route path="/bills" element={<BillsPage />} />
+          <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/parties" element={<PartiesHubPage />} />
           <Route path="/bills/new" element={<BillEditPage />} />
           <Route path="/bills/:billId" element={<BillDetailPage />} />
           <Route path="/bills/:billId/edit" element={<BillEditPage />} />

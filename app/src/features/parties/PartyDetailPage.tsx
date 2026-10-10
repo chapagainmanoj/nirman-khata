@@ -38,6 +38,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
     <>
       <PageHeader
         title={r.name}
+        crumbs={[{ to: '/parties', label: 'Parties' }, { to: PARTY[kind].path, label: PARTY[kind].many }]}
         subtitle={<span className="flex flex-wrap items-center gap-2">{sub}{!r.active && <Badge>Inactive</Badge>}</span>}
         actions={
           <div className="flex flex-wrap gap-2">

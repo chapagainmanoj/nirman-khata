@@ -92,7 +92,8 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
 
   // Advance of 20,000 before any work is approved.
   await page.getByRole('link', { name: 'Pay advance or bill' }).click()
-  await expect(page.getByText('Tamang Plaster')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Record payment' })).toBeVisible()
+  await expect(page.getByText('Tamang Plaster').first()).toBeVisible()
   await page.getByLabel('Amount paid').fill('20,000')
   await page.getByRole('button', { name: 'Record payment' }).click()
   await expect(page.getByRole('heading', { name: /Payment PAY-0003/ })).toBeVisible()
@@ -116,7 +117,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await page.getByRole('button', { name: 'Match', exact: true }).click()
   await expect(page.getByText('Matched.')).toBeVisible()
   await page.goto(packageUrl)
-  await expect(row(page, 'Paid')).toContainText('Rs. 20,000')
+  await expect(row(page, 'Paid').first()).toContainText('Rs. 20,000') // package total; the claim row also says Paid
   await expect(row(page, 'Balance')).toContainText('Rs. 10,000')
 
   // Project: cost 6,000 + 7,000 + 4,500 + 30,000; cash 6,000 + 4,500 + 20,000;

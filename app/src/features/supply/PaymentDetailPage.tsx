@@ -66,6 +66,7 @@ export function PaymentDetailPage() {
     <>
       <PageHeader
         title={`Payment ${p.number}`}
+        crumbs={[{ to: '/payments', label: 'Payments' }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Link className="text-brand" to={partyPath}>{party?.name}</Link>

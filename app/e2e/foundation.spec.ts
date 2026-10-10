@@ -77,6 +77,7 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await page.screenshot(shots('04-staff'))
 
   // Sign out, sign in as the staff member
+  await page.getByRole('button', { name: /^Account:/ }).click()
   await page.getByRole('button', { name: 'Sign out' }).click()
   await page.getByLabel('Mobile number or email').fill(staffPhone)
   await page.getByLabel('Password').fill('staff-pass-1')

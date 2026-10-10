@@ -30,7 +30,8 @@ export function ReasonButton({
   }
 
   if (!open) {
-    return <Button type="button" variant={variant} onClick={() => setOpen(true)}>{children}</Button>
+    // The first tap only opens the form, so it stays quiet; the confirm button carries the red.
+    return <Button type="button" variant={variant === 'danger' ? 'secondary' : variant} onClick={() => setOpen(true)}>{children}</Button>
   }
   return (
     <form onSubmit={submit} className="flex w-full flex-col gap-3 rounded-lg bg-muted p-3">

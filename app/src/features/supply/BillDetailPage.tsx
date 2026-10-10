@@ -69,6 +69,7 @@ export function BillDetailPage() {
     <>
       <PageHeader
         title={billTitle(b.bill_no)}
+        crumbs={[{ to: '/bills', label: 'Bills' }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Link className="text-brand" to={`/suppliers/${b.supplier_id}`}>{b.suppliers?.name}</Link>

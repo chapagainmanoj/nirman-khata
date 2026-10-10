@@ -36,7 +36,7 @@ export function useRefreshMoney() {
   const queryClient = useQueryClient()
   return () =>
     Promise.all(
-      ['bills', 'bill', 'payments', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview',
+      ['bills', 'bill', 'payments', 'nav-count', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview',
         'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees']
         .map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
     )
@@ -154,13 +154,17 @@ export function useDeliveryLineStatus(filter: { supplierId?: string; projectId?:
 // ---------------------------------------------------------------------------
 // Bills and payments
 // ---------------------------------------------------------------------------
-export function useBills(filter: { supplierId?: string; companyId?: string }) {
+type BillStatus = Database['public']['Enums']['bill_status']
+
+export function useBills(filter: { supplierId?: string; companyId?: string; projectId?: string; statuses?: BillStatus[] }) {
   return useQuery({
     queryKey: ['bills', filter],
     queryFn: async () => {
       let q = supabase.from('bill_summaries').select('*, suppliers(name)').order('bill_date', { ascending: false }).limit(200)
       if (filter.supplierId) q = q.eq('supplier_id', filter.supplierId)
       if (filter.companyId) q = q.eq('company_id', filter.companyId)
+      if (filter.projectId) q = q.contains('project_ids', [filter.projectId])
+      if (filter.statuses) q = q.in('status', filter.statuses)
       const { data, error } = await q
       if (error) throw error
       // View columns are typed nullable; these are always set for a bill row.

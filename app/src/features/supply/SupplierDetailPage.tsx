@@ -2,13 +2,11 @@
 import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { DateText } from '../../components/DateInput'
-import { Badge, Button, ButtonLink, Card, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
+import { Button, ButtonLink, Card, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
-import { BILL_STATUS, billTitle, settlementLabel } from '../../lib/labels'
-import { formatNPR } from '../../lib/money'
 import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from '../parties/PartyParts'
 import { useBills, useSuppliers } from './api'
+import { BillRow } from './BillRow'
 import { usePartyBalances } from '../parties/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from './permissions'
 import { SupplierForm } from './SuppliersPage'
@@ -39,6 +37,7 @@ export function SupplierDetailPage() {
     <>
       <PageHeader
         title={s.name}
+        crumbs={[{ to: '/parties', label: 'Parties' }, { to: '/suppliers', label: 'Suppliers' }]}
         subtitle={s.categories.join(' · ') || undefined}
         actions={
           <div className="flex flex-wrap gap-2">
@@ -74,37 +73,13 @@ export function SupplierDetailPage() {
 }
 
 function BillList({ supplierId }: { supplierId: string }) {
-  const auth = useCompany()
   const bills = useBills({ supplierId })
   return (
     <Card>
       {bills.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void bills.refetch()}>{bills.error && friendlyError(bills.error)}</ErrorBanner>
       {bills.data?.length === 0 && <p className="text-sm text-subtle">No bills.</p>}
-      <ul>
-        {bills.data?.map((b) => {
-          const [label, tone] = BILL_STATUS[b.status]
-          const outstanding = b.payable_paisa - b.credited_paisa - b.settled_paisa
-          const [paidLabel, paidTone] = settlementLabel(outstanding, b.settled_paisa)
-          return (
-            <li key={b.id} className="border-b border-line last:border-0">
-              <Link to={`/bills/${b.id}`} className="flex items-start justify-between gap-3 py-2">
-                <div className="min-w-0 text-sm">
-                  <div className="font-medium text-ink">{billTitle(b.bill_no)}</div>
-                  <div className="text-xs text-subtle"><DateText value={b.bill_date} display={auth.dateDisplay} /></div>
-                </div>
-                <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">
-                  <span>{formatNPR(b.total_paisa ?? (b.status === 'posted' ? b.payable_paisa : b.lines_paisa))}</span>
-                  <span className="flex gap-1">
-                    <Badge tone={tone}>{label}</Badge>
-                    {b.status === 'posted' && <Badge tone={paidTone}>{paidLabel}</Badge>}
-                  </span>
-                </div>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      <ul>{bills.data?.map((b) => <BillRow key={b.id} bill={b} />)}</ul>
     </Card>
   )
 }

@@ -1,0 +1,201 @@
+// Nav menus: "+ Record", the current-project switcher and the account menu.
+// Desktop uses a small disclosure panel; the phone "+" opens a bottom sheet (<dialog>, which
+// traps focus and closes on Escape by itself).
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router'
+import { useCompany } from '../auth/AuthProvider'
+import { useCurrentProject } from '../features/projects/current'
+import { t } from '../lib/i18n'
+import { ROLE_LABELS } from '../lib/labels'
+import { ChevronDownIcon, PlusIcon } from './icons'
+import { recordActionsFor, recordHref, sectionsFor, type NavRole } from './nav'
+
+const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
+
+/**
+ * A button that opens a panel below it. Closes on Escape, outside click or navigation, and
+ * gives focus back to the button.
+ */
+function Disclosure({ label, buttonClass, panelClass, children, ariaLabel }: {
+  label: ReactNode
+  buttonClass: string
+  panelClass?: string
+  ariaLabel?: string
+  children: (close: () => void) => ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  const id = useId()
+  const root = useRef<HTMLDivElement>(null)
+  const button = useRef<HTMLButtonElement>(null)
+  const { pathname, search } = useLocation()
+
+  // Navigating away (a link in the panel) closes it. The ref keeps this from firing on mount.
+  const where = useRef(pathname + search)
+  useEffect(() => {
+    if (where.current !== pathname + search) setOpen(false)
+    where.current = pathname + search
+  }, [pathname, search])
+
+  useEffect(() => {
+    if (!open) return
+    const panel = document.getElementById(id)
+    panel?.querySelector<HTMLElement>('a, button')?.focus()
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setOpen(false); button.current?.focus() }
+    }
+    function onDown(e: PointerEvent) {
+      if (!root.current?.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onDown)
+    return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onDown) }
+  }, [open, id])
+
+  const close = () => { setOpen(false); button.current?.focus() }
+  return (
+    <div ref={root} className="relative">
+      <button ref={button} type="button" aria-expanded={open} aria-controls={id} aria-label={ariaLabel}
+        onClick={() => setOpen(!open)} className={buttonClass}>
+        {label}
+      </button>
+      {open && (
+        <div id={id} className={cx('absolute z-30 mt-1 min-w-64 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg', panelClass)}>
+          {children(close)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+const rowClass = 'flex min-h-11 w-full flex-col justify-center px-4 py-2 text-left hover:bg-muted active:bg-line'
+
+function RecordList({ role, onPick }: { role: NavRole; onPick?: () => void }) {
+  const current = useCurrentProject()
+  return (
+    <ul>
+      {recordActionsFor(role).map((a) => (
+        <li key={a.key}>
+          <Link to={recordHref(a, current.projectId)} onClick={onPick} className={cx(rowClass, 'min-h-14')}>
+            <span className="text-sm font-semibold text-ink">{t(a.label)}</span>
+            <span className="text-xs text-subtle">{t(a.hint)}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** Desktop and tablet: "+ Record ▾". */
+export function RecordMenu({ role, className, alignRight }: { role: NavRole; className?: string; alignRight?: boolean }) {
+  if (!recordActionsFor(role).length) return null
+  return (
+    <Disclosure panelClass={alignRight ? 'right-0' : undefined}
+      buttonClass={cx('inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 text-sm font-semibold text-white hover:bg-brand-dark', className)}
+      label={<><PlusIcon />{t('nav.record')}</>}>
+      {() => <RecordList role={role} />}
+    </Disclosure>
+  )
+}
+
+/** Phone: the centre "+" of the bottom bar opens a sheet of large buttons. */
+export function RecordSheetButton({ role }: { role: NavRole }) {
+  const dialog = useRef<HTMLDialogElement>(null)
+  const { pathname, search } = useLocation()
+  useEffect(() => { dialog.current?.close() }, [pathname, search])
+  if (!recordActionsFor(role).length) return null
+  return (
+    <>
+      <button type="button" onClick={() => dialog.current?.showModal()} aria-label={t('record.title')}
+        className="flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold text-brand active:bg-muted">
+        <span className="flex size-9 items-center justify-center rounded-full bg-brand text-white"><PlusIcon /></span>
+      </button>
+      <dialog ref={dialog} aria-label={t('record.title')}
+        onClick={(e) => { if (e.target === dialog.current) dialog.current.close() }}
+        className="mt-auto mb-0 w-full max-w-none rounded-t-2xl bg-surface p-0 pb-[env(safe-area-inset-bottom)] text-ink backdrop:bg-ink/40">
+        <div className="flex items-center justify-between border-b border-line px-4 py-2">
+          <h2 className="text-base font-semibold">{t('record.title')}</h2>
+          <button type="button" onClick={() => dialog.current?.close()} className="min-h-11 rounded-lg px-3 text-sm font-medium text-subtle">
+            {t('common.cancel')}
+          </button>
+        </div>
+        <RecordList role={role} onPick={() => dialog.current?.close()} />
+      </dialog>
+    </>
+  )
+}
+
+/** "P-1 Ward 5 ▾": which project new records start on and lists open filtered to. */
+export function ProjectSwitcher({ className }: { className?: string }) {
+  const current = useCurrentProject()
+  // Nothing to switch between: one project, or none to work on.
+  if (current.choices.length < 2) return null
+  const label = current.project ? `${current.project.code} · ${current.project.name}` : t('nav.project.all')
+  return (
+    <Disclosure
+      buttonClass={cx('inline-flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-line px-3 text-left text-sm text-ink hover:bg-muted', className)}
+      label={<><span className="min-w-0 flex-1 truncate"><span className="sr-only">{t('nav.project.choose')}: </span>{label}</span><ChevronDownIcon /></>}>
+      {(close) => (
+        <ul className="max-h-80 overflow-y-auto">
+          {[{ id: null, text: t('nav.project.all') }, ...current.choices.map((p) => ({ id: p.id, text: `${p.code} · ${p.name}` }))].map((o) => (
+            <li key={o.id ?? 'all'}>
+              <button type="button" aria-current={o.id === current.projectId || undefined}
+                onClick={() => { current.setProjectId(o.id); close() }}
+                className={cx(rowClass, 'text-sm', o.id === current.projectId ? 'font-semibold text-brand-dark' : 'text-ink')}>
+                {o.text}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Disclosure>
+  )
+}
+
+/** Company and name; opens to roles and Sign out. */
+export function AccountMenu({ className, alignRight }: { className?: string; alignRight?: boolean }) {
+  const auth = useCompany()
+  const navigate = useNavigate()
+  const roles = auth.membership?.roles.map((r) => ROLE_LABELS[r]).join(', ')
+  return (
+    <Disclosure ariaLabel={`${t('nav.account')}: ${auth.company.name}`} panelClass={alignRight ? 'right-0' : undefined}
+      buttonClass={cx('flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted', className)}
+      label={
+        <>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-ink">{auth.company.name}</span>
+            <span className="block truncate text-xs text-subtle">{auth.profile?.full_name}</span>
+          </span>
+          <ChevronDownIcon />
+        </>
+      }>
+      {() => (
+        <>
+          <div className="border-b border-line px-4 py-2 text-xs text-subtle">{roles}</div>
+          <button type="button" className={cx(rowClass, 'text-sm font-medium text-ink')}
+            onClick={async () => { if (await auth.signOut()) navigate('/login') }}>
+            {t('nav.signOut')}
+          </button>
+        </>
+      )}
+    </Disclosure>
+  )
+}
+
+/** Tablet top bar: Staff, Catalog and Settings behind one gear button. */
+export function SetupMenu({ role, icon }: { role: NavRole; icon: ReactNode }) {
+  const setup = sectionsFor(role).find((g) => g.key === 'setup')
+  if (!setup) return null
+  return (
+    <Disclosure ariaLabel={t('nav.group.setup')} panelClass="right-0"
+      buttonClass="inline-flex size-11 items-center justify-center rounded-lg text-subtle hover:bg-muted hover:text-ink"
+      label={icon}>
+      {() => (
+        <ul>
+          {setup.items.map((i) => (
+            <li key={i.key}><Link to={i.to} className={cx(rowClass, 'text-sm font-medium text-ink')}>{t(i.label)}</Link></li>
+          ))}
+        </ul>
+      )}
+    </Disclosure>
+  )
+}

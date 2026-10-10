@@ -51,6 +51,7 @@ export function ProjectDetailPage() {
     <>
       <PageHeader
         title={p.name}
+        crumbs={[{ to: '/projects', label: 'Projects' }]}
         subtitle={<span className="flex items-center gap-2">{p.code} <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge></span>}
         actions={canEnter(auth) && (
           <div className="flex flex-wrap gap-2">

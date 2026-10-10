@@ -95,3 +95,52 @@ export function BellIcon() {
     </Icon>
   )
 }
+
+/** A supplier bill: a receipt with a torn bottom edge and a total line. */
+export function BillIcon() {
+  return (
+    <Icon>
+      <path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z" />
+      <path d="M9 8h6M9 12h6M9 16h3" />
+    </Icon>
+  )
+}
+
+/** Money paid out: a note with an arrow leaving it. */
+export function PaymentIcon() {
+  return (
+    <Icon>
+      <rect x="3" y="6" width="14" height="10" rx="1.5" />
+      <circle cx="10" cy="11" r="2" />
+      <path d="M17 18h4M19 16l2 2-2 2" />
+    </Icon>
+  )
+}
+
+/** A delivery: a tipper truck. */
+export function DeliveryIcon() {
+  return (
+    <Icon>
+      <path d="M3 7h10v9H3z" />
+      <path d="M13 10h4l3 3v3h-7" />
+      <circle cx="7" cy="18" r="1.75" />
+      <circle cx="17" cy="18" r="1.75" />
+    </Icon>
+  )
+}
+
+export function PlusIcon() {
+  return (
+    <Icon>
+      <path d="M12 5v14M5 12h14" />
+    </Icon>
+  )
+}
+
+export function ChevronDownIcon() {
+  return (
+    <Icon>
+      <path d="m6 9 6 6 6-6" />
+    </Icon>
+  )
+}
