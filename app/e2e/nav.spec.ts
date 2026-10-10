@@ -124,6 +124,8 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await side.getByRole('link', { name: /Slips/ }).click()
   await page.getByRole('button', { name: 'To approve (1)' }).click()
   await page.getByRole('link', { name: /OS-0001/ }).click()
+  // Wait for the slip itself: menus close on navigation, so one opened mid-navigation shuts again.
+  await expect(page).toHaveURL(/\/slips\/[0-9a-f-]{36}$/)
   await expect(side.getByRole('link', { name: /Slips/ })).toHaveAttribute('aria-current', 'page')
 
   const record = page.getByRole('button', { name: 'Record', exact: true })

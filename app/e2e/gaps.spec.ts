@@ -30,6 +30,8 @@ async function rest(page: Page, path: string, body?: unknown) {
 }
 
 async function signOut(page: Page) {
+  // A form left unsaved (the rate hint check) may have autosaved a draft; signing out asks first.
+  page.once('dialog', (d) => void d.accept())
   await page.goto('/more')
   await page.getByRole('button', { name: 'Sign out' }).click()
   await expect(page).toHaveURL(/\/login$/)
