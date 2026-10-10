@@ -357,14 +357,14 @@ isOneToOne: false
                   ]
                 },"companies": {
                   Row: {
-                    "address": string | null,"created_at": string,"created_by": string | null,"default_date_display": Database["public"]['Enums']["date_display"],"id": string,"labour_module_enabled": boolean,"logo_path": string | null,"name": string,"pan_vat": string | null,"phone": string | null,"rate_variance_tolerance_pct": number,"slip_approval_required": boolean,"tax_fields_enabled": boolean,"updated_at": string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
+                    "accent": string,"address": string | null,"created_at": string,"created_by": string | null,"default_date_display": Database["public"]['Enums']["date_display"],"id": string,"labour_module_enabled": boolean,"logo_path": string | null,"name": string,"pan_vat": string | null,"phone": string | null,"rate_variance_tolerance_pct": number,"slip_approval_required": boolean,"tax_fields_enabled": boolean,"updated_at": string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "address"?: string | null,"created_at"?: string,"created_by"?: string | null,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name": string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"slip_approval_required"?: boolean,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
+                    "accent"?: string,"address"?: string | null,"created_at"?: string,"created_by"?: string | null,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name": string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"slip_approval_required"?: boolean,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
                   }
                   Update: {
-                    "address"?: string | null,"created_at"?: string,"created_by"?: string | null,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name"?: string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"slip_approval_required"?: boolean,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
+                    "accent"?: string,"address"?: string | null,"created_at"?: string,"created_by"?: string | null,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name"?: string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"slip_approval_required"?: boolean,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
                   }
                   Relationships: [
                     

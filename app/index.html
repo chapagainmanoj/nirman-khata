@@ -8,6 +8,17 @@
     <meta name="theme-color" content="#ffffff" />
     <meta name="description" content="Construction site and cost register" />
     <title>NirmanKhata</title>
+    <!-- Paint in the company's accent before the app starts (cached by src/lib/accents.ts). -->
+    <script>
+      try {
+        var v = JSON.parse(localStorage.getItem('nk.accent') || '[]')
+        for (var i = 0; i < v.length; i++) {
+          if (/^[a-z-]+$/.test(v[i][0]) && /^#[0-9a-f]{6}$/.test(v[i][1])) {
+            document.documentElement.style.setProperty('--color-' + v[i][0], v[i][1])
+          }
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

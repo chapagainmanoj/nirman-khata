@@ -67,6 +67,14 @@ Deno.serve(async (req) => {
       await add(`attachments/${a.id}-${safeName(String(a.file_name ?? 'file'))}`, new Uint8Array(await data.arrayBuffer()))
     }
 
+    // The company logo, if one is set (public logos bucket).
+    const logoPath = (snap.tables.get('companies') ?? [])[0]?.logo_path
+    if (typeof logoPath === 'string' && logoPath) {
+      const { data, error } = await admin.storage.from('logos').download(logoPath)
+      if (error || !data) throw new Error('The company logo could not be read')
+      await add(`branding/logo.${logoPath.split('.').pop()}`, new Uint8Array(await data.arrayBuffer()))
+    }
+
     const manifest = {
       format: 'nirmankhata-export-1', company_id: companyId, schema_version: snap.schemaVersion,
       snapshot_at: snap.snapshotAt, files: manifestFiles,

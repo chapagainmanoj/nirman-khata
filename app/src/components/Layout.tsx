@@ -10,8 +10,9 @@ import { useCompany } from '../auth/AuthProvider'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import {
-  BellIcon, BillIcon, BrandMark, CalendarIcon, CatalogIcon, DashboardIcon, DeliveryIcon, MoreIcon, PartiesIcon, PaymentIcon, ProjectsIcon, ReportIcon, SettingsIcon, SlipIcon, StaffIcon,
+  BellIcon, BillIcon, CalendarIcon, CatalogIcon, DashboardIcon, DeliveryIcon, MoreIcon, PartiesIcon, PaymentIcon, ProjectsIcon, ReportIcon, SettingsIcon, SlipIcon, StaffIcon,
 } from './icons'
+import { CompanyMark } from './CompanyMark'
 import { AccountMenu, ProjectSwitcher, RecordMenu, RecordSheetButton, SetupMenu } from './menus'
 import { activeSection, navItem, phoneBarFor, recordActionsFor, sectionsFor, type NavKey } from './nav'
 import { useNavCounts, useUnreadCount } from './navCounts'
@@ -92,7 +93,7 @@ function Frame() {
       {/* Only the section list scrolls, so the menus at the top and the account menu at the foot can
           open past it. Rows are shorter with a mouse so the whole list fits a laptop screen. */}
       <aside className="sticky top-0 z-30 hidden h-dvh print:hidden w-64 shrink-0 flex-col gap-3 border-r border-line bg-side p-3 lg:flex">
-        <Brand name={auth.company.name} />
+        <Brand name={auth.company.name} logoPath={auth.company.logo_path} />
         <RecordMenu role={role} />
         <ProjectSwitcher />
         <div className="scroll-shadows -mx-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3">
@@ -116,8 +117,8 @@ function Frame() {
         {/* Phone and tablet header */}
         <header className="sticky top-0 z-20 border-b border-line bg-surface lg:hidden print:hidden [@media(max-height:500px)]:static">
           <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-2 md:px-4">
-            <Brand name={auth.company.name} className="min-w-0 flex-1 md:hidden" />
-            <Brand name={auth.company.name} markOnly className="hidden md:inline-flex" />
+            <Brand name={auth.company.name} logoPath={auth.company.logo_path} className="min-w-0 flex-1 md:hidden" />
+            <Brand name={auth.company.name} logoPath={auth.company.logo_path} markOnly className="hidden md:inline-flex" />
             {/* Nine sections can be wider than a tablet: the links scroll, the buttons on the right stay. */}
             <nav ref={strip} aria-label="Main" className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] md:flex">
               {work.flatMap((g) => g.items).map((i) => (
@@ -155,11 +156,11 @@ function Frame() {
 }
 
 /** The app mark and company name: the way home (dashboard or projects, by role, via "/"). */
-function Brand({ name, markOnly, className }: { name: string; markOnly?: boolean; className?: string }) {
+function Brand({ name, logoPath, markOnly, className }: { name: string; logoPath: string | null; markOnly?: boolean; className?: string }) {
   return (
     <Link to="/" aria-label={`${name}, ${t('nav.home')}`}
       className={`flex min-h-11 shrink-0 items-center gap-2.5 rounded-lg px-1.5 hover:bg-muted ${className ?? ''}`}>
-      <BrandMark size={28} className="shrink-0" />
+      <CompanyMark logoPath={logoPath} size={28} className="shrink-0" />
       {!markOnly && <span className="min-w-0 truncate text-sm font-bold text-ink">{name}</span>}
     </Link>
   )

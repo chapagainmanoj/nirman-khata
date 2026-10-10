@@ -12,6 +12,7 @@ import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
 import { monthDays, monthOf } from '../../lib/months'
 import { downloadXlsx } from '../../lib/xlsx'
+import { CompanyMark } from '../../components/CompanyMark'
 import { PARTY } from '../parties/kinds'
 import { useParties } from '../parties/api'
 import { memberName, useMembers, useProjects } from '../projects/api'
@@ -143,7 +144,8 @@ export function ReportPage() {
       </div>
 
       <section aria-label="Report" className="rounded-xl border border-line bg-surface p-3 print:border-0 print:p-0">
-        <div className="mb-2 hidden print:block">
+        <div className="mb-2 hidden items-center gap-3 print:flex">
+          {auth.company.logo_path && <CompanyMark logoPath={auth.company.logo_path} size={40} />}
           <h2 className="text-lg font-bold">{auth.company.name}: {def.title}</h2>
         </div>
         <p className="mb-2 text-sm text-subtle">{notes.join(' · ')}</p>

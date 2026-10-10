@@ -8,6 +8,8 @@ import { t } from '../../lib/i18n'
 import { ROLE_LABELS } from '../../lib/labels'
 import { supabase, type Tables } from '../../lib/supabase'
 import { callFunction } from '../../lib/functions'
+import { ACCENTS, isAccent } from '../../lib/accents'
+import { BrandingCard } from './BrandingCard'
 
 export function SettingsPage() {
   const auth = useCompany()
@@ -17,6 +19,7 @@ export function SettingsPage() {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <MyProfileCard />
         {auth.isAdmin ? <CompanySettingsForm company={auth.company} /> : <CompanySettingsView company={auth.company} />}
+        {auth.isAdmin && <BrandingCard />}
         {auth.isAdmin && <ExportCard />}
       </div>
     </>
@@ -160,6 +163,7 @@ function CompanySettingsView({ company: c }: { company: Tables<'companies'> }) {
       <Detail label="Phone">{c.phone}</Detail>
       <Detail label="Address">{c.address}</Detail>
       <Detail label="Order slip approval">{c.slip_approval_required ? 'Required' : 'Not required'}</Detail>
+      <Detail label="Colour">{ACCENTS[isAccent(c.accent) ? c.accent : 'teal'].label}</Detail>
     </Card>
   )
 }

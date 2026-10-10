@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DateDisplay } from '../lib/dates'
 import { clearUserDrafts, listUserDrafts } from '../lib/drafts'
+import { applyAccent } from '../lib/accents'
 import { supabase, type AppRole, type Tables } from '../lib/supabase'
 
 type Membership = Tables<'memberships'> & { companies: Tables<'companies'> }
@@ -71,6 +72,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const refetchMe = me.refetch
+  // The company's accent colour; signed out (the login page, a shared phone) goes back to the default.
+  const accent = me.data?.membership?.companies.accent
+  useEffect(() => {
+    if (sessionLoaded && !session) applyAccent(null)
+    else if (accent) applyAccent(accent)
+  }, [accent, session, sessionLoaded])
+
   const value = useMemo<AuthState>(() => {
     const membership = me.data?.membership ?? null
     const roles = membership?.roles ?? []
