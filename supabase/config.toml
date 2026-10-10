@@ -383,8 +383,18 @@ inspector_port = 8093
 # The Deno major version to use.
 deno_version = 2
 
-# [edge_runtime.secrets]
-# secret_key = "env(SECRET_VALUE)"
+# Local only (production sets these with `supabase secrets set` in CI, pointing at Cloudflare R2).
+# Attachments go to local Supabase Storage through its S3 endpoint, so the files function runs the
+# same code as in production. The key pair is the CLI's fixed local default, not a secret.
+# The function reaches the endpoint through the host port: signatures cover the Host header, and
+# only the public host:port (as the browser sees it) passes through the gateway intact.
+[edge_runtime.secrets]
+FILES_BUCKET = "attachments"
+FILES_S3_ENDPOINT = "http://host.docker.internal:55321/storage/v1/s3"
+FILES_S3_PUBLIC_ENDPOINT = "http://127.0.0.1:55321/storage/v1/s3"
+FILES_S3_REGION = "local"
+FILES_S3_ACCESS_KEY_ID = "625729a08b95bf1b7ff351a663f3a23c"
+FILES_S3_SECRET_ACCESS_KEY = "850181e4652dd023b7a98c58ae0d2d34bd487ee0cc3254aed6eda37307425907"
 
 [analytics]
 enabled = true

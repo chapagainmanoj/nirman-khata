@@ -1,0 +1,12 @@
+{
+  "rules": [
+    {
+      "allowed": {
+        "origins": ["https://nirman-khata.pages.dev", "http://localhost:5173", "http://localhost:8080"],
+        "methods": ["GET", "HEAD", "PUT"],
+        "headers": ["content-type"]
+      },
+      "maxAgeSeconds": 3600
+    }
+  ]
+}

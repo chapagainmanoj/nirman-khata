@@ -8,11 +8,12 @@
     "db:test": "supabase test db",
     "db:types": "supabase gen types typescript --local > app/src/lib/database.types.ts",
     "dev": "pnpm --dir app dev",
-    "test": "pnpm db:test && pnpm db:test:race && pnpm db:test:export && pnpm --dir app test",
+    "test": "pnpm db:test && pnpm db:test:race && pnpm db:test:files && pnpm db:test:export && pnpm --dir app test",
     "docker:dev": "docker compose -f docker/compose.dev.yaml up --build",
     "docker:prod": "docker compose -f docker/compose.prod.yaml up -d --build",
     "db:test:race": "bash supabase/tests/concurrency.sh",
-    "db:test:export": "bash supabase/tests/export.sh"
+    "db:test:export": "bash supabase/tests/export.sh",
+    "db:test:files": "bash supabase/tests/files.sh"
   },
   "devDependencies": {
     "supabase": "^2.120.0"

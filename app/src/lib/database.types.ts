@@ -2484,6 +2484,11 @@ isOneToOne: false
 "approve_charge":
 { Args: { "p_approved_paisa": number,"p_charge": string,"p_date"?: string,"p_note"?: string,"p_op_key": string }; Returns: Json
                            },
+"attachment_upload_target":
+{ Args: { "p_attachment": string }; Returns: {
+              "company_id": string,"content_type": string,"size_bytes": number
+            }[]
+                           },
 "bill_preview":
 { Args: { "p_bill": string }; Returns: Json
                            },
@@ -2545,7 +2550,7 @@ isOneToOne: false
             }[]
                            },
 "mark_attachment_uploaded":
-{ Args: { "p_attachment": string }; Returns: undefined
+{ Args: { "p_attachment": string,"p_size": number,"p_user": string }; Returns: undefined
                            },
 "mark_slip_sent":
 { Args: { "p_slip": string,"p_via": string }; Returns: undefined
@@ -2617,7 +2622,7 @@ isOneToOne: false
 { Args: { "p_charge": string,"p_reason": string }; Returns: undefined
                            },
 "remove_attachment":
-{ Args: { "p_attachment": string }; Returns: undefined
+{ Args: { "p_attachment": string }; Returns: boolean
                            },
 "report_cost_by_heading":
 { Args: { "p_as_known"?: boolean,"p_as_of"?: string,"p_company": string,"p_project"?: string }; Returns: {

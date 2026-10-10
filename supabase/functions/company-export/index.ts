@@ -5,6 +5,7 @@
 // The zip is the response itself: storage caps uploads at 50 MB, which photos can pass.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
 import { zipSync } from 'npm:fflate@0.8.2'
+import { fileKey, readFile } from '../_shared/files.ts'
 import { corsHeaders, fail } from '../_shared/http.ts'
 
 const url = Deno.env.get('SUPABASE_URL')!
@@ -62,9 +63,8 @@ Deno.serve(async (req) => {
 
     // Files are immutable, so the snapshot's list is exact even though they are read afterwards.
     for (const a of snap.attachments) {
-      const { data, error } = await admin.storage.from('attachments').download(`${companyId}/${a.id}`)
-      if (error || !data) throw new Error(`Attachment ${a.id} could not be read`)
-      await add(`attachments/${a.id}-${safeName(String(a.file_name ?? 'file'))}`, new Uint8Array(await data.arrayBuffer()))
+      const data = await readFile(fileKey(companyId, String(a.id)))
+      await add(`attachments/${a.id}-${safeName(String(a.file_name ?? 'file'))}`, data)
     }
 
     // The company logo, if one is set (public logos bucket).

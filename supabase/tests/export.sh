@@ -75,9 +75,12 @@ ATTACHMENT=$(uuidgen | tr 'A-Z' 'a-z')
 printf 'not really a photo' >"$WORK/photo.jpg"
 q -c "$(as_user "insert into public.attachments (id, company_id, bill_id, kind, file_name, content_type, size_bytes)
   values ('$ATTACHMENT', '$COMPANY', '$BILL', 'photo', 'bill photo.jpg', 'image/jpeg', 18);")" >/dev/null
-curl -sf -X POST "$API_URL/storage/v1/object/attachments/$COMPANY/$ATTACHMENT" -H "Authorization: Bearer $JWT" \
-  -H "apikey: $ANON_KEY" -H 'Content-Type: image/jpeg' --data-binary @"$WORK/photo.jpg" >/dev/null
-q -c "$(as_user "select public.mark_attachment_uploaded('$ATTACHMENT');")" >/dev/null
+# Uploaded the way the app does it: an upload link from the files function, then confirm.
+files() { curl -sf -X POST "$FUNCTIONS_URL/files" -H "Authorization: Bearer $JWT" -H "apikey: $ANON_KEY" \
+  -H 'Content-Type: application/json' -d "$(printf '{"action":"%s","attachment_id":"%s"}' "$1" "$ATTACHMENT")"; }
+UPLOAD_URL=$(files upload | python3 -I -c 'import json,sys; print(json.load(sys.stdin)["url"])')
+curl -sf -X PUT "$UPLOAD_URL" -H 'Content-Type: image/jpeg' --data-binary @"$WORK/photo.jpg" >/dev/null
+files confirm >/dev/null
 
 export_zip() { # dest dir; prints the HTTP status
   curl -s -o "$1.zip" -w '%{http_code}' -X POST "$FUNCTIONS_URL/company-export" -H "Authorization: Bearer $JWT" \

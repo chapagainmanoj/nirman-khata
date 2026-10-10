@@ -1,9 +1,11 @@
-// Photos on a record: challan, bill, payment proof (design §3.7). Files are immutable and
-// read through 5-minute signed URLs; who may see or add them follows the owning record.
+// Photos on a record: challan, bill, payment proof (design §3.7). Files live in Cloudflare R2,
+// are immutable, and are reached only through 5-minute links from the `files` Edge Function;
+// who may see or add them follows the owning record.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useCompany } from '../auth/AuthProvider'
 import { friendlyError } from '../lib/errors'
+import { callFunction } from '../lib/functions'
 import { newId } from '../lib/ids'
 import { compressImage } from '../lib/images'
 import { supabase } from '../lib/supabase'
@@ -17,8 +19,6 @@ type OwnerColumn =
   | 'daily_report_id' | 'progress_update_id'
 export type AttachmentOwner = { [K in OwnerColumn]: { [P in K]: string } }[OwnerColumn]
 
-const BUCKET = 'attachments'
-
 // Screen readers hear "Challan photo 1 of 2", not "IMG_20261010_143022.jpg".
 const WHAT: Record<OwnerColumn, string> = {
   delivery_id: 'Challan', bill_id: 'Bill', payment_id: 'Payment proof', work_package_id: 'Agreement',
@@ -30,17 +30,17 @@ export type PendingPhoto = { id: string; name: string; blob: Blob }
 
 export async function uploadAttachment(companyId: string, owner: AttachmentOwner, photo: { name: string; blob: Blob }) {
   const id = newId()
+  // The upload link is signed for exactly this type and size; the PUT must send the same.
+  const contentType = photo.blob.type || 'image/jpeg'
   const { error } = await supabase.from('attachments').insert({
     id, company_id: companyId, ...owner, kind: 'photo',
-    file_name: photo.name, content_type: photo.blob.type || 'image/jpeg', size_bytes: photo.blob.size,
+    file_name: photo.name, content_type: contentType, size_bytes: photo.blob.size,
   })
   if (error) throw error
-  const upload = await supabase.storage
-    .from(BUCKET)
-    .upload(`${companyId}/${id}`, photo.blob, { upsert: false, contentType: photo.blob.type || 'image/jpeg' })
-  if (upload.error) throw upload.error
-  const marked = await supabase.rpc('mark_attachment_uploaded', { p_attachment: id })
-  if (marked.error) throw marked.error
+  const { url } = await callFunction<{ url: string }>('files', { action: 'upload', attachment_id: id })
+  const put = await fetch(url, { method: 'PUT', body: photo.blob, headers: { 'Content-Type': contentType } }).catch(() => null)
+  if (!put?.ok) throw new Error('The photo did not upload. Check your network and try again.')
+  await callFunction('files', { action: 'confirm', attachment_id: id })
 }
 
 /** Upload photos taken before saving, once the record exists. Returns how many failed. */
@@ -130,11 +130,10 @@ export function Attachments({
         .order('created_at')
       if (error) throw error
       if (!data.length) return []
-      const { data: urls, error: urlError } = await supabase.storage
-        .from(BUCKET)
-        .createSignedUrls(data.map((a) => `${auth.companyId}/${a.id}`), 300)
-      if (urlError) throw urlError
-      return data.map((a, i) => ({ ...a, url: urls[i]?.signedUrl ?? null }))
+      const { urls } = await callFunction<{ urls: Record<string, string> }>('files', {
+        action: 'read', attachment_ids: data.map((a) => a.id),
+      })
+      return data.map((a) => ({ ...a, url: urls[a.id] ?? null }))
     },
   })
 
@@ -155,12 +154,8 @@ export function Attachments({
   })
 
   const remove = useMutation({
-    mutationFn: async (id: string) => {
-      // On drafts the file itself is deleted; otherwise the row is only hidden (kept for audit).
-      await supabase.storage.from(BUCKET).remove([`${auth.companyId}/${id}`])
-      const { error } = await supabase.rpc('remove_attachment', { p_attachment: id })
-      if (error) throw error
-    },
+    // On drafts the file itself is deleted; otherwise the row is only hidden (kept for audit).
+    mutationFn: (id: string) => callFunction('files', { action: 'remove', attachment_id: id }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   })
 

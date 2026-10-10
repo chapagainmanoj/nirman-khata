@@ -161,14 +161,16 @@ These exceptions never show other people's entries, totals, ledger rows, or part
 | Full company export, staff, roles, settings | admin only | | | |
 
 ### 3.7 Attachments and files
-- `attachments`: `company_id`, one owner FK (exactly one), `storage_path`, `kind`, `uploaded_at`, `removed_at`.
-- **Path is `{company_id}/{attachment_id}`.** Storage policies call `can_access_attachment(name, action)`, which applies the **owning record's** rule from 3.6, including the X1/X2 exceptions.
-- **Files are immutable:**
-  - The insert policy allows only an attachment row that exists and has no `uploaded_at`, uploaded with `upsert: false`.
-  - There is **no update policy**, so an uploaded object can never be overwritten. Replacing a photo creates a new attachment.
-  - **Delete** is allowed only when the owner is still a draft (an X1 draft, an unposted delivery or a draft report). Then the object and the row are both removed.
-  - On posted or submitted records, "remove" sets `removed_at`. The file is kept and hidden, and the audit log records it.
-- Signed URLs are created through the same select policy and live 5 minutes.
+- `attachments`: `company_id`, one owner FK (exactly one), `kind`, `content_type`, `size_bytes`, `uploaded_at`, `removed_at`.
+- **Files live in Cloudflare R2** (bucket `nirman-khata-files`), key `{company_id}/{attachment_id}`. Company logos stay in the public Supabase Storage `logos` bucket.
+- The browser never holds bucket keys. The **`files` Edge Function** hands out **5-minute presigned URLs** after the database says yes, asked **as the signed-in user**:
+  - **upload:** `attachment_upload_target()` allows only the user who created the row, while it is not uploaded, when the owning record's upload rule from 3.6 holds. Photos and PDFs only, at most 10 MB. The link signs the declared `content-type` and `content-length`, so it accepts only that file.
+  - **confirm:** the function checks that the object exists with the declared size, then calls `mark_attachment_uploaded()`, which only the service role may run.
+  - **read:** links are made only for rows that row security returns to the user (`can_access_attachment(id, 'read')`, including the X1/X2 exceptions).
+  - **remove:** `remove_attachment()` decides. On a draft owner the row and the object are deleted; otherwise the row gets `removed_at` and the file is kept.
+- **Files are immutable:** an uploaded row never gets another upload link. Replacing a photo creates a new attachment.
+- Locally and in CI the same code runs against Supabase Storage's S3 endpoint (`[edge_runtime.secrets]` in `supabase/config.toml`). Production settings are set by CI with `supabase secrets set`.
+- R2 CORS (`cloudflare/r2-cors.json`) allows `PUT` from the app's origins.
 - Attachment rows whose upload never finished are cleaned up nightly.
 
 ### 3.8 Audit
@@ -581,8 +583,8 @@ race in `concurrency.sh`, and `app/e2e/gaps.spec.ts`. Decisions made while build
 | Item | Design |
 |---|---|
 | Database | Nightly, three separate dumps, as in Supabase's restore procedure: `supabase db dump --role-only`, schema-only, and `--data-only` (including the `auth` schema so logins survive) |
-| Config | Storage bucket settings, storage policies, RLS and functions are all in `supabase/migrations/` (git). Edge Function secrets are listed (names only) in an ops checklist kept with the owner |
-| Files | After the DB dump, copy new storage objects. Objects are immutable (3.7), so copying is incremental |
+| Config | Storage bucket settings, RLS and functions are in `supabase/migrations/`, the R2 CORS policy in `cloudflare/` (git). Edge Function secrets are listed (names only) in an ops checklist kept with the owner |
+| Files | After the DB dump, copy new R2 objects (and logos). Objects are immutable (3.7), so copying is incremental |
 | Manifest | Each run writes `manifest.json`: dump start time, DB row counts, and the list of files copied with checksums. Restore uses the manifest to report attachment rows with no file (uploads after the dump), which are caught on the next run |
 | Encryption | `age` before upload to R2. The private key is kept offline in two places (owner + developer) and recorded in the handover checklist |
 | Retention | 30 daily, 12 monthly DB dumps. Files kept while the company exists; removed files (`removed_at`) kept 1 year |
