@@ -18,6 +18,8 @@ const en = {
   'nav.signOut': 'Sign out',
   'nav.deliveries': 'Deliveries',
   'nav.calendar': 'Calendar',
+  'nav.dashboard': 'Dashboard',
+  'nav.reports': 'Reports',
   'nav.bills': 'Bills',
   'nav.payments': 'Payments',
   'nav.parties': 'Parties',

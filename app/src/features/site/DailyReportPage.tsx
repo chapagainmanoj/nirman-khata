@@ -155,7 +155,7 @@ export function DailyReportPage() {
           )}
         </Card>
         <div className="mt-4 flex flex-wrap gap-2">
-          <ButtonLink to={`/reports/${saved.id}`}>Open report</ButtonLink>
+          <ButtonLink to={`/daily/${saved.id}`}>Open report</ButtonLink>
           <ButtonLink variant="secondary" to={`/projects/${v.project_id}?tab=site`}>Update progress</ButtonLink>
           <Button variant="ghost" onClick={() => { form.reset(fresh(v.project_id)); setSaved(null) }}>Another report</Button>
         </div>
@@ -188,7 +188,7 @@ export function DailyReportPage() {
           {earlier.length > 0 && (
             <p className="mt-3 text-sm text-subtle">
               Already sent for this day: {earlier.map((r, i) => (
-                <span key={r.id}>{i > 0 && ', '}<Link className="text-brand underline-offset-4 hover:underline" to={`/reports/${r.id}`}>{r.label}</Link></span>
+                <span key={r.id}>{i > 0 && ', '}<Link className="text-brand underline-offset-4 hover:underline" to={`/daily/${r.id}`}>{r.label}</Link></span>
               ))}. Add another report only for different work.
             </p>
           )}

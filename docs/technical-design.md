@@ -480,6 +480,25 @@ L2 same-key race in `concurrency.sh`, and `app/e2e/site.spec.ts`. Decisions made
 - A device-draft autosave that was still pending when a form was sent no longer brings the
   draft back (`lib/drafts.ts`).
 
+Milestone 5 built: migration `20261016000100` (`project_dashboard`, `company_dashboard`, the
+`report_*` functions and `export_company_data`), pgTAP `017` (acceptance #14, #19; H1; H3 as a
+seeded 60-step random sequence; permissions), `supabase/tests/export.sh` (E1, E2), the
+`company-export` Edge Function, and `app/e2e/reports.spec.ts`. Decisions made while building it:
+- Dashboards and reports run as security invoker, like the calendar: RLS decides the rows, and
+  amounts are null for people without finance access. Money reports are not listed for them.
+- Recorded cost always comes with what it does not include yet: received items not billed (with
+  an estimate from the last billed rate), bills not posted, and days since the last daily report.
+- Report Excel files are real `.xlsx` from `write-excel-file`, loaded only when someone exports.
+  Money is written as rupees so Excel can add it up. Dates are written as the text shown on screen,
+  because Excel has no BS calendar. PDF is the browser's print, using a print layout.
+- The full export does not use a separate DB connection: the Edge Function runtime cannot reach the
+  database host directly. It calls `export_company_data`, a STABLE function, which reads every table
+  from one snapshot. The zip is returned in the response instead of being stored, because storage
+  caps an upload at 50 MB. The function refuses above 150 MB of attachments.
+- Finance users land on `/dashboard` after sign-in; everyone else lands on `/projects`. Daily
+  report pages moved from `/reports/...` to `/daily/...`, so `/reports` is the report list.
+- Not done: demo data in `seed.sql`.
+
 ---
 
 ## 10. Tests
@@ -550,8 +569,8 @@ L2 same-key race in `concurrency.sh`, and `app/e2e/site.spec.ts`. Decisions made
 | Restore drill | Before the pilot, then monthly: restore roles → schema → data → files into a fresh local Supabase. Pass = (1) a staff member logs in, (2) a bill photo opens through a signed URL, (3) the I-10 reconciliation query returns no differences, (4) row counts match the manifest. Record the time taken; that is the measured RTO |
 
 ### 11.3 Full company export (req §22)
-- Admin only. An Edge Function opens **one** `repeatable read, read only` transaction, so every table comes from the same snapshot.
-- Output, written to the company's export area in storage and downloaded via a signed URL:
+- Admin only. An Edge Function calls the STABLE `export_company_data` function, which reads every table from **one** snapshot.
+- Output, one zip returned directly to the admin's browser (not stored):
   - one CSV per tenant table, including drafts, assignments, revisions, progress, catalog, posting events, ledger and settlement events;
   - `staff.csv` with name, phone, roles and active flag, **for this company's members only**, taken from the global profiles without other companies' data;
   - `manifest.json` with schema version, snapshot time, row counts and file checksums;

@@ -4,7 +4,7 @@ import { Layout } from './components/Layout'
 import { LoginPage } from './features/auth/LoginPage'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
-import { AdminOnly, RedirectIfSignedIn, RequireCompany } from './routes/guards'
+import { AdminOnly, Home, RedirectIfSignedIn, RequireCompany } from './routes/guards'
 
 // Each screen is its own chunk, so the first load is only sign-in, the frame and Projects
 // (/impeccable optimize). The service worker precaches the rest for later visits.
@@ -43,6 +43,9 @@ const PaymentsPage = page(() => import('./features/lists/PaymentsPage'), 'Paymen
 const DailyReportPage = page(() => import('./features/site/DailyReportPage'), 'DailyReportPage')
 const ReportDetailPage = page(() => import('./features/site/ReportDetailPage'), 'ReportDetailPage')
 const CalendarPage = page(() => import('./features/calendar/CalendarPage'), 'CalendarPage')
+const DashboardPage = page(() => import('./features/dashboard/DashboardPage'), 'DashboardPage')
+const ReportsPage = page(() => import('./features/reports/ReportsPage'), 'ReportsPage')
+const ReportPage = page(() => import('./features/reports/ReportPage'), 'ReportPage')
 
 export function App() {
   return (
@@ -86,11 +89,15 @@ export function App() {
           <Route path="/work/:packageId/edit" element={<WorkPackageEditPage />} />
           <Route path="/labour/new" element={<LabourNewPage />} />
           <Route path="/expenses/new" element={<ExpenseNewPage />} />
-          <Route path="/reports/new" element={<DailyReportPage />} />
-          <Route path="/reports/:reportId" element={<ReportDetailPage />} />
+          <Route path="/daily/new" element={<DailyReportPage />} />
+          <Route path="/daily/:reportId" element={<ReportDetailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
+          <Route path="/" element={<Home />} />
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/reports" element={<ReportsPage />} />
+          <Route path="/reports/:reportKey" element={<ReportPage />} />
         </Route>
-        <Route path="*" element={<Navigate to="/projects" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   )

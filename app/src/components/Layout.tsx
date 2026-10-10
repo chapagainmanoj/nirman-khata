@@ -8,7 +8,7 @@ import { useCompany } from '../auth/AuthProvider'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import {
-  BellIcon, BillIcon, CalendarIcon, CatalogIcon, DeliveryIcon, MoreIcon, PaymentIcon, ProjectsIcon, SettingsIcon, SlipIcon, StaffIcon, SupplierIcon,
+  BellIcon, BillIcon, CalendarIcon, CatalogIcon, DashboardIcon, DeliveryIcon, MoreIcon, PaymentIcon, ProjectsIcon, ReportIcon, SettingsIcon, SlipIcon, StaffIcon, SupplierIcon,
 } from './icons'
 import { AccountMenu, ProjectSwitcher, RecordMenu, RecordSheetButton, SetupMenu } from './menus'
 import { activeSection, navItem, phoneBarFor, recordActionsFor, sectionsFor, type NavKey } from './nav'
@@ -17,7 +17,7 @@ import { Spinner } from './ui'
 import { useNavRole } from './useNavRole'
 
 const ICONS: Record<NavKey, ComponentType> = {
-  projects: ProjectsIcon, calendar: CalendarIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon,
+  dashboard: DashboardIcon, projects: ProjectsIcon, calendar: CalendarIcon, reports: ReportIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon,
   parties: SupplierIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
 }
 
@@ -78,10 +78,10 @@ function Frame() {
   )
 
   return (
-    <div className="min-h-dvh bg-page pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 lg:flex">
+    <div className="min-h-dvh bg-page pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0 lg:flex print:bg-white print:pb-0">
       {/* Desktop sidebar */}
       {/* Only the section list scrolls, so the menus at the top can open past the sidebar's edge. */}
-      <aside className="sticky top-0 z-30 hidden h-dvh w-64 shrink-0 flex-col gap-3 border-r border-line bg-surface p-3 lg:flex">
+      <aside className="sticky top-0 z-30 hidden h-dvh print:hidden w-64 shrink-0 flex-col gap-3 border-r border-line bg-surface p-3 lg:flex">
         <AccountMenu />
         <RecordMenu role={role} />
         <ProjectSwitcher />
@@ -106,7 +106,7 @@ function Frame() {
 
       <div className="min-w-0 flex-1">
         {/* Phone and tablet header */}
-        <header className="sticky top-0 z-20 border-b border-line bg-surface lg:hidden [@media(max-height:500px)]:static">
+        <header className="sticky top-0 z-20 border-b border-line bg-surface lg:hidden print:hidden [@media(max-height:500px)]:static">
           <div className="mx-auto flex h-14 max-w-5xl items-center gap-2 px-2 md:px-4">
             <div className="min-w-0 flex-1 md:hidden"><AccountMenu /></div>
             <nav aria-label="Main" className="hidden flex-1 items-center gap-1 md:flex">
@@ -130,7 +130,7 @@ function Frame() {
       </div>
 
       {/* Phone bottom bar */}
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface md:hidden"
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface md:hidden print:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {bar.slice(0, 2).map((key) => <BarLink key={key} navKey={key} active={active === key} count={counts[key]} />)}
         {hasRecord ? <RecordSheetButton role={role} /> : <span aria-hidden />}

@@ -28,7 +28,7 @@ function href(e: CalendarEvent): string | null {
     case 'bill': return `/bills/${e.link_id}`
     case 'payment': return `/payments/${e.link_id}`
     case 'slip': return `/slips/${e.link_id}`
-    case 'report': return `/reports/${e.link_id}`
+    case 'report': return `/daily/${e.link_id}`
     case 'progress': return project && `${project}?tab=site`
     case 'delivery': return project && `${project}?tab=deliveries`
     case 'labour': case 'expense': return project && `${project}?tab=labour`

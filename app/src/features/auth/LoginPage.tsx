@@ -27,7 +27,7 @@ export function LoginPage() {
         error.message.includes('Invalid login') ? 'Wrong mobile number/email or password.' : 'Could not sign in. Check your connection.',
       )
     }
-    navigate((location.state as { from?: string } | null)?.from ?? '/projects', { replace: true })
+    navigate((location.state as { from?: string } | null)?.from ?? '/', { replace: true })
   }
 
   return (

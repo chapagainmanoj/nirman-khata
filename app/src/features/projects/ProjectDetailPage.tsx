@@ -24,6 +24,8 @@ import { detailsSchema, detailsToRow, type DetailsValues } from './projectDetail
 import { RevisionsCard } from './RevisionsCard'
 import { SiteSection } from '../site/SiteSection'
 import { useProgress } from '../site/api'
+import { useProjectDashboard } from '../dashboard/api'
+import { Completeness, HeadingTable, SourceList } from '../dashboard/parts'
 
 type Tab = 'overview' | 'site' | 'deliveries' | 'subcontract' | 'labour' | 'history'
 
@@ -59,7 +61,7 @@ export function ProjectDetailPage() {
         subtitle={<span className="flex items-center gap-2">{p.code} <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge></span>}
         actions={
           <div className="flex flex-wrap gap-2">
-            {canEnter(auth) && <ButtonLink to={`/reports/new?project=${p.id}`}>Daily report</ButtonLink>}
+            {canEnter(auth) && <ButtonLink to={`/daily/new?project=${p.id}`}>Daily report</ButtonLink>}
             {canEnter(auth) && <ButtonLink variant="secondary" to={`/slips/new?project=${p.id}`}>New slip</ButtonLink>}
             <ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>Calendar</ButtonLink>
           </div>
@@ -67,11 +69,13 @@ export function ProjectDetailPage() {
       />
       <ScheduleWarnings project={p} />
       {auth.canSeeFinance && <SummaryStrip projectId={p.id} />}
+      <ProjectCompleteness projectId={p.id} />
       <Tabs tabs={tabs} value={tab} label="Project sections"
         onChange={(next) => setParams(next === 'overview' ? {} : { tab: next }, { replace: true })}>
         {tab === 'overview' && (
           <>
             <Activity projectId={p.id} onShowDeliveries={() => setParams({ tab: 'deliveries' }, { replace: true })} />
+            {auth.canSeeFinance && <CostBreakdown projectId={p.id} />}
             <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
               {auth.canSeeFinance && <AmountsCard projectId={p.id} status={p.status} />}
               <div className="flex flex-col gap-4">
@@ -101,6 +105,33 @@ export function ProjectDetailPage() {
         {tab === 'history' && auth.canSeeFinance && <RevisionsCard projectId={p.id} members={members.data ?? []} />}
       </Tabs>
     </>
+  )
+}
+
+/** What recorded cost leaves out yet (req §18.2 completeness banner), next to the summary. */
+function ProjectCompleteness({ projectId }: { projectId: string }) {
+  const dash = useProjectDashboard(projectId)
+  if (!dash.data) return null
+  return <div className="mt-2"><Completeness figures={dash.data} compact /></div>
+}
+
+/** Cost by heading against the heading budget, and by source (req §18.2). */
+function CostBreakdown({ projectId }: { projectId: string }) {
+  const auth = useCompany()
+  const dash = useProjectDashboard(projectId)
+  const d = dash.data
+  if (!d || !d.money_visible) return null
+  return (
+    <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+      <Card title="Cost by heading"><HeadingTable figures={d} projectId={projectId} /></Card>
+      <Card title="Where the cost came from">
+        <SourceList figures={d} />
+        {!!d.advances_paisa && <p className="mt-2 text-sm text-subtle">Paid in advance, not yet used: <span className="font-semibold text-ink">{formatNPR(d.advances_paisa)}</span></p>}
+        <p className="mt-2 text-sm text-subtle">
+          Last daily report: {d.last_report_date ? formatDate(d.last_report_date, auth.dateDisplay) : 'none yet'}
+        </p>
+      </Card>
+    </div>
   )
 }
 
@@ -137,7 +168,7 @@ function SummaryStrip({ projectId }: { projectId: string }) {
   return (
     <section aria-label="Summary" className="grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
       <div className="sm:col-span-1">
-        <div className="text-xs font-medium text-subtle">Cost so far</div>
+        <div className="text-xs font-medium text-subtle">Recorded cost</div>
         <div className="text-2xl font-semibold text-ink tabular-nums">{formatNPR(c.cost_paisa)}</div>
         {budget !== null && (
           <>

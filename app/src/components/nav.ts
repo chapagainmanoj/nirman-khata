@@ -16,7 +16,8 @@ export type NavRole = {
 }
 
 export type NavKey =
-  | 'projects' | 'calendar' | 'slips' | 'deliveries' | 'bills' | 'payments' | 'parties' | 'staff' | 'catalog' | 'settings'
+  | 'dashboard' | 'projects' | 'calendar' | 'slips' | 'deliveries' | 'reports' | 'bills' | 'payments' | 'parties'
+  | 'staff' | 'catalog' | 'settings'
 
 export type NavItem = {
   key: NavKey
@@ -31,10 +32,12 @@ export type NavGroup = { key: 'site' | 'money' | 'setup'; label: MessageKey; ite
 const canEnter = (r: NavRole) => r.roles.some((x) => x !== 'viewer')
 
 const ITEMS: Record<NavKey, NavItem> = {
-  projects: { key: 'projects', to: '/projects', label: 'nav.projects', match: ['/projects', '/labour', '/expenses', '/reports'] },
+  dashboard: { key: 'dashboard', to: '/dashboard', label: 'nav.dashboard', match: ['/dashboard'] },
+  projects: { key: 'projects', to: '/projects', label: 'nav.projects', match: ['/projects', '/labour', '/expenses', '/daily'] },
   calendar: { key: 'calendar', to: '/calendar', label: 'nav.calendar', match: ['/calendar'] },
   slips: { key: 'slips', to: '/slips', label: 'nav.slips', match: ['/slips'] },
   deliveries: { key: 'deliveries', to: '/deliveries', label: 'nav.deliveries', match: ['/deliveries'] },
+  reports: { key: 'reports', to: '/reports', label: 'nav.reports', match: ['/reports'] },
   bills: { key: 'bills', to: '/bills', label: 'nav.bills', match: ['/bills'] },
   payments: { key: 'payments', to: '/payments', label: 'nav.payments', match: ['/payments'] },
   parties: {
@@ -49,10 +52,14 @@ const ITEMS: Record<NavKey, NavItem> = {
 /** Sections grouped by job: site work, money, setup. Empty groups are dropped. */
 export function sectionsFor(r: NavRole): NavGroup[] {
   const show: Record<NavKey, boolean> = {
+    // Company figures: cost, cash and what is owed across projects.
+    dashboard: r.canSeeFinance,
     projects: true,
     calendar: true,
     slips: true,
     deliveries: true,
+    // Site reports for everyone; money reports inside only for finance.
+    reports: true,
     // Site staff see their own bill drafts; finance sees posted bills.
     bills: r.canSeeFinance || canEnter(r),
     payments: r.canSeeFinance,
@@ -62,7 +69,7 @@ export function sectionsFor(r: NavRole): NavGroup[] {
     settings: true,
   }
   const groups: NavGroup[] = [
-    { key: 'site', label: 'nav.group.site', items: [ITEMS.projects, ITEMS.calendar, ITEMS.slips, ITEMS.deliveries] },
+    { key: 'site', label: 'nav.group.site', items: [ITEMS.dashboard, ITEMS.projects, ITEMS.calendar, ITEMS.slips, ITEMS.deliveries, ITEMS.reports] },
     { key: 'money', label: 'nav.group.money', items: [ITEMS.bills, ITEMS.payments, ITEMS.parties] },
     { key: 'setup', label: 'nav.group.setup', items: [ITEMS.staff, ITEMS.catalog, ITEMS.settings] },
   ]
@@ -86,8 +93,8 @@ export function activeSection(pathname: string): NavKey | null {
 
 /** Phone bottom bar: four sections around the centre "+", chosen by what the person does most. */
 export function phoneBarFor(r: NavRole): NavKey[] {
-  if (r.isAdmin) return ['projects', 'bills', 'slips']
-  if (r.roles.includes('accounts')) return ['bills', 'payments', 'parties']
+  if (r.isAdmin) return ['dashboard', 'projects', 'slips']
+  if (r.roles.includes('accounts')) return ['dashboard', 'bills', 'payments']
   return ['projects', 'slips', 'deliveries']
 }
 
@@ -95,7 +102,7 @@ export type RecordKey = 'report' | 'delivery' | 'bill' | 'slip' | 'labour' | 'ex
 export type RecordAction = { key: RecordKey; path: string; label: MessageKey; hint: MessageKey }
 
 const RECORD: Record<RecordKey, RecordAction> = {
-  report: { key: 'report', path: '/reports/new', label: 'record.report', hint: 'record.report.hint' },
+  report: { key: 'report', path: '/daily/new', label: 'record.report', hint: 'record.report.hint' },
   delivery: { key: 'delivery', path: '/deliveries/new', label: 'record.delivery', hint: 'record.delivery.hint' },
   bill: { key: 'bill', path: '/bills/new', label: 'record.billPhoto', hint: 'record.billPhoto.hint' },
   slip: { key: 'slip', path: '/slips/new', label: 'record.slip', hint: 'record.slip.hint' },
@@ -127,3 +134,6 @@ export function recordHref(action: RecordAction, projectId: string | null): stri
 }
 
 export const navItem = (key: NavKey) => ITEMS[key]
+
+/** Where to land after signing in: the company dashboard for people who see money. */
+export const homeFor = (r: NavRole) => (r.canSeeFinance ? '/dashboard' : '/projects')

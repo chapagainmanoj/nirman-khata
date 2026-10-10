@@ -90,6 +90,6 @@ export type CalendarEvent = NonNullable<ReturnType<typeof useCalendarEvents>['da
 
 export function useRefreshSite() {
   const queryClient = useQueryClient()
-  return () => Promise.all(['stages', 'progress', 'daily-reports', 'report-day', 'calendar', 'labour', 'project-cost']
+  return () => Promise.all(['stages', 'progress', 'daily-reports', 'report-day', 'calendar', 'labour', 'project-cost', 'project-dashboard', 'dashboard', 'report']
     .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
 }

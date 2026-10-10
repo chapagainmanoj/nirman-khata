@@ -129,6 +129,26 @@ export function DeliveryIcon() {
   )
 }
 
+export function DashboardIcon() {
+  return (
+    <Icon>
+      <rect x="3.5" y="3.5" width="7" height="9" rx="1.5" />
+      <rect x="13.5" y="3.5" width="7" height="5" rx="1.5" />
+      <rect x="13.5" y="11.5" width="7" height="9" rx="1.5" />
+      <rect x="3.5" y="15.5" width="7" height="5" rx="1.5" />
+    </Icon>
+  )
+}
+
+export function ReportIcon() {
+  return (
+    <Icon>
+      <path d="M6 3.5h9l3.5 3.5v13.5H6z" />
+      <path d="M9 17v-4M12 17v-7M15 17v-2" />
+    </Icon>
+  )
+}
+
 export function CalendarIcon() {
   return (
     <Icon>

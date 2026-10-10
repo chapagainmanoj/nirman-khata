@@ -37,7 +37,7 @@ export function useRefreshMoney() {
   return () =>
     Promise.all(
       ['bills', 'bill', 'payments', 'nav-count', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview',
-        'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees']
+        'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees', 'project-dashboard', 'dashboard', 'report']
         .map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
     )
 }

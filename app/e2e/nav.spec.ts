@@ -39,7 +39,8 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await expect(page.getByText('No projects yet')).toBeVisible()
 
   const bar = page.getByRole('navigation', { name: 'Main' })
-  await expect(bar.getByRole('link', { name: 'Bills' })).toBeVisible() // admin bar
+  await expect(bar.getByRole('link', { name: 'Dashboard' })).toBeVisible() // admin bar
+  await expect(bar.getByRole('link', { name: 'Slips' })).toBeVisible()
   await expect(bar.getByRole('link', { name: 'Deliveries' })).toHaveCount(0)
 
   const p1 = await newProject(page, 'P-1', 'Ward 5 school building')

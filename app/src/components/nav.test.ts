@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeSection, phoneBarFor, recordActionsFor, recordHref, sectionsFor, type NavRole } from './nav'
+import { activeSection, homeFor, phoneBarFor, recordActionsFor, recordHref, sectionsFor, type NavRole } from './nav'
 
 const base: NavRole = {
   roles: [], isAdmin: false, seesAllProjects: false, canSeeFinance: false, canRecordPayments: false, canApproveSlips: false,
@@ -15,13 +15,15 @@ const keys = (r: NavRole) => sectionsFor(r).flatMap((g) => g.items.map((i) => i.
 
 describe('sectionsFor', () => {
   it('hides money sections from people who cannot see them', () => {
-    expect(keys(viewer)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'parties', 'catalog', 'settings'])
-    expect(keys(site)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'bills', 'parties', 'catalog', 'settings'])
+    expect(keys(viewer)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', 'parties', 'catalog', 'settings'])
+    expect(keys(site)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', 'bills', 'parties', 'catalog', 'settings'])
   })
   it('shows payments with finance access, and staff only to admins', () => {
     expect(keys(pmFinance)).toContain('payments')
     expect(keys(pmFinance)).not.toContain('staff')
     expect(keys(admin)).toContain('staff')
+    expect(keys(pmFinance)).toContain('dashboard')
+    expect(keys(site)).not.toContain('dashboard')
   })
   it('groups by job', () => {
     expect(sectionsFor(admin).map((g) => g.key)).toEqual(['site', 'money', 'setup'])
@@ -41,7 +43,10 @@ describe('activeSection', () => {
     ['/projects/abc', 'projects'],
     ['/slips/abc/edit', 'slips'],
     ['/calendar', 'calendar'],
-    ['/reports/new', 'projects'],
+    ['/daily/new', 'projects'],
+    ['/daily/abc', 'projects'],
+    ['/reports/payments', 'reports'],
+    ['/dashboard', 'dashboard'],
   ])('%s belongs to %s', (path, key) => {
     expect(activeSection(path)).toBe(key)
   })
@@ -54,8 +59,8 @@ describe('activeSection', () => {
 describe('phoneBarFor', () => {
   it('follows what each role does most', () => {
     expect(phoneBarFor(site)).toEqual(['projects', 'slips', 'deliveries'])
-    expect(phoneBarFor(accounts)).toEqual(['bills', 'payments', 'parties'])
-    expect(phoneBarFor(admin)).toEqual(['projects', 'bills', 'slips'])
+    expect(phoneBarFor(accounts)).toEqual(['dashboard', 'bills', 'payments'])
+    expect(phoneBarFor(admin)).toEqual(['dashboard', 'projects', 'slips'])
   })
 })
 
@@ -78,7 +83,14 @@ describe('recordActionsFor', () => {
   })
   it('starts new records on the current project', () => {
     const [report] = recordActionsFor(site)
-    expect(recordHref(report, null)).toBe('/reports/new')
-    expect(recordHref(report, 'p1')).toBe('/reports/new?project=p1')
+    expect(recordHref(report, null)).toBe('/daily/new')
+    expect(recordHref(report, 'p1')).toBe('/daily/new?project=p1')
+  })
+})
+
+describe('homeFor', () => {
+  it('lands people who see money on the dashboard, others on projects', () => {
+    expect(homeFor(admin)).toBe('/dashboard')
+    expect(homeFor(site)).toBe('/projects')
   })
 })

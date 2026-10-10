@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react'
 import { Navigate, useLocation } from 'react-router'
 import { useAuth } from '../auth/AuthProvider'
+import { homeFor } from '../components/nav'
 import { Button, ErrorBanner, Spinner } from '../components/ui'
+import { useNavRole } from '../components/useNavRole'
 import { friendlyError } from '../lib/errors'
 import { t } from '../lib/i18n'
 
@@ -39,6 +41,11 @@ export function AdminOnly({ children }: { children: ReactNode }) {
 export function RedirectIfSignedIn({ children }: { children: ReactNode }) {
   const auth = useAuth()
   if (auth.loading) return null
-  if (auth.session && auth.company) return <Navigate to="/projects" replace />
+  if (auth.session && auth.company) return <Navigate to="/" replace />
   return <>{children}</>
+}
+
+/** "/" lands each person where they start the day (dashboard or projects). */
+export function Home() {
+  return <Navigate to={homeFor(useNavRole())} replace />
 }

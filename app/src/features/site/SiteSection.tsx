@@ -253,7 +253,7 @@ function ReportsByDay({ projectId }: { projectId: string }) {
   for (const r of reports.data ?? []) days.set(r.work_date, [...(days.get(r.work_date) ?? []), r])
 
   return (
-    <Card title="Daily reports" actions={canEnter(auth) && <ButtonLink variant="secondary" to={`/reports/new?project=${projectId}`}>Daily report</ButtonLink>}>
+    <Card title="Daily reports" actions={canEnter(auth) && <ButtonLink variant="secondary" to={`/daily/new?project=${projectId}`}>Daily report</ButtonLink>}>
       {reports.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void reports.refetch()}>{reports.error && friendlyError(reports.error)}</ErrorBanner>
       {reports.data?.length === 0 && <p className="text-sm text-subtle">No reports yet. Site staff send one each day from "+".</p>}
@@ -263,7 +263,7 @@ function ReportsByDay({ projectId }: { projectId: string }) {
           <ul>
             {list.map((r) => (
               <li key={r.id}>
-                <Link to={`/reports/${r.id}`} className="block min-h-11 rounded-md py-1.5 hover:bg-muted">
+                <Link to={`/daily/${r.id}`} className="block min-h-11 rounded-md py-1.5 hover:bg-muted">
                   <span className="block text-sm text-ink">{r.work_done}</span>
                   <span className="block text-xs text-subtle">
                     {[r.stages?.name, r.area, r.headcount != null && `${r.headcount} people`, memberName(members.data, r.created_by)].filter(Boolean).join(' · ')}

@@ -137,7 +137,9 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   // Project: cost from the bill, cash from the payment, unbilled 40 bags not yet cost
   await page.goto('/projects')
   await page.getByRole('link', { name: /Ward 5 school building/ }).click()
-  await expect(row(page, 'Recorded cost')).toContainText('Rs. 51,000')
+  // Summary strip and the contract and budget card show the same figure.
+  await expect(row(page, 'Recorded cost').first()).toContainText('Rs. 51,000')
+  await expect(row(page, 'Recorded cost').last()).toContainText('Rs. 51,000')
   await expect(row(page, 'Cash paid')).toContainText('Rs. 51,000')
   await expect(row(page, 'Still owed')).toContainText('Rs. 0')
   await expect(row(page, 'Budget used')).toContainText('5.1%')

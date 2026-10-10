@@ -7,6 +7,7 @@ import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { ROLE_LABELS } from '../../lib/labels'
 import { supabase, type Tables } from '../../lib/supabase'
+import { callFunction } from '../../lib/functions'
 
 export function SettingsPage() {
   const auth = useCompany()
@@ -16,6 +17,7 @@ export function SettingsPage() {
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <MyProfileCard />
         {auth.isAdmin ? <CompanySettingsForm company={auth.company} /> : <CompanySettingsView company={auth.company} />}
+        {auth.isAdmin && <ExportCard />}
       </div>
     </>
   )
@@ -158,6 +160,36 @@ function CompanySettingsView({ company: c }: { company: Tables<'companies'> }) {
       <Detail label="Phone">{c.phone}</Detail>
       <Detail label="Address">{c.address}</Detail>
       <Detail label="Order slip approval">{c.slip_approval_required ? 'Required' : 'Not required'}</Detail>
+    </Card>
+  )
+}
+
+/** Full company export (req §22): every record and photo in one zip, for the owner to keep. */
+function ExportCard() {
+  const auth = useCompany()
+  const [done, setDone] = useState('')
+  const run = useMutation({
+    mutationFn: () => callFunction<Blob>('company-export', { company_id: auth.companyId }),
+    onSuccess: (blob) => {
+      const name = `nirmankhata-export-${todayKathmandu()}.zip`
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = name
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      setDone(`Downloaded ${name} (${(blob.size / 1024 / 1024).toFixed(1)} MB).`)
+    },
+  })
+  return (
+    <Card title="Export all company data">
+      <p className="text-sm text-subtle">
+        One zip with a spreadsheet (CSV) for every kind of record, your staff list, all photos, and a manifest
+        to check nothing is missing. Keep it somewhere safe; it holds all your figures.
+      </p>
+      <div className="mt-3"><Button busy={run.isPending} onClick={() => { setDone(''); run.mutate() }}>Download export</Button></div>
+      <Status>{done && <Notice>{done}</Notice>}</Status>
+      <ErrorBanner>{run.error && friendlyError(run.error)}</ErrorBanner>
     </Card>
   )
 }

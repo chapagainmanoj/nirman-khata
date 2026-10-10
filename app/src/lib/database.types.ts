@@ -2421,6 +2421,9 @@ isOneToOne: false
 "delete_slip_draft":
 { Args: { "p_slip": string }; Returns: undefined
                            },
+"export_company_data":
+{ Args: { "p_company": string }; Returns: Json
+                           },
 "last_billed_rate":
 { Args: { "p_material": string,"p_supplier": string }; Returns: {
               "bill_date": string,"bill_no": string,"qty": number,"rate_paisa": number
