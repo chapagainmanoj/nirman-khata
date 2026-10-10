@@ -5,10 +5,11 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
 import { Badge, Button, ButtonLink, Card, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
-import { BILL_STATUS, settlementLabel } from '../../lib/labels'
+import { BILL_STATUS, billTitle, settlementLabel } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from '../parties/PartyParts'
 import { useBills, useSuppliers } from './api'
+import { usePartyBalances } from '../parties/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from './permissions'
 import { SupplierForm } from './SuppliersPage'
 
@@ -18,6 +19,7 @@ export function SupplierDetailPage() {
   const { supplierId = '' } = useParams()
   const auth = useCompany()
   const suppliers = useSuppliers(auth.companyId)
+  const balances = usePartyBalances(auth.companyId, 'supplier', auth.canSeeFinance)
   const [editing, setEditing] = useState(false)
   const [tab, setTab] = useState<Tab>(auth.canSeeFinance ? 'khata' : 'bills')
 
@@ -26,6 +28,9 @@ export function SupplierDetailPage() {
   const s = suppliers.data.find((x) => x.id === supplierId)
   if (!s) return <EmptyState title="Supplier not found"><Link className="text-brand" to="/suppliers">Back to suppliers</Link></EmptyState>
 
+  // The main action follows the situation: pay when money is owed, otherwise order.
+  const owes = (balances.data?.find((x) => x.party_id === supplierId)?.balance_paisa ?? 0) > 0
+  const payFirst = owes && canRecordPayments(auth)
   const tabs: Array<[Tab, string]> = auth.canSeeFinance
     ? [['khata', 'Khata'], ['bills', 'Bills'], ['payments', 'Payments']]
     : [['bills', 'My bill drafts']]
@@ -37,13 +42,13 @@ export function SupplierDetailPage() {
         subtitle={s.categories.join(' · ') || undefined}
         actions={
           <div className="flex flex-wrap gap-2">
-            {canEnter(auth) && <ButtonLink variant="secondary" to={`/slips/new?supplier=${s.id}`}>New slip</ButtonLink>}
+            {canRecordPayments(auth) && <ButtonLink variant={payFirst ? 'primary' : 'secondary'} to={`/payments/new?supplier=${s.id}`}>Record payment</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant={payFirst ? 'secondary' : 'primary'} to={`/slips/new?supplier=${s.id}`}>New slip</ButtonLink>}
             {canEnter(auth) && <ButtonLink variant="secondary" to={`/bills/new?supplier=${s.id}`}>Enter bill</ButtonLink>}
-            {canRecordPayments(auth) && <ButtonLink to={`/payments/new?supplier=${s.id}`}>Record payment</ButtonLink>}
           </div>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {editing ? (
           <div className="lg:col-span-2"><SupplierForm supplier={s} onDone={() => setEditing(false)} /></div>
         ) : (
@@ -85,7 +90,7 @@ function BillList({ supplierId }: { supplierId: string }) {
             <li key={b.id} className="border-b border-line last:border-0">
               <Link to={`/bills/${b.id}`} className="flex items-start justify-between gap-3 py-2">
                 <div className="min-w-0 text-sm">
-                  <div className="font-medium text-ink">Bill {b.bill_no}</div>
+                  <div className="font-medium text-ink">{billTitle(b.bill_no)}</div>
                   <div className="text-xs text-subtle"><DateText value={b.bill_date} display={auth.dateDisplay} /></div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">

@@ -32,11 +32,19 @@ export function BalanceCard({ kind, partyId }: { kind: PartyKind; partyId: strin
   const auth = useCompany()
   const balances = usePartyBalances(auth.companyId, kind, true)
   const b = balances.data?.find((x) => x.party_id === partyId)
+  const ob = usePartyOpeningBalance(partyId, true)
+  const fresh = !!b && b.charged_paisa === 0 && b.paid_paisa === 0 && b.balance_paisa === 0 && !ob.isPending && !ob.data
   return (
     <Card title="Balance">
       {balances.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void balances.refetch()}>{balances.error && friendlyError(balances.error)}</ErrorBanner>
-      {b && (
+      {fresh && (
+        <p className="text-sm text-subtle">
+          No {kind === 'supplier' ? 'bills' : PARTY[kind].charges} or payments yet.
+          {auth.seesAllProjects && ` Owed this ${PARTY[kind].one.toLowerCase()} from before? Set the opening balance from your old khata.`}
+        </p>
+      )}
+      {b && !fresh && (
         <>
           <div className="mb-2 text-lg"><BalanceText paisa={b.balance_paisa} /></div>
           <Detail label={kind === 'supplier' ? 'Bills and charges' : `Charged (${PARTY[kind].charges})`}>{formatNPR(b.charged_paisa)}</Detail>
@@ -45,12 +53,12 @@ export function BalanceCard({ kind, partyId }: { kind: PartyKind; partyId: strin
           {!b.company_level && <p className="mt-2 text-xs text-subtle">Only your projects are included.</p>}
         </>
       )}
-      {auth.seesAllProjects && <OpeningBalance kind={kind} partyId={partyId} />}
+      {auth.seesAllProjects && <OpeningBalance kind={kind} partyId={partyId} prompt={fresh} />}
     </Card>
   )
 }
 
-function OpeningBalance({ kind, partyId }: { kind: PartyKind; partyId: string }) {
+function OpeningBalance({ kind, partyId, prompt }: { kind: PartyKind; partyId: string; prompt?: boolean }) {
   const auth = useCompany()
   const ob = usePartyOpeningBalance(partyId, true)
   const refresh = useRefreshMoney()
@@ -94,7 +102,7 @@ function OpeningBalance({ kind, partyId }: { kind: PartyKind; partyId: string })
     )
   }
   if (!open) {
-    return <Button variant="ghost" className="mt-2" onClick={() => setOpen(true)}>Set opening balance</Button>
+    return <Button variant={prompt ? 'secondary' : 'ghost'} className="mt-2" onClick={() => setOpen(true)}>Set opening balance</Button>
   }
   return (
     <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
@@ -221,7 +229,7 @@ export function Khata({ kind, partyId, projectId: fixedProject }: { kind: PartyK
 
   return (
     <Card>
-      {!fixedProject && (
+      {!fixedProject && (projectId || !!khata.data?.length) && (
         <div className="mb-3">
           <Field label="Project" htmlFor="khata-project">
             <Select id="khata-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
@@ -320,11 +328,12 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, children 
   }
   return (
     <>
-      <div className="mt-6 mb-3 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+      {/* Scrolls sideways on narrow phones instead of squeezing the labels. */}
+      <div className="mt-6 mb-3 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
         {tabs.map(([key, text]) => (
           <button key={key} id={tabId(key)} type="button" role="tab" aria-selected={value === key} aria-controls={`${ids}-panel`}
             tabIndex={value === key ? 0 : -1} onClick={() => onChange(key)}
-            className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${value === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
+            className={`min-h-11 flex-1 shrink-0 whitespace-nowrap rounded-md px-3 text-sm font-medium ${value === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
             {text}
           </button>
         ))}

@@ -6,6 +6,7 @@ import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
 import { useProjects } from './api'
+import { GettingStarted } from './GettingStarted'
 
 export function ProjectsPage() {
   const auth = useCompany()
@@ -17,6 +18,7 @@ export function ProjectsPage() {
         title={t('projects.title')}
         actions={auth.isAdmin && <ButtonLink to="/projects/new">{t('projects.new')}</ButtonLink>}
       />
+      <GettingStarted />
       {projects.isPending && <Spinner />}
       {projects.error && <ErrorBanner onRetry={() => void projects.refetch()}>{friendlyError(projects.error)}</ErrorBanner>}
       {projects.data?.length === 0 && (

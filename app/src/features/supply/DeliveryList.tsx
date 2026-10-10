@@ -4,7 +4,7 @@ import { useState, type FormEvent } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { Attachments } from '../../components/Attachments'
 import { DateInput, DateText } from '../../components/DateInput'
-import { Badge, Button, ConfirmButton, ErrorBanner, Field, Input, Spinner } from '../../components/ui'
+import { Badge, Button, ButtonLink, ConfirmButton, ErrorBanner, Field, Input, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
@@ -77,6 +77,10 @@ function DeliveryItem({ d, showProject }: { d: Delivery; showProject: boolean })
         })}
       </ul>
       <div className="mt-2 flex flex-wrap gap-1">
+        {/* The next step for a delivery is its bill. */}
+        {canEnter(auth) && d.delivery_lines.some((l) => (st(l.id)?.billable_qty ?? 0) > 0) && (
+          <ButtonLink variant="secondary" to={`/bills/new?supplier=${d.supplier_id}&delivery=${d.id}`}>Enter bill for this</ButtonLink>
+        )}
         <Button variant="ghost" aria-expanded={open === 'photos'} onClick={() => setOpen(open === 'photos' ? null : 'photos')}>Challan photo</Button>
         {canEnter(auth) && (
           <Button variant="ghost" aria-expanded={open === 'return'} onClick={() => setOpen(open === 'return' ? null : 'return')}>Return items</Button>

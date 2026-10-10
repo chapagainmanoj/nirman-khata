@@ -165,7 +165,7 @@ export function useBills(filter: { supplierId?: string; companyId?: string }) {
       if (error) throw error
       // View columns are typed nullable; these are always set for a bill row.
       return data.map((b) => ({
-        ...b, id: b.id!, bill_no: b.bill_no!, bill_date: b.bill_date!, status: b.status!,
+        ...b, id: b.id!, bill_date: b.bill_date!, status: b.status!,
         lines_paisa: b.lines_paisa ?? 0, payable_paisa: b.payable_paisa ?? 0,
         credited_paisa: b.credited_paisa ?? 0, settled_paisa: b.settled_paisa ?? 0,
       }))

@@ -1657,14 +1657,14 @@ isOneToOne: false
                   ]
                 },"supplier_bill_charges": {
                   Row: {
-                    "company_id": string,"created_at": string,"created_by": string | null,"discount_paisa": number,"id": string,"total_paisa": number | null,"transport_paisa": number,"updated_at": string,"vat_paisa": number,"vat_rate_pct": number
+                    "company_id": string,"created_at": string,"created_by": string | null,"discount_paisa": number,"id": string,"paper_total_paisa": number | null,"total_paisa": number | null,"transport_paisa": number,"updated_at": string,"vat_paisa": number,"vat_rate_pct": number
                   }
                   ComputedFields: never
                   Insert: {
-                    "company_id": string,"created_at"?: string,"created_by"?: string | null,"discount_paisa"?: number,"id": string,"total_paisa"?: number | null,"transport_paisa"?: number,"updated_at"?: string,"vat_paisa"?: number,"vat_rate_pct"?: number
+                    "company_id": string,"created_at"?: string,"created_by"?: string | null,"discount_paisa"?: number,"id": string,"paper_total_paisa"?: number | null,"total_paisa"?: number | null,"transport_paisa"?: number,"updated_at"?: string,"vat_paisa"?: number,"vat_rate_pct"?: number
                   }
                   Update: {
-                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"discount_paisa"?: number,"id"?: string,"total_paisa"?: number | null,"transport_paisa"?: number,"updated_at"?: string,"vat_paisa"?: number,"vat_rate_pct"?: number
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"discount_paisa"?: number,"id"?: string,"paper_total_paisa"?: number | null,"total_paisa"?: number | null,"transport_paisa"?: number,"updated_at"?: string,"vat_paisa"?: number,"vat_rate_pct"?: number
                   }
                   Relationships: [
                     {
@@ -1689,14 +1689,14 @@ isOneToOne: false
                   ]
                 },"supplier_bills": {
                   Row: {
-                    "bill_date": string,"bill_no": string,"company_id": string,"cost_date": string,"created_at": string,"created_by": string | null,"due_date": string | null,"id": string,"notes": string | null,"posted_at": string | null,"posted_by": string | null,"status": Database["public"]['Enums']["bill_status"],"submitted_at": string | null,"supplier_id": string,"updated_at": string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
+                    "bill_date": string,"bill_no": string | null,"company_id": string,"cost_date": string,"created_at": string,"created_by": string | null,"due_date": string | null,"id": string,"notes": string | null,"posted_at": string | null,"posted_by": string | null,"status": Database["public"]['Enums']["bill_status"],"submitted_at": string | null,"supplier_id": string,"updated_at": string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "bill_date": string,"bill_no": string,"company_id": string,"cost_date": string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"id"?: string,"notes"?: string | null,"posted_at"?: string | null,"posted_by"?: string | null,"status"?: Database["public"]['Enums']["bill_status"],"submitted_at"?: string | null,"supplier_id": string,"updated_at"?: string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
+                    "bill_date": string,"bill_no"?: string | null,"company_id": string,"cost_date": string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"id"?: string,"notes"?: string | null,"posted_at"?: string | null,"posted_by"?: string | null,"status"?: Database["public"]['Enums']["bill_status"],"submitted_at"?: string | null,"supplier_id": string,"updated_at"?: string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
                   }
                   Update: {
-                    "bill_date"?: string,"bill_no"?: string,"company_id"?: string,"cost_date"?: string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"id"?: string,"notes"?: string | null,"posted_at"?: string | null,"posted_by"?: string | null,"status"?: Database["public"]['Enums']["bill_status"],"submitted_at"?: string | null,"supplier_id"?: string,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
+                    "bill_date"?: string,"bill_no"?: string | null,"company_id"?: string,"cost_date"?: string,"created_at"?: string,"created_by"?: string | null,"due_date"?: string | null,"id"?: string,"notes"?: string | null,"posted_at"?: string | null,"posted_by"?: string | null,"status"?: Database["public"]['Enums']["bill_status"],"submitted_at"?: string | null,"supplier_id"?: string,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
                   }
                   Relationships: [
                     {

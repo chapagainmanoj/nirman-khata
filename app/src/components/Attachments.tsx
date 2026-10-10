@@ -1,7 +1,7 @@
 // Photos on a record: challan, bill, payment proof (design §3.7). Files are immutable and
 // read through 5-minute signed URLs; who may see or add them follows the owning record.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useCompany } from '../auth/AuthProvider'
 import { friendlyError } from '../lib/errors'
 import { newId } from '../lib/ids'
@@ -22,9 +22,85 @@ const WHAT: Record<OwnerColumn, string> = {
   charge_id: 'Claim', labour_cost_id: 'Labour', expense_id: 'Receipt',
 }
 
+/** A photo picked before its record exists. Blobs survive in the device draft (IndexedDB). */
+export type PendingPhoto = { id: string; name: string; blob: Blob }
+
+export async function uploadAttachment(companyId: string, owner: AttachmentOwner, photo: { name: string; blob: Blob }) {
+  const id = newId()
+  const { error } = await supabase.from('attachments').insert({
+    id, company_id: companyId, ...owner, kind: 'photo',
+    file_name: photo.name, content_type: photo.blob.type || 'image/jpeg', size_bytes: photo.blob.size,
+  })
+  if (error) throw error
+  const upload = await supabase.storage
+    .from(BUCKET)
+    .upload(`${companyId}/${id}`, photo.blob, { upsert: false, contentType: photo.blob.type || 'image/jpeg' })
+  if (upload.error) throw upload.error
+  const marked = await supabase.rpc('mark_attachment_uploaded', { p_attachment: id })
+  if (marked.error) throw marked.error
+}
+
+/** Upload photos taken before saving, once the record exists. Returns how many failed. */
+export async function uploadPending(companyId: string, owner: AttachmentOwner, photos: PendingPhoto[]): Promise<number> {
+  let failed = 0
+  for (const p of photos) {
+    try {
+      await uploadAttachment(companyId, owner, p)
+    } catch {
+      failed++
+    }
+  }
+  return failed
+}
+
+/**
+ * Take photos while filling a form (paper first: the challan or bill is in hand before any typing).
+ * They are uploaded after the record saves; until then they stay with the device draft.
+ */
+export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Photo', large }: {
+  value: PendingPhoto[]; onChange: (photos: PendingPhoto[]) => void; label?: string; what?: string; large?: boolean
+}) {
+  const [busy, setBusy] = useState(false)
+  const urls = useMemo(() => Object.fromEntries(value.map((p) => [p.id, URL.createObjectURL(p.blob)])), [value])
+  useEffect(() => () => Object.values(urls).forEach((u) => URL.revokeObjectURL(u)), [urls])
+
+  async function pick() {
+    const file = await platform.pickPhoto()
+    if (!file) return
+    setBusy(true)
+    try {
+      const blob = await compressImage(file)
+      onChange([...value, { id: newId(), name: file.name, blob }])
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      {value.length > 0 && (
+        <ul className={large ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
+          {value.map((p, i) => (
+            <li key={p.id} className="flex flex-col items-center gap-1">
+              {urls[p.id] && <img src={urls[p.id]} alt={`${what} ${i + 1} of ${value.length}`} className={large ? IMG_LARGE : IMG_SMALL} />}
+              <Button type="button" variant="ghost" aria-label={`Remove ${what.toLowerCase()} ${i + 1}`}
+                onClick={() => onChange(value.filter((x) => x.id !== p.id))}>Remove</Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div><Button type="button" variant="secondary" busy={busy} onClick={() => void pick()}>{value.length ? 'Add another photo' : label}</Button></div>
+    </div>
+  )
+}
+
+const IMG_SMALL = 'size-24 rounded-lg border border-line object-cover'
+// Large enough to read the paper while typing it in.
+const IMG_LARGE = 'max-h-[70vh] w-full rounded-lg border border-line object-contain'
+
 export function Attachments({
-  owner, canAdd, canRemove, label = 'Add photo',
-}: { owner: AttachmentOwner; canAdd: boolean; canRemove?: boolean; label?: string }) {
+  owner, canAdd, canRemove, label = 'Add photo', large,
+}: { owner: AttachmentOwner; canAdd: boolean; canRemove?: boolean; label?: string; large?: boolean }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
   const [column, ownerId] = Object.entries(owner)[0] as [OwnerColumn, string]
@@ -58,18 +134,7 @@ export function Attachments({
       if (!file) return false
       setStatus('Uploading…')
       const blob = await compressImage(file)
-      const id = newId()
-      const { error } = await supabase.from('attachments').insert({
-        id, company_id: auth.companyId, ...owner, kind: 'photo',
-        file_name: file.name, content_type: blob.type || file.type, size_bytes: blob.size,
-      })
-      if (error) throw error
-      const upload = await supabase.storage
-        .from(BUCKET)
-        .upload(`${auth.companyId}/${id}`, blob, { upsert: false, contentType: blob.type || file.type })
-      if (upload.error) throw upload.error
-      const marked = await supabase.rpc('mark_attachment_uploaded', { p_attachment: id })
-      if (marked.error) throw marked.error
+      await uploadAttachment(auth.companyId, owner, { name: file.name, blob })
       return true
     },
     onSuccess: (added) => {
@@ -92,15 +157,15 @@ export function Attachments({
   return (
     <div className="flex flex-col gap-2">
       {files.data && files.data.length > 0 && (
-        <ul className="flex flex-wrap gap-2">
+        <ul className={large ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
           {files.data.map((f, i, all) => {
             const name = `${WHAT[column]} photo ${i + 1} of ${all.length}`
             return (
-            <li key={f.id} className="flex flex-col items-center gap-1">
+            <li key={f.id} className={large ? 'flex w-full flex-col items-center gap-1' : 'flex flex-col items-center gap-1'}>
               {f.url && (
-                <a href={f.url} target="_blank" rel="noreferrer" className="block">
+                <a href={f.url} target="_blank" rel="noreferrer" className={large ? 'block w-full' : 'block'}>
                   {f.content_type?.startsWith('image/') ? (
-                    <img src={f.url} alt={name} className="size-24 rounded-lg border border-line object-cover" />
+                    <img src={f.url} alt={name} className={large ? IMG_LARGE : IMG_SMALL} />
                   ) : (
                     <span className="flex size-24 items-center justify-center break-all rounded-lg border border-line p-1 text-center text-xs text-subtle">
                       {f.file_name ?? name}

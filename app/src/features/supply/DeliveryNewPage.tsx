@@ -5,9 +5,9 @@ import { useState, type FormEvent } from 'react'
 import { useForm } from 'react-hook-form'
 import { useNavigate, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { Attachments } from '../../components/Attachments'
+import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
-import { Button, ButtonLink, Card, ErrorBanner, Field, Input, Notice, PageHeader, Select, Spinner } from '../../components/ui'
+import { Button, ButtonLink, Card, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -42,6 +42,7 @@ type Values = {
   reason: string
   note: string
   lines: Line[]
+  photos: PendingPhoto[] // challan photos taken before saving; uploaded with the delivery
 }
 
 export function DeliveryNewPage() {
@@ -81,13 +82,14 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
   const form = useForm<Values>({
     defaultValues: {
       id: newId(), supplierId: slip?.slip.supplier_id ?? supplierParam, projectId: projectParam, date: todayKathmandu(),
-      challan: '', reason: '', note: '', lines: slip ? slipLines(projectParam) : [blank()],
+      challan: '', reason: '', note: '', lines: slip ? slipLines(projectParam) : [blank()], photos: [],
     },
   })
   const draft = useFormDraft(form, {
     userId: auth.userId, companyId: auth.companyId, formKey: `delivery-${slip?.slip.id ?? 'no-slip'}-${projectParam}`,
   })
-  const { id, supplierId, projectId, date, challan, reason, note, lines } = form.watch()
+  const { id, supplierId, projectId, date, challan, reason, note, lines, photos } = form.watch()
+  const [photoFailed, setPhotoFailed] = useState(0)
   const set = <K extends keyof Values>(k: K) => (value: Values[K]) => form.setValue(k, value as never)
   const [setSupplierId, setProjectId, setDate, setChallan, setReason, setNote, setLines] =
     [set('supplierId'), set('projectId'), set('date'), set('challan'), set('reason'), set('note'), set('lines')]
@@ -95,7 +97,8 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
   const slipProjects = slip ? [...new Set(slip.lines.map((l) => l.project_id))] : []
 
   const save = useMutation({
-    mutationFn: () => rpc('record_delivery', { p_delivery: {
+    mutationFn: async () => {
+      await rpc('record_delivery', { p_delivery: {
       id, supplier_id: supplierId, project_id: projectId, slip_id: slip?.slip.id ?? null, challan_no: challan,
       receipt_date: date, no_slip_reason: slip ? null : reason, note,
       lines: lines.filter((l) => Number(l.received) > 0).map((l) => ({
@@ -104,8 +107,11 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
         unit_id: l.unit_id, unit_note: l.unit_note || null, received_qty: Number(l.received),
         rejected_qty: Number(l.rejected) || 0, issue: l.issue || null, note: l.note || null,
       })),
-    } }),
-    onSuccess: async () => {
+      } })
+      return uploadPending(auth.companyId, { delivery_id: id }, photos)
+    },
+    onSuccess: async (failed) => {
+      setPhotoFailed(failed)
       await draft.clear()
       setSaved(true)
       await queryClient.invalidateQueries({ queryKey: ['deliveries'] })
@@ -138,7 +144,8 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
       <>
         <PageHeader title="Delivery recorded" />
         <Card title="Challan photo">
-          <p className="mb-3 text-sm text-subtle">Take a photo of the challan so accounts can match the bill.</p>
+          {photoFailed > 0 && <div className="mb-3"><Notice>A photo did not upload. Take it again.</Notice></div>}
+          {photos.length === 0 && <p className="mb-3 text-sm text-subtle">Take a photo of the challan so accounts can match the bill.</p>}
           <Attachments owner={{ delivery_id: id }} canAdd label="Take challan photo" />
         </Card>
         <div className="mt-4 flex gap-2">
@@ -153,6 +160,9 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
       <PageHeader title="Record delivery" subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : 'Without an order slip'} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved delivery.</Notice></div>}
       <form onSubmit={submit} className="flex flex-col gap-4">
+        <Card title="Challan photo">
+          <PhotoPicker value={photos} onChange={(v) => form.setValue('photos', v)} label="Take challan photo" what="Challan photo" />
+        </Card>
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
             {!slip && (
@@ -240,10 +250,10 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
         {!slip && <div><Button type="button" variant="secondary" onClick={() => setLines([...lines, blank()])}>Add another item</Button></div>}
         <Field label="Note" htmlFor="dl-note"><Input id="dl-note" value={note} onChange={(e) => setNote(e.target.value)} /></Field>
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
-        <div className="flex gap-2">
+        <FormActions>
           <Button type="submit" busy={save.isPending}>Save delivery</Button>
-          <Button type="button" variant="secondary" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
-        </div>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+        </FormActions>
       </form>
     </>
   )

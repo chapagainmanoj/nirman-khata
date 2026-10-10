@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
-  addDays, adToBs, bsMonthDays, bsToAd, dateRange, fiscalYear, fiscalYearRange, formatAd, formatBs, formatDual, todayKathmandu,
+  addDays, adToBs, bsMonthDays, bsToAd, dateRange, fiscalYear, fiscalYearRange, formatAd, formatBs, formatDateTime, formatDual, todayKathmandu,
 } from './dates'
 
 // Reference dates from the official calendar (Nepali new year and fiscal-year start).
@@ -67,8 +67,14 @@ describe('formatting', () => {
   })
 
   it('shows both calendars with the preferred one first', () => {
-    expect(formatDual('2026-04-14', 'bs')).toBe('2083-01-01 BS · 14 Apr 2026')
-    expect(formatDual('2026-04-14', 'ad')).toBe('14 Apr 2026 · 2083-01-01 BS')
+    expect(formatDual('2026-04-14', 'bs')).toBe('1 Baishakh 2083 · 14 Apr 2026')
+    expect(formatDual('2026-04-14', 'ad')).toBe('14 Apr 2026 · 1 Baishakh 2083')
+  })
+
+  it('shows a moment as a Kathmandu date and time without seconds', () => {
+    // 20:05 UTC on 9 Oct is 1:50 am on 10 Oct in Kathmandu (UTC+5:45).
+    expect(formatDateTime('2026-10-09T20:05:29Z', 'bs')).toBe('24 Asoj 2083, 1:50 am')
+    expect(formatDateTime('2026-10-09T20:05:29Z', 'ad')).toBe('10 Oct 2026, 1:50 am')
   })
 })
 

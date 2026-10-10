@@ -61,7 +61,7 @@ export function RevisionsCard({ projectId, members }: { projectId: string; membe
           <li key={r.id} className="border-b border-line py-3 last:border-0">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2">
-                <Badge tone={r.kind === 'Contract' ? 'info' : 'neutral'}>{r.kind}</Badge>
+                <Badge tone="neutral">{r.kind}</Badge>
                 <span className="font-semibold text-ink tabular-nums">{formatNPR(r.amount)}</span>
               </div>
               <span className="text-sm text-subtle">from <DateText value={r.effective_date} display={auth.dateDisplay} dual /></span>

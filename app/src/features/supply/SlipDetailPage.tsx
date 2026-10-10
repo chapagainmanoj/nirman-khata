@@ -6,7 +6,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
 import { ReasonButton } from '../../components/ReasonButton'
 import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Notice, PageHeader, Spinner, Status } from '../../components/ui'
-import { formatDual } from '../../lib/dates'
+import { formatDateTime, formatDual } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
@@ -27,6 +27,7 @@ export function SlipDetailPage() {
   const projects = useProjects(auth.companyId)
   const members = useMembers(auth.companyId)
   const [shareNote, setShareNote] = useState('')
+  const [moreActions, setMoreActions] = useState(false)
 
   const act = useMutation({
     mutationFn: async (fn: () => Promise<unknown>) => fn(),
@@ -43,6 +44,12 @@ export function SlipDetailPage() {
   const { slip: s, lines, perms } = slip.data
   const [statusLabel, statusTone] = SLIP_STATUS[s.status]
   const [fLabel, fTone] = FULFILMENT[perms?.fulfilment ?? 'not_received']
+  // "Received 60 / 640 bags" when every line uses one unit; otherwise the badge says enough.
+  const allLines = lines
+  const oneUnit = allLines.length > 0 && allLines.every((l) => l.unit_id === allLines[0].unit_id)
+  const received = oneUnit && allLines.some((l) => l.progress)
+    ? `${qty(allLines.reduce((t, l) => t + Number(l.progress?.received_qty ?? 0), 0))} / ${qty(allLines.reduce((t, l) => t + Number(l.qty), 0))} ${allLines[0].units?.name ?? ''}`
+    : ''
   const project = (id: string) => projects.data?.find((p) => p.id === id)
   const byProject = [...new Set(lines.map((l) => l.project_id))].map((id) => ({ id, lines: lines.filter((l) => l.project_id === id) }))
   const lineName = (l: (typeof lines)[number]) => l.materials?.name ?? l.material_text ?? 'Material'
@@ -76,11 +83,16 @@ export function SlipDetailPage() {
       <PageHeader
         title={`${s.number} · ${s.suppliers?.name ?? ''}`}
         subtitle={
-          <span className="flex flex-wrap items-center gap-2">
-            <Badge tone={statusTone}>{statusLabel}</Badge>
-            {s.status === 'approved' && <Badge tone={fTone}>{fLabel}</Badge>}
-            {s.status === 'approved' && <Badge tone={s.sent_at ? 'info' : 'warn'}>{s.sent_at ? 'Marked sent' : 'Not sent'}</Badge>}
-          </span>
+          s.status === 'approved' ? (
+            // One progress line instead of three badges: Approved → Sent → Received.
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" aria-label="Progress">
+              <li className="font-medium text-good-ink">✓ {statusLabel}</li>
+              <li aria-hidden className="text-subtle">→</li>
+              <li className={s.sent_at ? 'font-medium text-good-ink' : 'font-medium text-warn-ink'}>{s.sent_at ? '✓ Sent' : 'Not sent yet'}</li>
+              <li aria-hidden className="text-subtle">→</li>
+              <li><Badge tone={fTone}>{fLabel}</Badge>{received && <span className="ml-1 text-subtle tabular-nums">{received}</span>}</li>
+            </ol>
+          ) : <Badge tone={statusTone}>{statusLabel}</Badge>
         }
       />
       {s.status === 'rejected' && s.rejected_reason && <div className="mb-4"><Notice>Rejected: {s.rejected_reason}</Notice></div>}
@@ -111,14 +123,17 @@ export function SlipDetailPage() {
             Reject
           </ReasonButton>
         )}
-        {perms?.can_close_short && (
+        {(perms?.can_close_short || perms?.can_cancel) && !moreActions && (
+          <div><Button variant="ghost" aria-expanded={false} onClick={() => setMoreActions(true)}>More actions ▾</Button></div>
+        )}
+        {perms?.can_close_short && moreActions && (
           <ReasonButton title="Close short" hint="e.g. Supplier out of stock, remaining not needed" confirmLabel="Close slip"
             busy={act.isPending} error={err}
             onConfirm={(reason) => act.mutate(() => rpc('close_slip_short', { p_slip: s.id, p_reason: reason }))}>
             Close short
           </ReasonButton>
         )}
-        {perms?.can_cancel && (
+        {perms?.can_cancel && moreActions && (
           <ReasonButton title="Cancel this slip" confirmLabel="Cancel slip" variant="danger" busy={act.isPending} error={err}
             onConfirm={(reason) => act.mutate(() => rpc('cancel_slip', { p_slip: s.id, p_reason: reason }))}>
             Cancel slip
@@ -128,11 +143,11 @@ export function SlipDetailPage() {
       <Status className="mb-4 text-sm text-subtle">{shareNote}</Status>
       <ErrorBanner>{err}</ErrorBanner>
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {byProject.map((g) => (
           <Card key={g.id} title={`${project(g.id)?.code ?? ''} · ${project(g.id)?.name ?? 'Project'}`}
             actions={perms?.can_record_delivery && (
-              <ButtonLink variant="ghost" to={`/deliveries/new?slip=${s.id}&project=${g.id}`}>Record delivery</ButtonLink>
+              <ButtonLink variant="secondary" to={`/deliveries/new?slip=${s.id}&project=${g.id}`}>Record delivery</ButtonLink>
             )}>
             <ul>
               {g.lines.map((l) => (
@@ -146,9 +161,14 @@ export function SlipDetailPage() {
                     <div className="shrink-0 text-right text-sm tabular-nums">
                       <div className="font-semibold text-ink">{qty(l.qty)} {l.units?.name}{l.unit_note && <span className="font-normal text-subtle"> {l.unit_note}</span>}</div>
                       {s.status === 'approved' && l.progress && (
-                        <div className="text-xs text-subtle">
-                          Received {qty(l.progress.received_qty)} · Pending {qty(l.progress.remaining_qty)}
-                        </div>
+                        <>
+                          <div className="text-xs text-subtle">
+                            Received {qty(l.progress.received_qty)} · Pending {qty(l.progress.remaining_qty)}
+                          </div>
+                          <div className="mt-1 ml-auto h-1.5 w-24 overflow-hidden rounded-full bg-muted" aria-hidden>
+                            <div className="h-full rounded-full bg-good-ink" style={{ width: `${Math.min(100, (Number(l.progress.received_qty) / Number(l.qty)) * 100)}%` }} />
+                          </div>
+                        </>
                       )}
                       {l.progress?.over_received && <Badge tone="warn">More than ordered</Badge>}
                     </div>
@@ -160,13 +180,13 @@ export function SlipDetailPage() {
         ))}
         <Card title="Slip">
           <Detail label="Requested"><DateText value={s.request_date} display={auth.dateDisplay} dual /></Detail>
-          <Detail label="Needed by"><DateText value={s.required_date} display={auth.dateDisplay} dual /></Detail>
+          <Detail label="Needed by">{s.required_date && <DateText value={s.required_date} display={auth.dateDisplay} dual />}</Detail>
           <Detail label="Requested by">{memberName(members.data, s.created_by)}</Detail>
           {s.decided_by && <Detail label={s.status === 'rejected' ? 'Rejected by' : 'Approved by'}>{memberName(members.data, s.decided_by)}</Detail>}
           <Detail label="Site contact">{s.site_contact}</Detail>
           <Detail label="Instructions">{s.delivery_instructions}</Detail>
           <Detail label="Notes">{s.notes}</Detail>
-          {s.sent_at && <Detail label="Sent">{new Date(s.sent_at).toLocaleString('en-IN', { timeZone: 'Asia/Kathmandu' })}</Detail>}
+          {s.sent_at && <Detail label="Sent">{formatDateTime(s.sent_at, auth.dateDisplay)}</Detail>}
         </Card>
       </div>
 

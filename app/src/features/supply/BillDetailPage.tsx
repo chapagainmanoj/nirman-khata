@@ -2,7 +2,7 @@
 // payable per line, settlement per project, credits and reversal (req §11, §12, §20).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Attachments } from '../../components/Attachments'
 import { DateInput, DateText } from '../../components/DateInput'
@@ -12,12 +12,12 @@ import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, Err
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
-import { BILL_STATUS, settlementLabel } from '../../lib/labels'
+import { BILL_STATUS, billTitle, settlementLabel } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { memberName, useHeadings, useMembers, useProjects } from '../projects/api'
 import { rpc, useBill, useBillPreview, useBillProjectStatus, useCredits, usePosting, useRefreshMoney } from './api'
-import { canEnter, canPost } from './permissions'
+import { canEnter, canPost, canRecordPayments } from './permissions'
 
 const qty = (n: number | null) => (n === null ? '' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 }))
 
@@ -27,6 +27,8 @@ export function BillDetailPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const bill = useBill(billId)
+  // From "Save and post": the draft is saved, but posting may have been refused by a check.
+  const arrived = (useLocation().state as { postError?: string; failedPhotos?: number } | null) ?? {}
   const projects = useProjects(auth.companyId)
   const headings = useHeadings(auth.companyId)
   const members = useMembers(auth.companyId)
@@ -66,7 +68,7 @@ export function BillDetailPage() {
   return (
     <>
       <PageHeader
-        title={`Bill ${b.bill_no}`}
+        title={billTitle(b.bill_no)}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Link className="text-brand" to={`/suppliers/${b.supplier_id}`}>{b.suppliers?.name}</Link>
@@ -78,6 +80,8 @@ export function BillDetailPage() {
           </span>
         }
       />
+      {arrived.postError && isDraft && <div className="mb-4"><Notice>Saved as a draft, not posted: {arrived.postError}</Notice></div>}
+      {!!arrived.failedPhotos && <div className="mb-4"><Notice>The bill is saved, but a photo did not upload. Take it again below.</Notice></div>}
       {b.status === 'under_review' && !canPost(auth) && <div className="mb-4"><Notice>Sent to Accounts for posting.</Notice></div>}
       {b.status === 'draft' && !canPost(auth) && b.created_by === auth.userId && (
         <div className="mb-4"><Notice>Draft. Send it to Accounts when the lines and photo are complete.</Notice></div>
@@ -100,8 +104,8 @@ export function BillDetailPage() {
             Delete
           </ConfirmButton>
         )}
-        {b.status === 'posted' && canPost(auth) && (
-          <ButtonLink variant="secondary" to={`/payments/new?supplier=${b.supplier_id}&bill=${b.id}`}>Record payment</ButtonLink>
+        {b.status === 'posted' && canRecordPayments(auth) && outstanding > 0 && (
+          <ButtonLink to={`/payments/new?supplier=${b.supplier_id}&bill=${b.id}`}>Pay this bill</ButtonLink>
         )}
       </div>
       <ErrorBanner>{(act.error || post.error) && friendlyError(act.error || post.error)}</ErrorBanner>
@@ -119,7 +123,7 @@ export function BillDetailPage() {
         </Card>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card title="Lines" className="lg:col-span-2">
           {lines.length === 0 && <p className="text-sm text-subtle">No lines you can see.</p>}
           <ul>
@@ -165,7 +169,7 @@ export function BillDetailPage() {
         <Card title="Bill">
           <Detail label="Bill date"><DateText value={b.bill_date} display={auth.dateDisplay} dual /></Detail>
           {b.cost_date !== b.bill_date && <Detail label="Cost date"><DateText value={b.cost_date} display={auth.dateDisplay} dual /></Detail>}
-          <Detail label="Due"><DateText value={b.due_date} display={auth.dateDisplay} /></Detail>
+          <Detail label="Due">{b.due_date && <DateText value={b.due_date} display={auth.dateDisplay} />}</Detail>
           <Detail label="Entered by">{memberName(members.data, b.created_by)}</Detail>
           {b.posted_by && <Detail label="Posted by">{memberName(members.data, b.posted_by)}</Detail>}
           <Detail label="Notes">{b.notes}</Detail>

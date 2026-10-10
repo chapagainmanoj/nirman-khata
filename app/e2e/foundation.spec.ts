@@ -44,7 +44,7 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await planned.getByLabel('Year').selectOption('2083')
   await planned.getByLabel('Month').selectOption({ label: 'Shrawan' })
   await planned.getByLabel('Day').selectOption('1')
-  await expect(page.getByText('2083-04-01 BS · 17 Jul 2026')).toBeVisible()
+  await expect(page.getByText('1 Shrawan 2083 · 17 Jul 2026')).toBeVisible()
   // Switch to AD shows a normal date input with the same date
   await planned.getByRole('button', { name: 'Switch to AD calendar' }).click()
   await expect(page.locator('#planned_start')).toHaveValue('2026-07-17')
@@ -54,7 +54,7 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await expect(page.getByRole('heading', { name: 'Ward 5 school building' })).toBeVisible()
   await expect(page.getByText('Current contract').locator('..')).toContainText('Rs. 50,00,000')
   await expect(page.getByText('Current spending budget').locator('..')).toContainText('Rs. 40,00,000')
-  await expect(page.getByText('Planned start').locator('..')).toContainText('2083-04-01 BS')
+  await expect(page.getByText('Planned start').locator('..')).toContainText('1 Shrawan 2083')
   await page.screenshot(shots('03-project-detail'))
 
   // A second project the staff member will not be assigned to

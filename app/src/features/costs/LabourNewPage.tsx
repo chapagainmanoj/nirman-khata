@@ -10,7 +10,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Attachments } from '../../components/Attachments'
 import { DateInput, DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Input, Notice, PageHeader, Select } from '../../components/ui'
+import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, FormActions, Input, MoreDetails, Notice, PageHeader, Select } from '../../components/ui'
 import { addDays, dateRange, todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -170,13 +170,13 @@ export function LabourNewPage() {
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Project" htmlFor="lb-project">
-              <Select id="lb-project" {...register('project_id')}>
+              <Select id="lb-project" value={watch('project_id')} onChange={(e) => form.setValue('project_id', e.target.value, { shouldDirty: true })}>
                 <option value="">Choose project</option>
                 {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
             <Field label="Crew" htmlFor="lb-crew">
-              <Select id="lb-crew" {...register('crew_id')}>
+              <Select id="lb-crew" value={watch('crew_id')} onChange={(e) => form.setValue('crew_id', e.target.value, { shouldDirty: true })}>
                 <option value="">Choose crew</option>
                 {crewOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
@@ -206,18 +206,24 @@ export function LabourNewPage() {
                   <DateInput id="lb-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
                 )} />
               </Field>
-              <Field label="People" htmlFor="lb-head" hint="Optional"><Input id="lb-head" inputMode="numeric" {...register('headcount')} /></Field>
-              <Field label="Person-days" htmlFor="lb-pd" hint="Optional, e.g. 6.5">
-                <Input id="lb-pd" inputMode="decimal" {...register('person_days', { onChange: (e) => recalc(e.target.value, getValues('rate')) })} />
-              </Field>
-              <Field label="Rate per day" htmlFor="lb-rate" hint="Optional">
-                <Controller control={control} name="rate" render={({ field }) => (
-                  <MoneyInput id="lb-rate" value={field.value} onChange={(e) => { field.onChange(e); recalc(getValues('person_days'), e.target.value) }} />
-                )} />
-              </Field>
               <Field label="Labour cost for the day" htmlFor="lb-amount">
                 <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="lb-amount" value={field.value} onChange={field.onChange} />} />
               </Field>
+              <Field label="People" htmlFor="lb-head" hint="Optional"><Input id="lb-head" inputMode="numeric" {...register('headcount')} /></Field>
+              <div className="sm:col-span-2">
+                <MoreDetails summary="Person-days and rate, to work out the cost" open={!!(v.person_days || v.rate)}>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Person-days" htmlFor="lb-pd" hint="e.g. 6.5">
+                      <Input id="lb-pd" inputMode="decimal" {...register('person_days', { onChange: (e) => recalc(e.target.value, getValues('rate')) })} />
+                    </Field>
+                    <Field label="Rate per day" htmlFor="lb-rate">
+                      <Controller control={control} name="rate" render={({ field }) => (
+                        <MoneyInput id="lb-rate" value={field.value} onChange={(e) => { field.onChange(e); recalc(getValues('person_days'), e.target.value) }} />
+                      )} />
+                    </Field>
+                  </div>
+                </MoreDetails>
+              </div>
             </div>
           ) : (
             <>
@@ -280,7 +286,7 @@ export function LabourNewPage() {
                     {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                   </Select>
                 </Field>
-                <Field label="Reference" htmlFor="lb-ref" hint="Optional"><Input id="lb-ref" {...register('reference')} /></Field>
+                {v.method !== 'cash' && <Field label="Reference" htmlFor="lb-ref" hint="Optional"><Input id="lb-ref" {...register('reference')} /></Field>}
               </div>
             )}
           </Card>
@@ -296,10 +302,10 @@ export function LabourNewPage() {
           </Notice>
         )}
         <ErrorBanner>{error || (!duplicate && save.error && friendlyError(save.error))}</ErrorBanner>
-        <div className="flex gap-2">
+        <FormActions>
           <Button type="submit" busy={save.isPending}>Save labour</Button>
-          <Button type="button" variant="secondary" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
-        </div>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+        </FormActions>
       </form>
     </>
   )

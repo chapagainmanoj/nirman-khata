@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
+import { formatDateTime } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
 
@@ -59,7 +60,7 @@ export function NotificationsPage() {
               className={`block rounded-xl border bg-surface p-3 hover:border-brand ${n.read_at ? 'border-line' : 'border-brand'}`}>
               <div className="font-medium text-ink">{n.title}</div>
               {n.body && <div className="text-sm text-subtle">{n.body}</div>}
-              <div className="mt-1 text-xs text-subtle">{new Date(n.created_at).toLocaleString('en-IN', { timeZone: 'Asia/Kathmandu' })}</div>
+              <div className="mt-1 text-xs text-subtle">{formatDateTime(n.created_at, auth.dateDisplay)}</div>
             </Link>
           </li>
         ))}

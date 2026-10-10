@@ -62,6 +62,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
 
   // An expense to a payee typed for the first time, paid now.
   await page.goto(projectUrl)
+  await page.getByRole('tab', { name: 'Labour & costs' }).click()
   await page.getByRole('link', { name: 'Enter expense' }).click()
   await page.getByLabel('Amount').fill('4,500')
   await page.getByLabel('What for').fill('JCB 3 hours')
@@ -80,6 +81,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await expect(page.getByRole('link', { name: /Tamang Plaster/ })).toBeVisible()
 
   await page.goto(projectUrl)
+  await page.getByRole('tab', { name: 'Subcontract' }).click()
   await page.getByRole('link', { name: 'New work package' }).click()
   await page.getByLabel('Subcontractor').selectOption({ label: 'Tamang Plaster' })
   await page.getByLabel('Work', { exact: true }).fill('Plaster, ground floor')
@@ -124,7 +126,11 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await expect(row(page, 'Cash paid')).toContainText('Rs. 30,500')
   await expect(row(page, 'Still owed')).toContainText('Rs. 17,000')
   await expect(page.getByText('Shows labour you entered')).toBeHidden()
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Rs. 47,500')
   await page.screenshot(shots('m3-04-project'))
+  await page.getByRole('tab', { name: 'Labour & costs' }).click()
+  await expect(page.getByText('JCB 3 hours')).toBeVisible()
+  await page.screenshot(shots('m3-04b-project-labour'))
 
   // The crew khata shows the unpaid week.
   await page.goto('/crews')

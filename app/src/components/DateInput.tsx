@@ -1,7 +1,7 @@
 // Date picker with a BS/AD switch (req v1.1 §3.3). Either way the value is an
 // AD "YYYY-MM-DD" string, so the form never deals with BS.
 import { useState } from 'react'
-import { adToBs, bsMonthDays, bsToAd, BS_MONTHS, formatDate, formatDual, todayKathmandu, type DateDisplay } from '../lib/dates'
+import { addDays, adToBs, bsMonthDays, bsToAd, BS_MONTHS, formatDate, formatDual, todayKathmandu, type DateDisplay } from '../lib/dates'
 import { Input, Select } from './ui'
 
 type Props = {
@@ -10,11 +10,18 @@ type Props = {
   display: DateDisplay
   id?: string
   allowEmpty?: boolean
+  /** One-tap dates: 'past' = Today, Yesterday (the default for required dates); 'future' = Tomorrow, In 3 days. */
+  quick?: 'past' | 'future' | 'none'
+}
+
+const QUICK: Record<'past' | 'future', Array<[string, number]>> = {
+  past: [['Today', 0], ['Yesterday', -1]],
+  future: [['Tomorrow', 1], ['In 3 days', 3]],
 }
 
 const BS_YEARS = Array.from({ length: 21 }, (_, i) => 2075 + i)
 
-export function DateInput({ value, onChange, display, id, allowEmpty }: Props) {
+export function DateInput({ value, onChange, display, id, allowEmpty, quick = allowEmpty ? 'none' : 'past' }: Props) {
   const [mode, setMode] = useState<DateDisplay>(display)
   const iso = value || ''
 
@@ -39,7 +46,18 @@ export function DateInput({ value, onChange, display, id, allowEmpty }: Props) {
           {mode === 'bs' ? 'BS' : 'AD'}
         </button>
       </div>
-      {iso && <div className="mt-1 text-xs text-subtle">{formatDual(iso, mode)}</div>}
+      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+        {iso && <span className="text-subtle">{formatDual(iso, mode)}</span>}
+        {quick !== 'none' && QUICK[quick].map(([label, days]) => {
+          const target = addDays(todayKathmandu(), days)
+          return (
+            <button key={label} type="button" aria-pressed={iso === target} onClick={() => onChange(target)}
+              className={`min-h-10 rounded-full border px-3 font-medium ${iso === target ? 'border-brand bg-brand-soft text-brand-dark' : 'border-line text-ink hover:bg-muted'}`}>
+              {label}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }

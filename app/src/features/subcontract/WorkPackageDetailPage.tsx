@@ -59,13 +59,13 @@ export function WorkPackageDetailPage() {
           </div>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card title="Work">
           <Detail label="Progress">{Number(w.progress_pct)}%</Detail>
           <Detail label="Heading">{w.cost_headings?.name}</Detail>
           <Detail label="Priced">{w.rate_basis === 'rate' ? `Rate per ${w.units?.name ?? ''}` : 'Lump sum'}</Detail>
           {w.terms?.quantity != null && <Detail label="Expected quantity">{Number(w.terms.quantity).toLocaleString('en-IN')} {unit}</Detail>}
-          <Detail label="Planned"><DateText value={w.planned_start} display={auth.dateDisplay} />{w.planned_end && <> to <DateText value={w.planned_end} display={auth.dateDisplay} /></>}</Detail>
+          <Detail label="Planned">{(w.planned_start || w.planned_end) && <><DateText value={w.planned_start} display={auth.dateDisplay} />{w.planned_end && <> to <DateText value={w.planned_end} display={auth.dateDisplay} /></>}</>}</Detail>
           <Detail label="Notes">{w.notes}</Detail>
         </Card>
         {auth.canSeeFinance && (

@@ -50,6 +50,9 @@ export const FULFILMENT: Record<string, [string, Tone]> = {
   closed_short: ['Closed short', 'neutral'],
 }
 
+/** A bill photographed but not typed yet has no number. */
+export const billTitle = (billNo: string | null | undefined) => (billNo ? `Bill ${billNo}` : 'Bill (not typed yet)')
+
 export const BILL_STATUS: Record<BillStatus, [string, Tone]> = {
   draft: ['Draft', 'neutral'],
   under_review: ['Under review', 'warn'],

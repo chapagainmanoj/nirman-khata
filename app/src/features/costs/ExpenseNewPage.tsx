@@ -9,7 +9,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Attachments } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Input, Notice, PageHeader, Select } from '../../components/ui'
+import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -127,7 +127,7 @@ export function ExpenseNewPage() {
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Project" htmlFor="ex-project">
-              <Select id="ex-project" {...register('project_id')}>
+              <Select id="ex-project" value={watch('project_id')} onChange={(e) => form.setValue('project_id', e.target.value, { shouldDirty: true })}>
                 <option value="">Choose project</option>
                 {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
@@ -174,17 +174,17 @@ export function ExpenseNewPage() {
                     {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                   </Select>
                 </Field>
-                <Field label="Reference" htmlFor="ex-ref" hint="Optional"><Input id="ex-ref" {...register('reference')} /></Field>
+                {v.method !== 'cash' && <Field label="Reference" htmlFor="ex-ref" hint="Optional"><Input id="ex-ref" {...register('reference')} /></Field>}
               </div>
             )}
           </Card>
         )}
 
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
-        <div className="flex gap-2">
+        <FormActions>
           <Button type="submit" busy={save.isPending}>Save expense</Button>
-          <Button type="button" variant="secondary" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
-        </div>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+        </FormActions>
       </form>
     </>
   )

@@ -51,7 +51,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
           </div>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         {editing ? (
           <div className="lg:col-span-2"><PartyForm kind={kind} party={r} onDone={() => setEditing(false)} /></div>
         ) : (

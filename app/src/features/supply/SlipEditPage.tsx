@@ -7,7 +7,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, Card, ErrorBanner, Field, Input, Notice, PageHeader, Select, Spinner } from '../../components/ui'
+import { Button, Card, ErrorBanner, Field, FormActions, Input, MoreDetails, Notice, PageHeader, Select, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -79,9 +79,10 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
   const units = useUnits(auth.companyId)
   const recent = useRecentMaterials(auth.userId)
   const [error, setError] = useState('')
+  const [showNeeded, setShowNeeded] = useState(false)
 
   const workable = projects.data?.filter((p) => !['completed', 'closed', 'cancelled'].includes(p.status)) ?? []
-  const emptyLine = (projectId = workable.length === 1 ? workable[0].id : ''): LineValues => ({
+  const emptyLine = (projectId = params.get('project') ?? (workable.length === 1 ? workable[0].id : '')): LineValues => ({
     id: newId(), project_id: projectId, material_id: '', material_text: '', spec: '', qty: '', unit_id: '', unit_note: '', est_rate: '', note: '',
   })
 
@@ -152,6 +153,8 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
   }
 
   function run(submit: boolean) {
+    // With one project the picker is hidden; every line is for that project.
+    if (workable.length === 1) form.getValues('lines').forEach((l, i) => !l.project_id && setValue(`lines.${i}.project_id`, workable[0].id))
     const v = form.getValues()
     const problem = validate(v)
     setError(problem)
@@ -172,18 +175,22 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Supplier" htmlFor="slip-supplier">
-              <Select id="slip-supplier" {...register('supplier_id')}>
+              <Select id="slip-supplier" value={watch('supplier_id')} onChange={(e) => form.setValue('supplier_id', e.target.value, { shouldDirty: true })}>
                 <option value="">Choose supplier</option>
                 {suppliers.data?.filter((s) => s.active).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}{s.categories.length ? ` (${s.categories.join(', ')})` : ''}</option>
                 ))}
               </Select>
             </Field>
-            <Field label="Needed by" htmlFor="slip-required">
-              <Controller control={control} name="required_date" render={({ field }) => (
-                <DateInput id="slip-required" value={field.value} onChange={field.onChange} display={auth.dateDisplay} allowEmpty />
-              )} />
-            </Field>
+            {(showNeeded || watch('required_date')) ? (
+              <Field label="Needed by" htmlFor="slip-required">
+                <Controller control={control} name="required_date" render={({ field }) => (
+                  <DateInput id="slip-required" value={field.value} onChange={field.onChange} display={auth.dateDisplay} allowEmpty quick="future" />
+                )} />
+              </Field>
+            ) : (
+              <div className="sm:self-end"><Button type="button" variant="ghost" onClick={() => setShowNeeded(true)}>+ Add needed-by date</Button></div>
+            )}
           </div>
         </Card>
 
@@ -194,12 +201,6 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
             <Card key={line.key} title={`Line ${i + 1}`}
               actions={lines.fields.length > 1 && <Button type="button" variant="ghost" onClick={() => lines.remove(i)}>Remove</Button>}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Project" htmlFor={`l${i}-project`}>
-                  <Select id={`l${i}-project`} {...register(`lines.${i}.project_id`)}>
-                    <option value="">Choose project</option>
-                    {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-                  </Select>
-                </Field>
                 <Field label="Material" htmlFor={`l${i}-material`}>
                   <Select id={`l${i}-material`} value={materialId} onChange={(e) => pickMaterial(i, e.target.value)}>
                     <option value="">Choose material</option>
@@ -212,15 +213,12 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
                 {materialId === OTHER && (
                   <Field label="Material name" htmlFor={`l${i}-text`}><Input id={`l${i}-text`} {...register(`lines.${i}.material_text`)} /></Field>
                 )}
-                <Field label="Specification" htmlFor={`l${i}-spec`} hint="Grade, size, brand, e.g. OPC 43, 12 mm">
-                  <Input id={`l${i}-spec`} {...register(`lines.${i}.spec`)} />
-                </Field>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)] gap-2">
                   <Field label="Quantity" htmlFor={`l${i}-qty`}>
                     <Input id={`l${i}-qty`} inputMode="decimal" {...register(`lines.${i}.qty`)} />
                   </Field>
                   <Field label="Unit" htmlFor={`l${i}-unit`}>
-                    <Select id={`l${i}-unit`} {...register(`lines.${i}.unit_id`)}>
+                    <Select id={`l${i}-unit`} value={watch(`lines.${i}.unit_id`)} onChange={(e) => setValue(`lines.${i}.unit_id`, e.target.value)}>
                       <option value="">Unit</option>
                       {units.data?.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </Select>
@@ -231,15 +229,32 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
                     <Input id={`l${i}-unote`} {...register(`lines.${i}.unit_note`)} />
                   </Field>
                 )}
-                {auth.canSeeFinance && (
-                  <Field label="Expected rate per unit (optional)" htmlFor={`l${i}-rate`}>
-                    <Controller control={control} name={`lines.${i}.est_rate`} render={({ field }) => (
-                      <MoneyInput id={`l${i}-rate`} value={field.value} onChange={field.onChange} />
-                    )} />
+                {/* With one project there is nothing to choose; it is filled in on save. */}
+                {workable.length !== 1 && (
+                  <Field label="Project" htmlFor={`l${i}-project`}>
+                    <Select id={`l${i}-project`} value={watch(`lines.${i}.project_id`)} onChange={(e) => setValue(`lines.${i}.project_id`, e.target.value)}>
+                      <option value="">Choose project</option>
+                      {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                    </Select>
                   </Field>
                 )}
-                <Field label="Note" htmlFor={`l${i}-note`}><Input id={`l${i}-note`} {...register(`lines.${i}.note`)} /></Field>
               </div>
+              <MoreDetails open={!!(watch(`lines.${i}.spec`) || watch(`lines.${i}.est_rate`) || watch(`lines.${i}.note`))}
+                summary="Specification, expected rate, note">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Specification" htmlFor={`l${i}-spec`} hint="Grade, size, brand, e.g. OPC 43, 12 mm">
+                    <Input id={`l${i}-spec`} {...register(`lines.${i}.spec`)} />
+                  </Field>
+                  {auth.canSeeFinance && (
+                    <Field label="Expected rate per unit" htmlFor={`l${i}-rate`}>
+                      <Controller control={control} name={`lines.${i}.est_rate`} render={({ field }) => (
+                        <MoneyInput id={`l${i}-rate`} value={field.value} onChange={field.onChange} />
+                      )} />
+                    </Field>
+                  )}
+                  <Field label="Note" htmlFor={`l${i}-note`}><Input id={`l${i}-note`} {...register(`lines.${i}.note`)} /></Field>
+                </div>
+              </MoreDetails>
             </Card>
           )
         })}
@@ -255,15 +270,16 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
             <Field label="Site contact" htmlFor="slip-contact" hint="Who the driver should call">
               <Input id="slip-contact" inputMode="tel" {...register('site_contact')} />
             </Field>
-            <Field label="Delivery instructions" htmlFor="slip-instr">
+            <Field label="Delivery instructions" htmlFor="slip-instr" hint="Optional, e.g. unload at the back gate before 10 am">
               <Input id="slip-instr" {...register('delivery_instructions')} />
             </Field>
-            <Field label="Notes" htmlFor="slip-notes"><Input id="slip-notes" {...register('notes')} /></Field>
+            {/* Older slips may have a separate note; new ones use the instructions only. */}
+            {initial?.notes && <Field label="Notes" htmlFor="slip-notes"><Input id="slip-notes" {...register('notes')} /></Field>}
           </div>
         </Card>
 
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
-        <div className="flex flex-wrap gap-2">
+        <FormActions>
           <Button type="submit" busy={save.isPending && save.variables?.submit}>
             {auth.company.slip_approval_required ? 'Submit for approval' : 'Submit'}
           </Button>
@@ -271,7 +287,7 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
             Save draft
           </Button>
           <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
-        </div>
+        </FormActions>
       </form>
     </>
   )

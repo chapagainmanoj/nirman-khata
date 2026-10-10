@@ -450,6 +450,14 @@ building it:
   that package's charges. Its project split cannot be changed.
 - Every project gets a default "Site crew" when it is created.
 
+UX pass (2026-10-10), migration `20261013000100` and pgTAP `015`: paper-first bills. A draft
+bill may be saved with only its supplier, and sent to Accounts with just an uploaded photo; the
+bill number and lines are required before posting (`bill_checks` errors `no_bill_no`, `no_lines`;
+constraint `supplier_bills_number_before_posting`). Accounts may record the paper bill total
+(`supplier_bill_charges.paper_total_paisa`); posting is blocked while the lines and charges do
+not add up to it (`paper_total_mismatch`). Payments are now entered from the bills they pay;
+the project split follows from the ticked bills, with "pay as advance" keeping the free split.
+
 ---
 
 ## 10. Tests

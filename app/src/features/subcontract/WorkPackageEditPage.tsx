@@ -7,7 +7,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, Card, ErrorBanner, Field, Input, PageHeader, Select, Spinner } from '../../components/ui'
+import { Button, Card, ErrorBanner, Field, FormActions, Input, PageHeader, Select, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { PACKAGE_STATUS } from '../../lib/labels'
@@ -179,10 +179,10 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
         </Card>
 
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
-        <div className="flex gap-2">
+        <FormActions>
           <Button type="submit" busy={save.isPending}>Save</Button>
-          <Button type="button" variant="secondary" onClick={() => navigate(-1)}>Cancel</Button>
-        </div>
+          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
+        </FormActions>
       </form>
     </>
   )

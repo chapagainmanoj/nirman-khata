@@ -82,15 +82,23 @@ export function formatAd(iso: IsoDate): string {
 /** One calendar, as the user prefers (lists). */
 export function formatDate(iso: IsoDate | null | undefined, display: DateDisplay): string {
   if (!iso) return ''
-  return display === 'bs' ? `${formatBs(iso)} BS` : formatAd(iso)
+  return display === 'bs' ? formatBs(iso, 'long') : formatAd(iso)
 }
 
-/** Both calendars, preferred first (documents, key screens): "2083-06-23 BS · 9 Oct 2026". */
+/** Both calendars, preferred first (documents, key screens): "23 Asoj 2083 · 9 Oct 2026". */
 export function formatDual(iso: IsoDate | null | undefined, display: DateDisplay): string {
   if (!iso) return ''
-  const bs = `${formatBs(iso)} BS`
+  const bs = formatBs(iso, 'long')
   const ad = formatAd(iso)
   return display === 'bs' ? `${bs} · ${ad}` : `${ad} · ${bs}`
+}
+
+/** A moment in Kathmandu time, e.g. "24 Asoj 2083, 1:50 am". No seconds; day and month never ambiguous. */
+export function formatDateTime(ts: string | null | undefined, display: DateDisplay): string {
+  if (!ts) return ''
+  const at = new Date(ts)
+  const time = at.toLocaleTimeString('en-US', { timeZone: 'Asia/Kathmandu', hour: 'numeric', minute: '2-digit' }).toLowerCase()
+  return `${formatDate(todayKathmandu(at), display)}, ${time}`
 }
 
 /** Nepali fiscal year (Shrawan 1 to Asar end), e.g. "2082/83". */

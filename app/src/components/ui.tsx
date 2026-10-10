@@ -9,12 +9,14 @@ type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
 
 function buttonClass(variant: Variant, className?: string) {
   return cx(
-    'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition-colors disabled:pointer-events-none',
+    'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors disabled:pointer-events-none',
+    variant === 'ghost' ? 'px-2' : 'px-4',
     // Filled buttons go grey when disabled; a faded oxblood reads as pink, not as unavailable.
     variant === 'primary' && 'bg-brand text-white hover:bg-brand-dark active:bg-brand-dark disabled:bg-line disabled:text-subtle',
     variant === 'secondary' && 'border border-field bg-surface text-ink hover:bg-muted active:bg-line disabled:opacity-50',
     variant === 'danger' && 'bg-danger text-white hover:bg-danger-ink active:bg-danger-ink disabled:bg-line disabled:text-subtle',
-    variant === 'ghost' && 'text-brand hover:bg-muted active:bg-line disabled:opacity-50',
+    // Row and secondary actions stay neutral; brand colour is kept for the one main action.
+    variant === 'ghost' && 'text-ink underline decoration-line underline-offset-4 hover:bg-muted hover:decoration-subtle active:bg-line disabled:opacity-50',
     className,
   )
 }
@@ -240,11 +242,38 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
 }
 
 /** Label/value rows for detail screens. */
+/**
+ * Save/Cancel row of a form. On phones it sticks above the bottom bar so the main action
+ * is always one tap away on long forms; on wider screens it sits at the end of the form.
+ */
+export function FormActions({ children }: { children: ReactNode }) {
+  return (
+    <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[5] -mx-4 flex flex-wrap items-center gap-2 border-t border-line bg-page/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      {children}
+    </div>
+  )
+}
+
+/** Optional fields, folded away so the required path stays short. Opens itself when it holds a value. */
+export function MoreDetails({ summary, open, children }: { summary: string; open?: boolean; children: ReactNode }) {
+  return (
+    <details className="group mt-3" open={open || undefined}>
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="shrink-0 text-subtle transition-transform group-open:rotate-90">▸</span>
+        <span>More details <span className="font-normal text-subtle">({summary.toLowerCase()})</span></span>
+      </summary>
+      <div className="mt-2">{children}</div>
+    </details>
+  )
+}
+
+/** A label/value row. Rows with no value are left out instead of showing a dash. */
 export function Detail({ label, children }: { label: string; children: ReactNode }) {
+  if (children === null || children === undefined || children === false || children === '') return null
   return (
     <div className="flex justify-between gap-4 border-b border-line py-2 text-sm last:border-0">
       <span className="shrink-0 text-subtle">{label}</span>
-      <span className="min-w-0 break-words text-right font-medium text-ink tabular-nums">{children || '—'}</span>
+      <span className="min-w-0 break-words text-right font-medium text-ink tabular-nums">{children}</span>
     </div>
   )
 }

@@ -1,16 +1,16 @@
 // One payment: how it is split across projects, which bills it cleared, proof photo,
 // allocation changes and reversal (req §12.3, §20).
 import { useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router'
+import { Link, useLocation, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Attachments } from '../../components/Attachments'
 import { DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { ReasonButton } from '../../components/ReasonButton'
-import { Badge, Button, Card, Detail, EmptyState, ErrorBanner, Field, Input, PageHeader, Select, Spinner } from '../../components/ui'
+import { Badge, Button, Card, Detail, EmptyState, ErrorBanner, Field, Input, Notice, PageHeader, Select, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
-import { PAYMENT_METHODS } from '../../lib/labels'
+import { billTitle, PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { memberName, useMembers, useProjects } from '../projects/api'
 import { rpc, usePayment, usePosting, useRefreshMoney } from './api'
@@ -19,6 +19,7 @@ import { canPost, canRecordPayments } from './permissions'
 export function PaymentDetailPage() {
   const { paymentId = '' } = useParams()
   const auth = useCompany()
+  const photoFailed = (useLocation().state as { photoFailed?: number } | null)?.photoFailed ?? 0
   const payment = usePayment(paymentId)
   const projects = useProjects(auth.companyId)
   const members = useMembers(auth.companyId)
@@ -48,7 +49,7 @@ export function PaymentDetailPage() {
   const matched = Object.values(settlements.reduce<Record<string, { doc_id: string; label: string; to: string | null; project_id: string; amount: number }>>((acc, s) => {
     const docId = s.doc_id!
     const k = `${docId}:${s.project_id}`
-    const [label, to] = s.bill_id ? [`Bill ${s.supplier_bills?.bill_no ?? ''}`, `/bills/${s.bill_id}`]
+    const [label, to] = s.bill_id ? [billTitle(s.supplier_bills?.bill_no), `/bills/${s.bill_id}`]
       : s.charge_id ? [`Work charge ${s.subcontract_charges?.claim_no ?? ''}`.trim(), `/work/${s.subcontract_charges?.work_package_id}`]
       : s.labour_cost_id ? [`Labour ${s.labour_costs?.work_type ?? ''}`.trim(), `/projects/${s.project_id}`]
       : [`Expense: ${s.expenses?.description ?? ''}`, `/projects/${s.project_id}`]
@@ -72,7 +73,10 @@ export function PaymentDetailPage() {
           </span>
         }
       />
-      <div className="grid gap-4 lg:grid-cols-2">
+      {photoFailed > 0 && (
+        <div className="mb-4"><Notice>The payment is saved, but {photoFailed === 1 ? 'a photo' : `${photoFailed} photos`} did not upload. Add {photoFailed === 1 ? 'it' : 'them'} again below.</Notice></div>
+      )}
+      <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card title="Payment">
           <div className="mb-2 text-lg font-semibold text-ink tabular-nums">{formatNPR(p.amount_paisa)}</div>
           <Detail label="Paid on"><DateText value={p.payment_date} display={auth.dateDisplay} dual /></Detail>
