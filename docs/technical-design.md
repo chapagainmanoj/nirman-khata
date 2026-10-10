@@ -434,7 +434,7 @@ Milestone 2's invariant and concurrency tests are written before its screens.
 pgTAP files `008`–`011` (acceptance #2–#6, #12, #13, #16, #17, #20–#22; C3, C4, C6–C8; M1–M4; R1–R3;
 S2 for X1, S4, S5), `supabase/tests/concurrency.sh` (C1, C2, C5 and same-key retries on two
 connections), and `app/e2e/supplier-loop.spec.ts`. Not in milestone 2 yet: supplier refunds
-(the ledger supports them; no screen or function), the full H3 property test, and
+(added in milestone 6), the full H3 property test, and
 as-known reports (the `p_as_known` switch exists in `project_cost_summary`; reports are milestone 5).
 
 Milestone 3 built: migrations `20261012000100`–`200` (subcontractors, work packages, charges,
@@ -498,6 +498,28 @@ seeded 60-step random sequence; permissions), `supabase/tests/export.sh` (E1, E2
 - Finance users land on `/dashboard` after sign-in; everyone else lands on `/projects`. Daily
   report pages moved from `/reports/...` to `/daily/...`, so `/reports` is the report list.
 - Not done: demo data in `seed.sql`.
+
+Milestone 6 (requirement gaps found by the 2026-10-10 audit) built: migrations `20261018000100`
+(refunds) and `20261018000200` (list paging), pgTAP `019` and refunds in the H3 sequence, a refund
+race in `concurrency.sh`, and `app/e2e/gaps.spec.ts`. Decisions made while building it:
+- Refunds from any party (§12.2, §12.3): ledger row cost 0, balance +amount, cash -amount, on a
+  project or unallocated. A refund may not exceed the advance held with the party, company-wide
+  **and** in the chosen bucket, so it never turns an advance into money owed (product owner).
+  The party lock makes two refunds for the same advance take turns. Reversal only by Accounts/Admin.
+  The payment register lists refunds as negative rows, so its total is cash paid net of refunds.
+- Password reset by email (§22): `/forgot` and `/reset`, shown only when the build sets
+  `VITE_EMAIL_RESET=true`. Production needs an SMTP sender first, since Supabase's built-in mailer
+  only reaches the project team; the sender is still to be chosen (product owner). Phone logins
+  are told to ask their admin. The page answers the same whether or not an email has a login.
+- The bill form shows the supplier's last billed rate for the material, with "Use" (§11.2).
+- Lists load 50 rows with "Show more" (`lib/paging.ts`): bills, slips, deliveries, payments,
+  labour, expenses, daily reports and a party's payments. Tabs and the project filter run on the
+  server (`slip_summaries` view), tab counts are count queries, and the Bills "still owed" figure
+  is `bills_owed`, so none of them depend on how many rows are loaded. Pages use offset ranges
+  with a unique last sort column. The khata is not paged yet: it is a running-balance statement.
+- The dev server ignores `app/e2e/` (Playwright traces made Vite reload pages mid-test).
+- Still open from the audit: backups and restore drill, change-history screen, typed-material
+  cleanup, revision attachments, logo, renaming terms, super admin, agreed launch targets.
 
 ---
 

@@ -36,6 +36,7 @@ export function docPath(kind: string | null, id: string | null, extra?: { projec
   if (!kind || !id) return null
   if (kind === 'bill') return `/bills/${id}`
   if (kind === 'payment') return `/payments/${id}`
+  if (kind === 'refund') return `/refunds/${id}`
   if (kind === 'charge') return extra?.packageId ? `/work/${extra.packageId}` : null
   if ((kind === 'labour' || kind === 'expense') && extra?.projectId) return `/projects/${extra.projectId}`
   return null
@@ -46,4 +47,5 @@ export const DOC_WORD: Record<string, string> = {
   charge: 'Work charge',
   labour: 'Labour',
   expense: 'Expense',
+  refund: 'Refund',
 }

@@ -15,6 +15,7 @@ import { formatNPR, parseNPR } from '../../lib/money'
 import { useProjects } from '../projects/api'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { usePartyBalances, usePartyKhata, usePartyOpenItems, usePartyOpeningBalance, usePartyPayments } from './api'
+import { ShowMore } from '../../components/ShowMore'
 import { DOC_WORD, docPath, PARTY, type PartyKind } from './kinds'
 
 /** Positive = we owe (baki), negative = advance with the party (peski). */
@@ -303,6 +304,7 @@ export function PaymentList({ kind, partyId }: { kind: PartyKind; partyId: strin
           </li>
         ))}
       </ul>
+      <ShowMore list={payments} />
     </Card>
   )
 }

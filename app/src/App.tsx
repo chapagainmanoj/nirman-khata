@@ -2,6 +2,7 @@ import { lazy, type ComponentType } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
 import { LoginPage } from './features/auth/LoginPage'
+import { EMAIL_RESET, ForgotPasswordPage, ResetPasswordPage } from './features/auth/PasswordResetPages'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
 import { AdminOnly, Home, RedirectIfSignedIn, RequireCompany } from './routes/guards'
@@ -24,6 +25,7 @@ const BillDetailPage = page(() => import('./features/supply/BillDetailPage'), 'B
 const BillEditPage = page(() => import('./features/supply/BillEditPage'), 'BillEditPage')
 const DeliveryNewPage = page(() => import('./features/supply/DeliveryNewPage'), 'DeliveryNewPage')
 const PaymentDetailPage = page(() => import('./features/supply/PaymentDetailPage'), 'PaymentDetailPage')
+const RefundDetailPage = page(() => import('./features/refunds/RefundDetailPage'), 'RefundDetailPage')
 const PaymentNewPage = page(() => import('./features/supply/PaymentNewPage'), 'PaymentNewPage')
 const SlipDetailPage = page(() => import('./features/supply/SlipDetailPage'), 'SlipDetailPage')
 const SlipEditPage = page(() => import('./features/supply/SlipEditPage'), 'SlipEditPage')
@@ -53,6 +55,8 @@ export function App() {
       <Routes>
         <Route path="/login" element={<RedirectIfSignedIn><LoginPage /></RedirectIfSignedIn>} />
         <Route path="/register" element={<RedirectIfSignedIn><RegisterPage /></RedirectIfSignedIn>} />
+        {EMAIL_RESET && <Route path="/forgot" element={<RedirectIfSignedIn><ForgotPasswordPage /></RedirectIfSignedIn>} />}
+        {EMAIL_RESET && <Route path="/reset" element={<ResetPasswordPage />} />}
         <Route element={<RequireCompany><Layout /></RequireCompany>}>
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/new" element={<AdminOnly><ProjectNewPage /></AdminOnly>} />
@@ -78,6 +82,7 @@ export function App() {
           <Route path="/bills/:billId/edit" element={<BillEditPage />} />
           <Route path="/payments/new" element={<PaymentNewPage />} />
           <Route path="/payments/:paymentId" element={<PaymentDetailPage />} />
+          <Route path="/refunds/:refundId" element={<RefundDetailPage />} />
           <Route path="/subcontractors" element={<PartiesPage key="subcontractor" kind="subcontractor" />} />
           <Route path="/subcontractors/:partyId" element={<PartyDetailPage key="subcontractor" kind="subcontractor" />} />
           <Route path="/crews" element={<PartiesPage key="crew" kind="crew" />} />

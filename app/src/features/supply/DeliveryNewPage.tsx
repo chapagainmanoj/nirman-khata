@@ -15,7 +15,7 @@ import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useProjects } from '../projects/api'
-import { rpc, useSlip, useSlips, useSuppliers } from './api'
+import { rpc, useOpenSlips, useSlip, useSuppliers } from './api'
 import { ChevronRightIcon, TrashIcon } from '../../components/icons'
 
 type Line = {
@@ -268,18 +268,15 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
  */
 function OpenSlips({ supplierId, projectId }: { supplierId: string; projectId: string }) {
   const auth = useCompany()
-  const slips = useSlips(auth.companyId)
-  const open = (slips.data ?? []).filter((s) =>
-    s.status === 'approved' && !['fully_received', 'closed_short'].includes(s.fulfilment) &&
-    (!supplierId || s.supplier_id === supplierId) &&
-    (!projectId || s.order_slip_lines.some((l) => l.project_id === projectId)))
+  const slips = useOpenSlips({ companyId: auth.companyId, supplierId: supplierId || undefined, projectId: projectId || undefined })
+  const open = slips.data ?? []
   if (!open.length) return null
   return (
     <Card title="Is this for an order slip?">
       <p className="mb-2 text-sm text-subtle">Pick the slip and its pending items fill in for you.</p>
       <ul className="divide-y divide-line">
         {open.slice(0, 5).map((s) => {
-          const project = projectId || s.order_slip_lines[0]?.project_id || ''
+          const project = projectId || s.project_ids[0] || ''
           return (
             <li key={s.id}>
               <Link to={`/deliveries/new?slip=${s.id}&project=${project}`}

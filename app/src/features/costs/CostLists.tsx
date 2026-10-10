@@ -9,6 +9,7 @@ import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { PACKAGE_STATUS, settlementLabel } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
+import { ShowMore } from '../../components/ShowMore'
 import { BalanceText } from '../parties/PartyParts'
 import { usePackageFigures, useWorkPackages } from '../subcontract/api'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
@@ -82,6 +83,7 @@ export function LabourSection({ projectId }: { projectId: string }) {
           ))}
         </ul>
       )}
+      <ShowMore list={labour} />
     </Section>
   )
 }
@@ -116,6 +118,7 @@ export function ExpenseSection({ projectId }: { projectId: string }) {
           ))}
         </ul>
       )}
+      <ShowMore list={expenses} />
     </Section>
   )
 }

@@ -636,6 +636,12 @@ isOneToOne: false
       referencedRelation: "order_slips"
       referencedColumns: ["company_id","id"]
     },{
+      foreignKeyName: "deliveries_company_id_slip_id_fkey"
+      columns: ["company_id","slip_id"]
+isOneToOne: false
+      referencedRelation: "slip_summaries"
+      referencedColumns: ["company_id","id"]
+    },{
       foreignKeyName: "deliveries_company_id_supplier_id_fkey"
       columns: ["company_id","supplier_id"]
 isOneToOne: false
@@ -983,6 +989,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "order_slips"
       referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "notifications_company_id_slip_id_fkey"
+      columns: ["company_id","slip_id"]
+isOneToOne: false
+      referencedRelation: "slip_summaries"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"operations": {
@@ -1078,6 +1090,12 @@ isOneToOne: false
       columns: ["company_id","slip_id"]
 isOneToOne: false
       referencedRelation: "order_slips"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "order_slip_lines_company_id_slip_id_fkey"
+      columns: ["company_id","slip_id"]
+isOneToOne: false
+      referencedRelation: "slip_summaries"
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "order_slip_lines_company_id_unit_id_fkey"
@@ -1273,14 +1291,14 @@ isOneToOne: false
                   ]
                 },"posting_events": {
                   Row: {
-                    "allocation_event_id": string | null,"bill_id": string | null,"business_date": string,"charge_id": string | null,"company_id": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"event_type": string,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"op_key": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"reversal_id": string | null,"reversed_event_ids": (string)[] | null,"source_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null
+                    "allocation_event_id": string | null,"bill_id": string | null,"business_date": string,"charge_id": string | null,"company_id": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"event_type": string,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"op_key": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"refund_id": string | null,"reversal_id": string | null,"reversed_event_ids": (string)[] | null,"source_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date": string,"charge_id"?: string | null,"company_id": string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type": string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null
+                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date": string,"charge_id"?: string | null,"company_id": string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type": string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null
                   }
                   Update: {
-                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date"?: string,"charge_id"?: string | null,"company_id"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type"?: string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null
+                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date"?: string,"charge_id"?: string | null,"company_id"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type"?: string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1378,6 +1396,12 @@ isOneToOne: false
       columns: ["company_id","payment_id"]
 isOneToOne: false
       referencedRelation: "payments"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "posting_events_company_id_refund_id_fkey"
+      columns: ["company_id","refund_id"]
+isOneToOne: false
+      referencedRelation: "refunds"
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "posting_events_company_id_reversal_id_fkey"
@@ -1503,16 +1527,66 @@ isOneToOne: false
       referencedColumns: ["company_id","user_id"]
     }
                   ]
-                },"reversals": {
+                },"refunds": {
                   Row: {
-                    "bill_id": string | null,"charge_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"reason": string,"reversal_date": string,"subcontractor_id": string | null,"supplier_id": string | null,"target_id": string | null
+                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"project_id": string | null,"reference": string | null,"refund_date": string,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason": string,"reversal_date": string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never
+                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date": string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason"?: string,"reversal_date"?: string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never
+                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "refunds_company_id_crew_id_fkey"
+      columns: ["company_id","crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "refunds_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "refunds_company_id_payee_id_fkey"
+      columns: ["company_id","payee_id"]
+isOneToOne: false
+      referencedRelation: "payees"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "refunds_company_id_project_id_fkey"
+      columns: ["company_id","project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "refunds_company_id_subcontractor_id_fkey"
+      columns: ["company_id","subcontractor_id"]
+isOneToOne: false
+      referencedRelation: "subcontractors"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "refunds_company_id_supplier_id_fkey"
+      columns: ["company_id","supplier_id"]
+isOneToOne: false
+      referencedRelation: "suppliers"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"reversals": {
+                  Row: {
+                    "bill_id": string | null,"charge_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"reason": string,"refund_id": string | null,"reversal_date": string,"subcontractor_id": string | null,"supplier_id": string | null,"target_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason": string,"refund_id"?: string | null,"reversal_date": string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never
+                  }
+                  Update: {
+                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason"?: string,"refund_id"?: string | null,"reversal_date"?: string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never
                   }
                   Relationships: [
                     {
@@ -1604,6 +1678,12 @@ isOneToOne: false
       columns: ["company_id","payment_id"]
 isOneToOne: false
       referencedRelation: "payments"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "reversals_company_id_refund_id_fkey"
+      columns: ["company_id","refund_id"]
+isOneToOne: false
+      referencedRelation: "refunds"
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "reversals_company_id_subcontractor_id_fkey"
@@ -2282,6 +2362,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "order_slips"
       referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "order_slip_lines_company_id_slip_id_fkey"
+      columns: ["company_id","slip_id"]
+isOneToOne: false
+      referencedRelation: "slip_summaries"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"order_slip_progress": {
@@ -2354,6 +2440,32 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"slip_summaries": {
+                  Row: {
+                    "company_id": string | null,"created_at": string | null,"created_by": string | null,"fulfilment": string | null,"id": string | null,"number": string | null,"project_ids": (string)[] | null,"request_date": string | null,"required_date": string | null,"sent_at": string | null,"status": Database["public"]['Enums']["slip_status"] | null,"supplier_id": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                           "company_id"?: string | null,"created_at"?: string | null,"created_by"?: string | null,"fulfilment"?: never,"id"?: string | null,"number"?: string | null,"project_ids"?: never,"request_date"?: string | null,"required_date"?: string | null,"sent_at"?: string | null,"status"?: Database["public"]['Enums']["slip_status"] | null,"supplier_id"?: string | null
+                         }
+                        Update: {
+                           "company_id"?: string | null,"created_at"?: string | null,"created_by"?: string | null,"fulfilment"?: never,"id"?: string | null,"number"?: string | null,"project_ids"?: never,"request_date"?: string | null,"required_date"?: string | null,"sent_at"?: string | null,"status"?: Database["public"]['Enums']["slip_status"] | null,"supplier_id"?: string | null
+                         }
+                        Relationships: [
+                    {
+      foreignKeyName: "order_slips_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "order_slips_company_id_supplier_id_fkey"
+      columns: ["company_id","supplier_id"]
+isOneToOne: false
+      referencedRelation: "suppliers"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
                 }
           }
           Functions: {
@@ -2379,6 +2491,9 @@ isOneToOne: false
 { Args: { "p_bill": string }; Returns: {
               "credited_paisa": number,"outstanding_paisa": number,"payable_paisa": number,"project_id": string,"settled_paisa": number
             }[]
+                           },
+"bills_owed":
+{ Args: { "p_company": string,"p_project"?: string,"p_supplier"?: string }; Returns: number
                            },
 "calendar_events":
 { Args: { "p_company": string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
@@ -2484,8 +2599,19 @@ isOneToOne: false
 "record_payment":
 { Args: { "p_op_key": string,"p_payment": Json }; Returns: Json
                            },
+"record_refund":
+{ Args: { "p_op_key": string,"p_refund": Json }; Returns: Json
+                           },
 "record_return":
 { Args: { "p_return": Json }; Returns: string
+                           },
+"refund_available":
+{ Args: { "p_party": string,"p_project"?: string }; Returns: number
+                           },
+"refund_rooms":
+{ Args: { "p_party": string }; Returns: {
+              "available_paisa": number,"project_id": string
+            }[]
                            },
 "reject_charge":
 { Args: { "p_charge": string,"p_reason": string }; Returns: undefined
@@ -2520,7 +2646,7 @@ isOneToOne: false
                            },
 "report_payments":
 { Args: { "p_as_of"?: string,"p_company": string,"p_from": string,"p_party"?: string,"p_project"?: string,"p_to": string }; Returns: {
-              "amount_paisa": number,"method": Database["public"]['Enums']["payment_method"],"number": string,"party_id": string,"party_kind": string,"party_name": string,"payment_date": string,"payment_id": string,"project_paisa": number,"reference": string,"reversed_on": string,"settled_paisa": number
+              "amount_paisa": number,"kind": string,"method": Database["public"]['Enums']["payment_method"],"number": string,"party_id": string,"party_kind": string,"party_name": string,"payment_date": string,"payment_id": string,"project_paisa": number,"reference": string,"reversed_on": string,"settled_paisa": number
             }[]
                            },
 "report_pending_orders":
@@ -2547,6 +2673,9 @@ isOneToOne: false
                            },
 "reverse_payment":
 { Args: { "p_date": string,"p_op_key": string,"p_payment": string,"p_reason": string }; Returns: Json
+                           },
+"reverse_refund":
+{ Args: { "p_date": string,"p_op_key": string,"p_reason": string,"p_refund": string }; Returns: Json
                            },
 "save_bill_draft":
 { Args: { "p_bill": Json }; Returns: Json

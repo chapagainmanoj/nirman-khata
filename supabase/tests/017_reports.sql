@@ -105,7 +105,7 @@ declare
   v_co uuid := (select id from public.companies where name = 'Report Nirman');
   v_parties uuid[] := array(select id from public.suppliers where company_id = v_co order by name);
   v_projects uuid[] := array(select id from public.projects where company_id = v_co order by code);
-  v_party uuid; v_project uuid; v_other uuid; v_doc uuid; v_amt bigint; i integer; r integer;
+  v_party uuid; v_project uuid; v_other uuid; v_doc uuid; v_amt bigint; v_doc_amt bigint; i integer; r integer;
 begin
   perform setseed(0.42);
   for i in 1..60 loop
@@ -113,7 +113,7 @@ begin
     v_project := v_projects[1 + floor(random() * 2)::int];
     v_other := v_projects[case when v_project = v_projects[1] then 2 else 1 end];
     v_amt := (1 + floor(random() * 50)::bigint) * 10000;
-    r := floor(random() * 6)::int;
+    r := floor(random() * 7)::int;
     begin
       if r = 0 or r = 1 then
         perform tests.posted_bill(v_co, v_party, v_project, v_amt, date '2026-07-01' + i);
@@ -130,6 +130,20 @@ begin
       elsif r = 4 then
         select b.id into v_doc from public.supplier_bills b where b.supplier_id = v_party and b.status = 'posted' order by random() limit 1;
         if v_doc is not null then perform tests.credit(v_doc, date '2026-07-01' + i, 10000); end if;
+      elsif r = 6 then
+        -- Refund from the bucket holding the most advance. When the party is owed money overall,
+        -- overpay first (unallocated) so it holds an advance, as before a supplier sends one back.
+        select coalesce(sum(balance_paisa), 0) into v_doc_amt from public.ledger_entries where party_id = v_party;
+        if v_doc_amt >= 0 then
+          perform tests.pay(v_party, date '2026-07-01' + i, v_doc_amt + v_amt, '[]'::jsonb);
+        end if;
+        select b into v_project from unnest(array[v_project, v_other, null]) b
+        order by public.refund_available(v_party, b) desc limit 1;
+        v_amt := least(v_amt / 2 + 1, public.refund_available(v_party, v_project));
+        if v_amt > 0 then
+          perform public.record_refund(gen_random_uuid(), jsonb_build_object('id', gen_random_uuid(),
+            'supplier_id', v_party, 'project_id', v_project, 'refund_date', date '2026-07-01' + i, 'amount_paisa', v_amt));
+        end if;
       else
         if random() < 0.5 then
           select b.id into v_doc from public.supplier_bills b where b.supplier_id = v_party and b.status = 'posted' order by random() limit 1;
@@ -149,16 +163,18 @@ begin
       - coalesce((select sum(cl.amount_paisa) from public.credits cr join public.credit_lines cl on cl.credit_id = cr.id
                   where cr.supplier_id = s.supplier_id and cr.status = 'posted'), 0)
       - coalesce((select sum(p.amount_paisa) from public.payments p where p.supplier_id = s.supplier_id and p.status = 'posted'), 0)
+      + coalesce((select sum(f.amount_paisa) from public.refunds f where f.supplier_id = s.supplier_id and f.status = 'posted'), 0)
     from public.supplier_balances(v_co) s;
   end loop;
 end $$;
 select is((select count(*) from h3 where ledger <> split), 0::bigint, 'H3: I-10 holds after every step (balance = projects + unallocated)');
-select is((select count(*) from h3 where ledger <> docs), 0::bigint, 'H3: every balance equals bills - credits - payments still posted');
+select is((select count(*) from h3 where ledger <> docs), 0::bigint, 'H3: every balance equals bills - credits - payments + refunds still posted');
 select ok((select count(distinct step) from h3) = 60
   and (select count(*) from public.reversals r join public.suppliers x on x.id = r.supplier_id where x.company_id = :'co') >= 3
   and (select count(*) from public.credits c join public.suppliers x on x.id = c.supplier_id where x.company_id = :'co') >= 3
-  and (select count(*) from public.payment_allocation_events e where e.company_id = :'co') >= 1,
-  'H3: checked after each of 60 steps that included reversals, credits and split moves');
+  and (select count(*) from public.payment_allocation_events e where e.company_id = :'co') >= 1
+  and (select count(*) from public.refunds f where f.company_id = :'co') >= 1,
+  'H3: checked after each of 60 steps that included reversals, credits, split moves and refunds');
 select tests.logout();
 
 -- Who sees what: site staff get the site figures, never amounts or unassigned projects.

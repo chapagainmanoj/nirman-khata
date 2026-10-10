@@ -15,7 +15,7 @@ import { formatNPR, percent } from '../../lib/money'
 import { supabase, type Tables } from '../../lib/supabase'
 import { ExpenseSection, LabourSection, SubcontractSection } from '../costs/CostLists'
 import { DeliveryList } from '../supply/DeliveryList'
-import { useDeliveries, useDeliveryLineStatus, useProjectCost, useSlips } from '../supply/api'
+import { useDeliveries, useDeliveryLineStatus, useOpenSlips, useProjectCost } from '../supply/api'
 import { BalanceText, Tabs } from '../parties/PartyParts'
 import { canEnter } from '../supply/permissions'
 import { memberName, useAmountsAsOf, useAssignments, useHeadings, useMembers, useProject, type Member } from './api'
@@ -212,11 +212,10 @@ function SummaryStrip({ projectId }: { projectId: string }) {
 /** What needs doing: slips waiting for delivery, deliveries not billed, latest arrivals. */
 function Activity({ projectId, onShowDeliveries }: { projectId: string; onShowDeliveries: () => void }) {
   const auth = useCompany()
-  const slips = useSlips(auth.companyId)
+  const slips = useOpenSlips({ companyId: auth.companyId, projectId })
   const deliveries = useDeliveries({ projectId })
   const unbilled = useDeliveryLineStatus({ projectId, billableOnly: true })
-  const waiting = slips.data?.filter((s) => s.status === 'approved' && ['not_received', 'partially_received'].includes(s.fulfilment)
-    && s.order_slip_lines.some((l) => l.project_id === projectId)) ?? []
+  const waiting = slips.data ?? []
   const recent = deliveries.data?.slice(0, 3) ?? []
   const unbilledCount = unbilled.data?.length ?? 0
   if (slips.isPending || deliveries.isPending) return <Spinner />

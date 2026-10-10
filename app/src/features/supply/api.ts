@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
 import type { Database, Json } from '../../lib/database.types'
 import { newId } from '../../lib/ids'
+import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 
 type Fns = Database['public']['Functions']
@@ -59,20 +60,58 @@ export function useSuppliers(companyId: string) {
 // ---------------------------------------------------------------------------
 // Slips
 // ---------------------------------------------------------------------------
-export function useSlips(companyId: string) {
+export type SlipTab = 'open' | 'pending' | 'draft' | 'all'
+type SlipFilter = { companyId: string; projectId?: string | null; supplierId?: string; tab?: SlipTab }
+
+function slipQuery<Q extends { eq: Function; in: Function; contains: Function }>(q: Q, f: SlipFilter): Q {
+  q = q.eq('company_id', f.companyId)
+  if (f.projectId) q = q.contains('project_ids', [f.projectId])
+  if (f.supplierId) q = q.eq('supplier_id', f.supplierId)
+  if (f.tab === 'open') q = q.eq('status', 'approved').in('fulfilment', ['not_received', 'partially_received'])
+  if (f.tab === 'pending') q = q.eq('status', 'pending')
+  if (f.tab === 'draft') q = q.in('status', ['draft', 'rejected'])
+  return q
+}
+
+const SLIP_COLUMNS = 'id, number, status, supplier_id, request_date, required_date, created_by, sent_at, fulfilment, project_ids, suppliers(name)'
+
+function slipRow<T extends { id: string | null; number: string | null; status: string | null; fulfilment: string | null; project_ids: string[] | null; request_date: string | null }>(s: T) {
+  return {
+    ...s, id: s.id!, number: s.number!, status: s.status! as Database['public']['Enums']['slip_status'],
+    fulfilment: s.fulfilment ?? 'not_received', project_ids: s.project_ids ?? [], request_date: s.request_date!,
+  }
+}
+
+/** Slips newest first, 50 at a time; the tab and project are filtered on the server. */
+export function useSlips(f: SlipFilter) {
+  return usePaged(['slips', f], async (from, to) => {
+    const { data, error } = await slipQuery(supabase.from('slip_summaries').select(SLIP_COLUMNS), f)
+      .order('created_at', { ascending: false }).order('id').range(from, to)
+    if (error) throw error
+    return data.map(slipRow)
+  })
+}
+
+export function useSlipCount(f: SlipFilter) {
   return useQuery({
-    queryKey: ['slips', companyId],
+    queryKey: ['slips', 'count', f],
     queryFn: async () => {
-      const [slips, progress] = await Promise.all([
-        supabase.from('order_slips')
-          .select('id, number, status, supplier_id, request_date, required_date, created_by, sent_at, suppliers(name), order_slip_lines(project_id)')
-          .eq('company_id', companyId).order('created_at', { ascending: false }).limit(200),
-        supabase.from('order_slip_progress').select('id, fulfilment').eq('company_id', companyId),
-      ])
-      if (slips.error) throw slips.error
-      if (progress.error) throw progress.error
-      const fulfilment = new Map(progress.data.map((p) => [p.id, p.fulfilment]))
-      return slips.data.map((s) => ({ ...s, fulfilment: fulfilment.get(s.id) ?? 'not_received' }))
+      const { count, error } = await slipQuery(supabase.from('slip_summaries').select('id', { count: 'exact', head: true }), f)
+      if (error) throw error
+      return count ?? 0
+    },
+  })
+}
+
+/** Approved slips still waiting for material (a short list by nature, so not paged). */
+export function useOpenSlips(f: Omit<SlipFilter, 'tab'>) {
+  return useQuery({
+    queryKey: ['slips', 'open', f],
+    queryFn: async () => {
+      const { data, error } = await slipQuery(supabase.from('slip_summaries').select(SLIP_COLUMNS), { ...f, tab: 'open' })
+        .order('created_at', { ascending: false }).order('id')
+      if (error) throw error
+      return data.map(slipRow)
     },
   })
 }
@@ -118,19 +157,15 @@ export type SlipPermissions = {
 // Deliveries
 // ---------------------------------------------------------------------------
 export function useDeliveries(filter: { projectId?: string; slipId?: string; supplierId?: string }) {
-  return useQuery({
-    queryKey: ['deliveries', filter],
-    queryFn: async () => {
-      let q = supabase.from('deliveries')
-        .select('*, suppliers(name), projects(code, name), delivery_lines(*, materials(name), units(code))')
-        .order('receipt_date', { ascending: false }).limit(100)
-      if (filter.projectId) q = q.eq('project_id', filter.projectId)
-      if (filter.slipId) q = q.eq('slip_id', filter.slipId)
-      if (filter.supplierId) q = q.eq('supplier_id', filter.supplierId)
-      const { data, error } = await q
-      if (error) throw error
-      return data
-    },
+  return usePaged(['deliveries', filter], async (from, to) => {
+    let q = supabase.from('deliveries')
+      .select('*, suppliers(name), projects(code, name), delivery_lines(*, materials(name), units(code))')
+    if (filter.projectId) q = q.eq('project_id', filter.projectId)
+    if (filter.slipId) q = q.eq('slip_id', filter.slipId)
+    if (filter.supplierId) q = q.eq('supplier_id', filter.supplierId)
+    const { data, error } = await q.order('receipt_date', { ascending: false }).order('created_at', { ascending: false }).order('id').range(from, to)
+    if (error) throw error
+    return data
   })
 }
 
@@ -156,24 +191,51 @@ export function useDeliveryLineStatus(filter: { supplierId?: string; projectId?:
 // ---------------------------------------------------------------------------
 type BillStatus = Database['public']['Enums']['bill_status']
 
-export function useBills(filter: { supplierId?: string; companyId?: string; projectId?: string; statuses?: BillStatus[] }) {
+type BillFilter = { supplierId?: string; companyId?: string; projectId?: string; statuses?: readonly BillStatus[] }
+
+function billQuery<Q extends { eq: Function; contains: Function; in: Function }>(q: Q, filter: BillFilter): Q {
+  if (filter.supplierId) q = q.eq('supplier_id', filter.supplierId)
+  if (filter.companyId) q = q.eq('company_id', filter.companyId)
+  if (filter.projectId) q = q.contains('project_ids', [filter.projectId])
+  if (filter.statuses) q = q.in('status', filter.statuses)
+  return q
+}
+
+/** Bills newest first, 50 at a time; status and project are filtered on the server. */
+export function useBills(filter: BillFilter) {
+  return usePaged(['bills', filter], async (from, to) => {
+    const q = billQuery(supabase.from('bill_summaries').select('*, suppliers(name)'), filter)
+      .order('bill_date', { ascending: false }).order('id').range(from, to)
+    const { data, error } = await q
+    if (error) throw error
+    // View columns are typed nullable; these are always set for a bill row.
+    return data.map((b) => ({
+      ...b, id: b.id!, bill_date: b.bill_date!, status: b.status!,
+      lines_paisa: b.lines_paisa ?? 0, payable_paisa: b.payable_paisa ?? 0,
+      credited_paisa: b.credited_paisa ?? 0, settled_paisa: b.settled_paisa ?? 0,
+    }))
+  })
+}
+
+/** How many bills match, without loading them (tab counts). */
+export function useBillCount(filter: BillFilter, enabled = true) {
   return useQuery({
-    queryKey: ['bills', filter],
+    queryKey: ['bills', 'count', filter],
+    enabled,
     queryFn: async () => {
-      let q = supabase.from('bill_summaries').select('*, suppliers(name)').order('bill_date', { ascending: false }).limit(200)
-      if (filter.supplierId) q = q.eq('supplier_id', filter.supplierId)
-      if (filter.companyId) q = q.eq('company_id', filter.companyId)
-      if (filter.projectId) q = q.contains('project_ids', [filter.projectId])
-      if (filter.statuses) q = q.in('status', filter.statuses)
-      const { data, error } = await q
+      const { count, error } = await billQuery(supabase.from('bill_summaries').select('id', { count: 'exact', head: true }), filter)
       if (error) throw error
-      // View columns are typed nullable; these are always set for a bill row.
-      return data.map((b) => ({
-        ...b, id: b.id!, bill_date: b.bill_date!, status: b.status!,
-        lines_paisa: b.lines_paisa ?? 0, payable_paisa: b.payable_paisa ?? 0,
-        credited_paisa: b.credited_paisa ?? 0, settled_paisa: b.settled_paisa ?? 0,
-      }))
+      return count ?? 0
     },
+  })
+}
+
+/** Still owed on posted bills (net of credits and payments matched to them). */
+export function useBillsOwed(companyId: string, filter: { projectId?: string; supplierId?: string }, enabled = true) {
+  return useQuery({
+    queryKey: ['bills', 'owed', companyId, filter],
+    enabled,
+    queryFn: () => rpc('bills_owed', { p_company: companyId, p_project: filter.projectId, p_supplier: filter.supplierId }),
   })
 }
 

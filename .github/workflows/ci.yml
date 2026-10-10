@@ -32,7 +32,7 @@ jobs:
       - name: Point the app at local Supabase
         run: |
           KEY=$(pnpm exec supabase status -o json | jq -r .PUBLISHABLE_KEY)
-          printf 'VITE_SUPABASE_URL=http://127.0.0.1:55321\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\n' "$KEY" > app/.env.local
+          printf 'VITE_SUPABASE_URL=http://127.0.0.1:55321\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\nVITE_EMAIL_RESET=true\n' "$KEY" > app/.env.local
 
       - name: Database tests (RLS, isolation, ledger invariants)
         run: pnpm exec supabase test db

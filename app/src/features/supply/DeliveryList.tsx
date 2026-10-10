@@ -7,6 +7,7 @@ import { DateInput, DateText } from '../../components/DateInput'
 import { Badge, Button, ButtonLink, ConfirmButton, ErrorBanner, Field, Input, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
+import { ShowMore } from '../../components/ShowMore'
 import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
 import { rpc, useDeliveries, useDeliveryLineStatus } from './api'
@@ -20,11 +21,15 @@ export function DeliveryList({ filter, empty }: { filter: { projectId?: string; 
   const deliveries = useDeliveries(filter)
   if (deliveries.isPending) return <Spinner />
   if (deliveries.error) return <ErrorBanner onRetry={() => void deliveries.refetch()}>{friendlyError(deliveries.error)}</ErrorBanner>
-  if (!deliveries.data.length) return empty ?? <p className="text-sm text-subtle">No deliveries recorded yet.</p>
+  const list = deliveries.data ?? []
+  if (!list.length) return empty ?? <p className="text-sm text-subtle">No deliveries recorded yet.</p>
   return (
-    <ul className="grid gap-3 lg:grid-cols-2">
-      {deliveries.data.map((d) => <DeliveryItem key={d.id} d={d} showProject={!filter.projectId} />)}
-    </ul>
+    <>
+      <ul className="grid gap-3 lg:grid-cols-2">
+        {list.map((d) => <DeliveryItem key={d.id} d={d} showProject={!filter.projectId} />)}
+      </ul>
+      <ShowMore list={deliveries} />
+    </>
   )
 }
 

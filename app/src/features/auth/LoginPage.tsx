@@ -5,6 +5,7 @@ import { t } from '../../lib/i18n'
 import { parseLoginId } from '../../lib/login-id'
 import { supabase } from '../../lib/supabase'
 import { AuthShell } from './AuthShell'
+import { EMAIL_RESET } from './PasswordResetPages'
 
 export function LoginPage() {
   const navigate = useNavigate()
@@ -41,7 +42,9 @@ export function LoginPage() {
         </Field>
         <ErrorBanner>{error}</ErrorBanner>
         <Button type="submit" busy={busy}>{t('auth.login')}</Button>
-        <p className="text-xs text-subtle">{t('auth.forgot')}</p>
+        {EMAIL_RESET
+          ? <Link to="/forgot" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">Forgot password?</Link>
+          : <p className="text-xs text-subtle">{t('auth.forgot')}</p>}
         <Link to="/register" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">{t('auth.register')}</Link>
       </form>
     </AuthShell>

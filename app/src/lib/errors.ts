@@ -24,6 +24,10 @@ export function friendlyError(error: unknown): string {
   if (e.message?.startsWith('op_key_reused')) {
     return 'This may already be saved. Check the supplier\'s bills and payments before entering it again.'
   }
+  // A refund is capped at the advance held with the party.
+  if (e.message?.startsWith('refund_exceeds_advance')) {
+    return e.message.replace(/^refund_exceeds_advance: t/, 'T') + '. A refund cannot be more than what was paid in advance.'
+  }
   // Our own RPC errors (P0001, 22023, ...) already carry a readable message.
   if (e.code && BY_CODE[e.code]) {
     if (e.code === '23505') {

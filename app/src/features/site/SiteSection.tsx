@@ -10,6 +10,7 @@ import { DateInput, DateText } from '../../components/DateInput'
 import { Badge, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Input, Select, Spinner, Textarea } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
+import { ShowMore } from '../../components/ShowMore'
 import { newId } from '../../lib/ids'
 import { memberName, useMembers, useProjects } from '../projects/api'
 import { supabase, type Tables } from '../../lib/supabase'
@@ -275,6 +276,7 @@ function ReportsByDay({ projectId }: { projectId: string }) {
           </ul>
         </section>
       ))}
+      <ShowMore list={reports} />
     </Card>
   )
 }

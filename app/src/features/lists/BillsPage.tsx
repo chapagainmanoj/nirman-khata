@@ -5,8 +5,9 @@ import { useCompany } from '../../auth/AuthProvider'
 import { ButtonLink, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
+import { ShowMore } from '../../components/ShowMore'
 import { Tabs } from '../parties/PartyParts'
-import { useBills } from '../supply/api'
+import { useBillCount, useBills, useBillsOwed } from '../supply/api'
 import { BillRow } from '../supply/BillRow'
 import { canEnter, canPost } from '../supply/permissions'
 import { useProjectFilter } from './ProjectFilter'
@@ -31,18 +32,22 @@ export function BillsPage() {
   const posts = canPost(auth)
   const [tab, setTab] = useState<Tab>(posts ? 'to_post' : 'drafts')
   const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
-  // One query for every tab, so each tab can say how many bills it holds.
-  const all = useBills({ companyId: auth.companyId, projectId: projectId ?? undefined })
-  const inTab = (t: Tab) => (all.data ?? []).filter((b) => !STATUSES[t] || (STATUSES[t] as readonly string[]).includes(b.status))
-  const shown = all.data && inTab(tab)
-  const named = (t: Tab, text: string): [Tab, string] => [t, all.data && t !== 'all' ? `${text} (${inTab(t).length})` : text]
+  const scope = { companyId: auth.companyId, projectId: projectId ?? undefined }
+  const shown = useBills({ ...scope, statuses: STATUSES[tab] })
+  // Tab counts come from the server, so they cover every bill, not just the loaded ones.
+  const counts = {
+    to_post: useBillCount({ ...scope, statuses: STATUSES.to_post }, posts),
+    drafts: useBillCount({ ...scope, statuses: STATUSES.drafts }),
+    posted: useBillCount({ ...scope, statuses: STATUSES.posted }, auth.canSeeFinance),
+  }
+  const named = (t: Exclude<Tab, 'all'>, text: string): [Tab, string] => [t, counts[t].data !== undefined ? `${text} (${counts[t].data})` : text]
   const tabs: Array<[Tab, string]> = posts
     ? [named('to_post', 'To post'), named('drafts', 'Drafts'), named('posted', 'Posted'), ['all', 'All']]
     : auth.canSeeFinance
       ? [named('drafts', 'My drafts'), named('posted', 'Posted'), ['all', 'All']]
       : [named('drafts', 'My drafts')]
-  const owed = (shown ?? []).filter((b) => b.status === 'posted')
-    .reduce((t, b) => t + Math.max(0, b.payable_paisa - b.credited_paisa - b.settled_paisa), 0)
+  const owed = useBillsOwed(auth.companyId, { projectId: projectId ?? undefined }, auth.canSeeFinance && (tab === 'posted' || tab === 'all')).data ?? 0
+  const total = tab === 'all' ? null : counts[tab].data
 
   return (
     <>
@@ -51,13 +56,14 @@ export function BillsPage() {
       {chip}
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Bills">
         <Card>
-          {all.isPending && <Spinner />}
-          <ErrorBanner onRetry={() => void all.refetch()}>{all.error && friendlyError(all.error)}</ErrorBanner>
-          {shown?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]} />)}
+          {shown.isPending && <Spinner />}
+          <ErrorBanner onRetry={() => void shown.refetch()}>{shown.error && friendlyError(shown.error)}</ErrorBanner>
+          {shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]} />)}
           {owed > 0 && (tab === 'posted' || tab === 'all') && (
             <p className="mb-2 border-b border-line pb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
           )}
-          <ul>{shown?.map((b) => <BillRow key={b.id} bill={b} showSupplier showProject={showProject} />)}</ul>
+          <ul>{shown.data?.map((b) => <BillRow key={b.id} bill={b} showSupplier showProject={showProject} />)}</ul>
+          <ShowMore list={shown} total={total} />
         </Card>
       </Tabs>
     </>

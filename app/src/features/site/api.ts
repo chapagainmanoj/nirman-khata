@@ -1,5 +1,6 @@
 // Site work (req §16, §17): stages, progress, daily reports and the calendar.
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 import { rpc } from '../supply/api'
 
@@ -32,15 +33,13 @@ export function useProgress(projectId: string, asOf?: string) {
 export type ProgressRow = NonNullable<ReturnType<typeof useProgress>['data']>[number]
 
 export function useDailyReports(projectId: string) {
-  return useQuery({
-    queryKey: ['daily-reports', projectId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('daily_reports')
-        .select('id, work_date, work_done, area, headcount, issues, weather, created_by, submitted_at, stages(name)')
-        .eq('project_id', projectId).order('work_date', { ascending: false }).order('submitted_at', { ascending: false }).limit(60)
-      if (error) throw error
-      return data
-    },
+  return usePaged(['daily-reports', projectId], async (from, to) => {
+    const { data, error } = await supabase.from('daily_reports')
+      .select('id, work_date, work_done, area, headcount, issues, weather, created_by, submitted_at, stages(name)')
+      .eq('project_id', projectId).order('work_date', { ascending: false }).order('submitted_at', { ascending: false }).order('id')
+      .range(from, to)
+    if (error) throw error
+    return data
   })
 }
 

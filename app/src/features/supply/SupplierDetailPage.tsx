@@ -5,7 +5,9 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Button, ButtonLink, Card, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from '../parties/PartyParts'
+import { RefundCard } from '../refunds/RefundCard'
 import { useBills, useSuppliers } from './api'
+import { ShowMore } from '../../components/ShowMore'
 import { BillRow } from './BillRow'
 import { usePartyBalances } from '../parties/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from './permissions'
@@ -61,6 +63,7 @@ export function SupplierDetailPage() {
         )}
         {auth.canSeeFinance && <BalanceCard kind="supplier" partyId={s.id} />}
         {auth.canSeeFinance && canRecordPayments(auth) && <MatchCard kind="supplier" partyId={s.id} />}
+        <RefundCard kind="supplier" partyId={s.id} />
       </div>
 
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Supplier records">
@@ -80,6 +83,7 @@ function BillList({ supplierId }: { supplierId: string }) {
       <ErrorBanner onRetry={() => void bills.refetch()}>{bills.error && friendlyError(bills.error)}</ErrorBanner>
       {bills.data?.length === 0 && <p className="text-sm text-subtle">No bills.</p>}
       <ul>{bills.data?.map((b) => <BillRow key={b.id} bill={b} />)}</ul>
+      <ShowMore list={bills} />
     </Card>
   )
 }

@@ -5,10 +5,11 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
 import { Badge, ButtonLink, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
+import { ShowMore } from '../../components/ShowMore'
 import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
 import { useProjectFilter } from '../lists/ProjectFilter'
 import { useProjects } from '../projects/api'
-import { useSlips } from './api'
+import { useSlipCount, useSlips } from './api'
 import { canEnter } from './permissions'
 
 type Filter = 'open' | 'pending' | 'draft' | 'all'
@@ -18,20 +19,15 @@ const WHAT: Record<Filter, string> = { open: 'open slips', pending: 'slips to ap
 
 export function SlipsPage() {
   const auth = useCompany()
-  const slips = useSlips(auth.companyId)
   const projects = useProjects(auth.companyId)
   const [filter, setFilter] = useState<Filter>('open')
   const code = (id: string) => projects.data?.find((p) => p.id === id)?.code
   const { projectId, chip, empty, recordProject } = useProjectFilter()
-  const mine = slips.data?.filter((s) => !projectId || s.order_slip_lines.some((l) => l.project_id === projectId))
-
-  const list = mine?.filter((s) => {
-    if (filter === 'open') return s.status === 'approved' && !['fully_received', 'closed_short'].includes(s.fulfilment)
-    if (filter === 'pending') return s.status === 'pending'
-    if (filter === 'draft') return s.status === 'draft' || s.status === 'rejected'
-    return true
-  })
-  const count = (f: Filter) => mine?.filter((s) => (f === 'pending' ? s.status === 'pending' : f === 'draft' ? ['draft', 'rejected'].includes(s.status) : false)).length
+  const scope = { companyId: auth.companyId, projectId }
+  const slips = useSlips({ ...scope, tab: filter })
+  const list = slips.data
+  const counts = { pending: useSlipCount({ ...scope, tab: 'pending' }).data, draft: useSlipCount({ ...scope, tab: 'draft' }).data }
+  const count = (f: Filter) => (f === 'pending' || f === 'draft' ? counts[f] : 0)
 
   return (
     <>
@@ -57,7 +53,7 @@ export function SlipsPage() {
         {list?.map((s) => {
           const [statusLabel, statusTone] = SLIP_STATUS[s.status]
           const [fLabel, fTone] = FULFILMENT[s.fulfilment] ?? FULFILMENT.not_received
-          const codes = [...new Set(s.order_slip_lines.map((l) => code(l.project_id)).filter(Boolean))]
+          const codes = s.project_ids.map((id) => code(id)).filter(Boolean)
           return (
             <li key={s.id}>
               <Link to={`/slips/${s.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
@@ -79,6 +75,7 @@ export function SlipsPage() {
           )
         })}
       </ul>
+      <ShowMore list={slips} total={filter === 'all' || filter === 'open' ? null : count(filter)} />
     </>
   )
 }

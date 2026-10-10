@@ -13,6 +13,7 @@ import { rpc } from '../supply/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permissions'
 import { PARTY, type PartyKind } from './kinds'
 import { PartyForm, subtitleOf, usePartyRows } from './PartiesPage'
+import { RefundCard } from '../refunds/RefundCard'
 import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
 
 type Tab = 'khata' | 'payments'
@@ -68,6 +69,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
         )}
         {auth.canSeeFinance && <BalanceCard kind={kind} partyId={r.id} />}
         {auth.canSeeFinance && canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
+        <RefundCard kind={kind} partyId={r.id} />
       </div>
 
       {kind === 'subcontractor' && <PackageList subcontractorId={r.id} />}

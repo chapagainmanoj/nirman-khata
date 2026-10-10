@@ -1,5 +1,4 @@
 // Every payment the person can see, newest first, with who it was paid to.
-import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
@@ -7,28 +6,27 @@ import { Badge, ButtonLink, Card, EmptyState, ErrorBanner, PageHeader, Spinner }
 import { friendlyError } from '../../lib/errors'
 import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
+import { ShowMore } from '../../components/ShowMore'
+import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 import { canRecordPayments } from '../supply/permissions'
 import { useProjects } from '../projects/api'
 import { useProjectFilter } from './ProjectFilter'
 
 function usePayments(companyId: string, projectId: string | null) {
-  return useQuery({
-    queryKey: ['payments', { companyId, projectId }],
-    queryFn: async () => {
-      let q = supabase.from('payment_summaries')
-        .select('*, suppliers(name), subcontractors(name), crews(name), payees(name)')
-        .eq('company_id', companyId).order('payment_date', { ascending: false }).limit(200)
-      // A payment counts for a project once some of it is assigned there.
-      if (projectId) q = q.contains('project_ids', [projectId])
-      const { data, error } = await q
-      if (error) throw error
-      return data.map((p) => ({
-        ...p, id: p.id!, number: p.number!, payment_date: p.payment_date!, status: p.status!, method: p.method!,
-        amount_paisa: p.amount_paisa ?? 0, allocated_paisa: p.allocated_paisa ?? 0,
-        party: p.suppliers?.name ?? p.subcontractors?.name ?? p.crews?.name ?? p.payees?.name ?? '',
-      }))
-    },
+  return usePaged(['payments', { companyId, projectId }], async (from, to) => {
+    let q = supabase.from('payment_summaries')
+      .select('*, suppliers(name), subcontractors(name), crews(name), payees(name)')
+      .eq('company_id', companyId)
+    // A payment counts for a project once some of it is assigned there.
+    if (projectId) q = q.contains('project_ids', [projectId])
+    const { data, error } = await q.order('payment_date', { ascending: false }).order('number', { ascending: false }).range(from, to)
+    if (error) throw error
+    return data.map((p) => ({
+      ...p, id: p.id!, number: p.number!, payment_date: p.payment_date!, status: p.status!, method: p.method!,
+      amount_paisa: p.amount_paisa ?? 0, allocated_paisa: p.allocated_paisa ?? 0,
+      party: p.suppliers?.name ?? p.subcontractors?.name ?? p.crews?.name ?? p.payees?.name ?? '',
+    }))
   })
 }
 
@@ -67,6 +65,7 @@ export function PaymentsPage() {
             </li>
           ))}
         </ul>
+        <ShowMore list={payments} />
       </Card>
     </>
   )

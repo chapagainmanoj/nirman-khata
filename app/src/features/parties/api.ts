@@ -1,6 +1,7 @@
 // Data shared by every kind of party: balances, khata, open items, opening balance, payments.
 // Reads go through RLS, so each list already contains only what the user may see.
 import { useQuery } from '@tanstack/react-query'
+import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 import { rpc } from '../supply/api'
 import { PARTY, type PartyKind } from './kinds'
@@ -43,17 +44,14 @@ export function usePartyOpeningBalance(partyId: string, enabled: boolean) {
 }
 
 export function usePartyPayments(kind: PartyKind, partyId: string) {
-  return useQuery({
-    queryKey: ['payments', { kind, partyId }],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('payment_summaries').select('*')
-        .eq(PARTY[kind].column, partyId).order('payment_date', { ascending: false }).limit(200)
-      if (error) throw error
-      return data.map((p) => ({
-        ...p, id: p.id!, number: p.number!, payment_date: p.payment_date!, status: p.status!, method: p.method!,
-        amount_paisa: p.amount_paisa ?? 0, allocated_paisa: p.allocated_paisa ?? 0, settled_paisa: p.settled_paisa ?? 0,
-      }))
-    },
+  return usePaged(['payments', { kind, partyId }], async (from, to) => {
+    const { data, error } = await supabase.from('payment_summaries').select('*')
+      .eq(PARTY[kind].column, partyId).order('payment_date', { ascending: false }).order('number', { ascending: false }).range(from, to)
+    if (error) throw error
+    return data.map((p) => ({
+      ...p, id: p.id!, number: p.number!, payment_date: p.payment_date!, status: p.status!, method: p.method!,
+      amount_paisa: p.amount_paisa ?? 0, allocated_paisa: p.allocated_paisa ?? 0, settled_paisa: p.settled_paisa ?? 0,
+    }))
   })
 }
 

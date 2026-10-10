@@ -18,7 +18,7 @@ type Kind = 'all' | 'site' | 'money'
 const SITE_KINDS = new Set(['report', 'progress', 'delivery', 'slip', 'slip_sent'])
 
 const MONEY_TONE: Record<string, ['warn' | 'good' | 'info', string]> = {
-  cost: ['warn', 'Cost'], payment: ['good', 'Payment'], advance: ['info', 'Advance'],
+  cost: ['warn', 'Cost'], payment: ['good', 'Payment'], advance: ['info', 'Advance'], refund: ['info', 'Refund'],
 }
 
 /** Where an event opens. Records without a page of their own open on their project. */
@@ -27,6 +27,7 @@ function href(e: CalendarEvent): string | null {
   switch (e.link_kind) {
     case 'bill': return `/bills/${e.link_id}`
     case 'payment': return `/payments/${e.link_id}`
+    case 'refund': return `/refunds/${e.link_id}`
     case 'slip': return `/slips/${e.link_id}`
     case 'report': return `/daily/${e.link_id}`
     case 'progress': return project && `${project}?tab=site`
@@ -131,7 +132,7 @@ export function CalendarPage() {
               if (!list) return null
               const cost = showMoney ? sum(list, 'cost_paisa') : 0
               const site = list.some((e) => SITE_KINDS.has(e.kind))
-              const paid = list.some((e) => e.money === 'payment' || e.money === 'advance')
+              const paid = list.some((e) => e.money === 'payment' || e.money === 'advance' || e.money === 'refund')
               return (
                 <>
                   <span aria-hidden className="flex gap-0.5">
@@ -176,7 +177,7 @@ export function CalendarPage() {
                   </span>
                   {(e.cost_paisa || e.cash_paisa) ? (
                     <span className="block text-sm tabular-nums">
-                      {e.cost_paisa ? `Cost ${formatNPR(e.cost_paisa)}` : ''}{e.cost_paisa && e.cash_paisa ? ' · ' : ''}{e.cash_paisa ? `Paid ${formatNPR(e.cash_paisa)}` : ''}
+                      {e.cost_paisa ? `Cost ${formatNPR(e.cost_paisa)}` : ''}{e.cost_paisa && e.cash_paisa ? ' · ' : ''}{e.cash_paisa ? (e.cash_paisa < 0 ? `Received back ${formatNPR(-e.cash_paisa)}` : `Paid ${formatNPR(e.cash_paisa)}`) : ''}
                     </span>
                   ) : null}
                 </>

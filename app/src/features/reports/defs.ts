@@ -134,7 +134,7 @@ export const REPORTS: ReportDef[] = [
   },
   {
     key: 'payments', title: 'Payment register', group: 'money', finance: true, period: 'range',
-    description: 'Every payment in the period, what it settled, and any reversal.',
+    description: 'Every payment in the period, what it settled, and any reversal. Refunds received show as minus amounts.',
     columns: [
       { key: 'date', label: 'Date', kind: 'date' }, { key: 'number', label: 'Number', kind: 'text' },
       { key: 'party', label: 'Paid to', kind: 'text' }, { key: 'method', label: 'How', kind: 'text' },
@@ -145,9 +145,9 @@ export const REPORTS: ReportDef[] = [
       const rows = await rpc('report_payments', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f), ...(f.party ? { p_party: f.party } : {}) })
       return {
         rows: rows.map((r) => ({
-          link: `/payments/${r.payment_id}`,
+          link: r.kind === 'refund' ? `/refunds/${r.payment_id}` : `/payments/${r.payment_id}`,
           values: {
-            date: r.payment_date, number: r.number, party: r.party_name, method: r.method.replace('_', ' '),
+            date: r.payment_date, number: r.kind === 'refund' ? `${r.number} (refund)` : r.number, party: r.party_name, method: r.method.replace('_', ' '),
             // With a project chosen, the part of the payment that went to it.
             amount: f.project ? r.project_paisa : r.amount_paisa, settled: r.settled_paisa, reversed: r.reversed_on,
           },

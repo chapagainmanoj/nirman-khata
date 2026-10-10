@@ -7,6 +7,8 @@ import { VitePWA } from 'vite-plugin-pwa'
 // Light PWA layer only: installable, home-screen icon, cached app shell.
 // No core feature depends on the service worker (design §8, mobile decision).
 export default defineConfig({
+  // Playwright writes traces and screenshots under e2e/; reloading on those would break the run.
+  server: { watch: { ignored: ['**/e2e/**'] } },
   plugins: [
     react(),
     tailwindcss(),

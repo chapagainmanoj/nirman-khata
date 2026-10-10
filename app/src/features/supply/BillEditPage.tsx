@@ -19,6 +19,7 @@ import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
+import { billTitle } from '../../lib/labels'
 import { rpc, useBill, useDeliveryLineStatus, useSuppliers } from './api'
 import { canEnter, canPost } from './permissions'
 import { TrashIcon } from '../../components/icons'
@@ -388,6 +389,10 @@ function BillForm({ initial }: { initial?: BillValues }) {
                     <Controller control={control} name={`lines.${i}.rate`} render={({ field: f }) => (
                       <MoneyInput id={`bl${i}-r`} value={f.value} onChange={(e) => { f.onChange(e); setValue(`lines.${i}.amount_edited`, false); recalc(i) }} />
                     )} />
+                    {auth.canSeeFinance && (
+                      <LastRate supplierId={supplierId} materialId={l.material_id} current={parseNPR(l.rate)}
+                        onUse={(paisa) => { setValue(`lines.${i}.rate`, paisaToInput(paisa)); setValue(`lines.${i}.amount_edited`, false); recalc(i) }} />
+                    )}
                   </Field>
                 )}
                 <Field label="Amount" htmlFor={`bl${i}-a`} hint={l.line_type === 'material' ? 'Quantity × rate. Change it to match the paper bill.' : undefined}>
@@ -545,6 +550,34 @@ function toPayload(v: BillValues) {
     vat_rate_pct: Number(v.vat_rate) || 13, lines,
     overrides: v.split_charges ? v.overrides.map((o) => ({ charge: o.charge, project_id: o.project_id, amount_paisa: parseNPR(o.amount) ?? 0 })) : [],
   }
+}
+
+/**
+ * The rate on this supplier's last posted bill for the material (req §11.2, a hint only: v1
+ * has no rate lists). "Use" copies it into the line.
+ */
+function LastRate({ supplierId, materialId, current, onUse }: {
+  supplierId: string; materialId: string; current: number | null; onUse: (paisa: number) => void
+}) {
+  const auth = useCompany()
+  const last = useQuery({
+    queryKey: ['bill-preview', 'last-rate', supplierId, materialId],
+    enabled: !!supplierId && !!materialId,
+    queryFn: async () => (await rpc('last_billed_rate', { p_supplier: supplierId, p_material: materialId }))[0] ?? null,
+  })
+  const r = last.data
+  if (!r || r.rate_paisa === null) return null
+  return (
+    <span className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-subtle">
+      <span>
+        Last billed <span className="font-semibold text-ink tabular-nums">{formatNPR(r.rate_paisa)}</span> on {formatDate(r.bill_date, auth.dateDisplay)}
+        {r.bill_no ? ` (${billTitle(r.bill_no)})` : ''}
+      </span>
+      {current !== r.rate_paisa && (
+        <button type="button" className="min-h-11 font-semibold text-brand hover:underline" onClick={() => onUse(r.rate_paisa)}>Use</button>
+      )}
+    </span>
+  )
 }
 
 /** Delivery line details (challan, date, material, unit) for matching. */
