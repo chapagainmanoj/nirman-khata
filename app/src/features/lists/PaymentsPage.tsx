@@ -9,14 +9,19 @@ import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { canRecordPayments } from '../supply/permissions'
+import { useProjects } from '../projects/api'
+import { useProjectFilter } from './ProjectFilter'
 
-function usePayments(companyId: string) {
+function usePayments(companyId: string, projectId: string | null) {
   return useQuery({
-    queryKey: ['payments', { companyId }],
+    queryKey: ['payments', { companyId, projectId }],
     queryFn: async () => {
-      const { data, error } = await supabase.from('payment_summaries')
+      let q = supabase.from('payment_summaries')
         .select('*, suppliers(name), subcontractors(name), crews(name), payees(name)')
         .eq('company_id', companyId).order('payment_date', { ascending: false }).limit(200)
+      // A payment counts for a project once some of it is assigned there.
+      if (projectId) q = q.contains('project_ids', [projectId])
+      const { data, error } = await q
       if (error) throw error
       return data.map((p) => ({
         ...p, id: p.id!, number: p.number!, payment_date: p.payment_date!, status: p.status!, method: p.method!,
@@ -29,15 +34,19 @@ function usePayments(companyId: string) {
 
 export function PaymentsPage() {
   const auth = useCompany()
-  const payments = usePayments(auth.companyId)
+  const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
+  const payments = usePayments(auth.companyId, projectId)
+  const projects = useProjects(auth.companyId)
+  const codes = (ids: string[] | null) => (ids ?? []).map((id) => projects.data?.find((p) => p.id === id)?.code).filter(Boolean).join(', ')
   return (
     <>
       <PageHeader title="Payments" subtitle="Money paid to suppliers, subcontractors, crews and payees."
-        actions={canRecordPayments(auth) && <ButtonLink to="/payments/new">Record payment</ButtonLink>} />
+        actions={canRecordPayments(auth) && <ButtonLink to={recordProject ? `/payments/new?project=${recordProject}` : '/payments/new'}>Record payment</ButtonLink>} />
+      {chip}
       <Card>
         {payments.isPending && <Spinner />}
         <ErrorBanner onRetry={() => void payments.refetch()}>{payments.error && friendlyError(payments.error)}</ErrorBanner>
-        {payments.data?.length === 0 && <EmptyState title="No payments yet" />}
+        {payments.data?.length === 0 && empty('payments', <EmptyState title="No payments yet" />)}
         <ul>
           {payments.data?.map((p) => (
             <li key={p.id} className="border-b border-line last:border-0">
@@ -46,6 +55,7 @@ export function PaymentsPage() {
                   <div className="font-medium break-words text-ink">{p.party || p.number}</div>
                   <div className="text-xs text-subtle">
                     {p.number} · {PAYMENT_METHODS[p.method]} · <DateText value={p.payment_date} display={auth.dateDisplay} />
+                    {showProject && codes(p.project_ids) && <> · {codes(p.project_ids)}</>}
                   </div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">

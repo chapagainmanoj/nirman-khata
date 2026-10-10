@@ -30,7 +30,7 @@ export function BillsPage() {
   const auth = useCompany()
   const posts = canPost(auth)
   const [tab, setTab] = useState<Tab>(posts ? 'to_post' : 'drafts')
-  const { projectId, chip } = useProjectFilter()
+  const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
   // One query for every tab, so each tab can say how many bills it holds.
   const all = useBills({ companyId: auth.companyId, projectId: projectId ?? undefined })
   const inTab = (t: Tab) => (all.data ?? []).filter((b) => !STATUSES[t] || (STATUSES[t] as readonly string[]).includes(b.status))
@@ -47,17 +47,17 @@ export function BillsPage() {
   return (
     <>
       <PageHeader title="Bills" subtitle={posts ? 'Post bills sent from site, and see what is still unpaid.' : undefined}
-        actions={canEnter(auth) && <ButtonLink to={projectId ? `/bills/new?project=${projectId}` : '/bills/new'}>{posts ? 'Enter bill' : 'Bill photo'}</ButtonLink>} />
+        actions={canEnter(auth) && <ButtonLink to={recordProject ? `/bills/new?project=${recordProject}` : '/bills/new'}>{posts ? 'Enter bill' : 'Bill photo'}</ButtonLink>} />
       {chip}
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Bills">
         <Card>
           {all.isPending && <Spinner />}
           <ErrorBanner onRetry={() => void all.refetch()}>{all.error && friendlyError(all.error)}</ErrorBanner>
-          {shown?.length === 0 && <EmptyState title={EMPTY[tab]} />}
+          {shown?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]} />)}
           {owed > 0 && (tab === 'posted' || tab === 'all') && (
             <p className="mb-2 border-b border-line pb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
           )}
-          <ul>{shown?.map((b) => <BillRow key={b.id} bill={b} showSupplier />)}</ul>
+          <ul>{shown?.map((b) => <BillRow key={b.id} bill={b} showSupplier showProject={showProject} />)}</ul>
         </Card>
       </Tabs>
     </>

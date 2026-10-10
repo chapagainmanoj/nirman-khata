@@ -1,6 +1,6 @@
 // Deliveries (challan) with their photos, returns and derived quantities (req §10, §20).
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useState, type FormEvent, type ReactNode } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { Attachments } from '../../components/Attachments'
 import { DateInput, DateText } from '../../components/DateInput'
@@ -16,11 +16,11 @@ const qty = (n: number) => Number(n).toLocaleString('en-IN', { maximumFractionDi
 
 type Delivery = NonNullable<ReturnType<typeof useDeliveries>['data']>[number]
 
-export function DeliveryList({ filter }: { filter: { projectId?: string; slipId?: string; supplierId?: string } }) {
+export function DeliveryList({ filter, empty }: { filter: { projectId?: string; slipId?: string; supplierId?: string }; empty?: ReactNode }) {
   const deliveries = useDeliveries(filter)
   if (deliveries.isPending) return <Spinner />
   if (deliveries.error) return <ErrorBanner onRetry={() => void deliveries.refetch()}>{friendlyError(deliveries.error)}</ErrorBanner>
-  if (!deliveries.data.length) return <p className="text-sm text-subtle">No deliveries recorded yet.</p>
+  if (!deliveries.data.length) return empty ?? <p className="text-sm text-subtle">No deliveries recorded yet.</p>
   return (
     <ul className="grid gap-3 lg:grid-cols-2">
       {deliveries.data.map((d) => <DeliveryItem key={d.id} d={d} showProject={!filter.projectId} />)}

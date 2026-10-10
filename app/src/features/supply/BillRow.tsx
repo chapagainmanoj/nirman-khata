@@ -5,12 +5,15 @@ import { DateText } from '../../components/DateInput'
 import { Badge } from '../../components/ui'
 import { BILL_STATUS, billTitle, settlementLabel } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
+import { useProjects } from '../projects/api'
 import type { useBills } from './api'
 
 type Bill = NonNullable<ReturnType<typeof useBills>['data']>[number]
 
-export function BillRow({ bill: b, showSupplier }: { bill: Bill; showSupplier?: boolean }) {
+export function BillRow({ bill: b, showSupplier, showProject }: { bill: Bill; showSupplier?: boolean; showProject?: boolean }) {
   const auth = useCompany()
+  const projects = useProjects(auth.companyId)
+  const codes = showProject ? (b.project_ids ?? []).map((id) => projects.data?.find((p) => p.id === id)?.code).filter(Boolean) : []
   const [label, tone] = BILL_STATUS[b.status]
   const outstanding = b.payable_paisa - b.credited_paisa - b.settled_paisa
   const [paidLabel, paidTone] = settlementLabel(outstanding, b.settled_paisa)
@@ -23,6 +26,7 @@ export function BillRow({ bill: b, showSupplier }: { bill: Bill; showSupplier?: 
           <div className="text-xs text-subtle">
             {showSupplier && b.suppliers?.name && <>{b.suppliers.name} · </>}
             <DateText value={b.bill_date} display={auth.dateDisplay} />
+            {codes.length > 0 && <> · {codes.join(', ')}</>}
           </div>
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">

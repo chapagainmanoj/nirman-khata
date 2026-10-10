@@ -140,29 +140,33 @@ export function RecordSheetButton({ role }: { role: NavRole }) {
 }
 
 /** "P-1 Ward 5 ▾": which project new records start on and lists open filtered to. */
-export function ProjectSwitcher({ className }: { className?: string }) {
+export function ProjectSwitcher({ className, caption = 'always' }: { className?: string; caption?: 'always' | 'md' }) {
   const current = useCurrentProject()
   // Nothing to switch between: one project, or none to work on.
   if (current.choices.length < 2) return null
-  const label = current.project ? `${current.project.code} · ${current.project.name}` : t('nav.project.all')
+  const label = current.project ? `${current.project.code} · ${current.project.name}` : t('nav.project.none')
   return (
-    <Disclosure
-      buttonClass={cx('inline-flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-line px-3 text-left text-sm text-ink hover:bg-muted', className)}
-      label={<><span className="min-w-0 flex-1 truncate"><span className="sr-only">{t('nav.project.choose')}: </span>{label}</span><ChevronDownIcon /></>}>
-      {(close) => (
-        <ul className="max-h-80 overflow-y-auto">
-          {[{ id: null, text: t('nav.project.all') }, ...current.choices.map((p) => ({ id: p.id, text: `${p.code} · ${p.name}` }))].map((o) => (
-            <li key={o.id ?? 'all'}>
-              <button type="button" aria-current={o.id === current.projectId || undefined}
-                onClick={() => { current.setProjectId(o.id); close() }}
-                className={cx(rowClass, 'text-sm', o.id === current.projectId ? 'font-semibold text-brand-dark' : 'text-ink')}>
-                {o.text}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Disclosure>
+    <div>
+      {/* A visible caption so this reads as your context, not a filter; the button keeps its own sr-only name. */}
+      <div aria-hidden className={cx('px-1 pb-1 text-xs font-medium text-subtle', caption === 'md' && 'hidden md:block')}>{t('nav.project.choose')}</div>
+      <Disclosure
+        buttonClass={cx('inline-flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg border border-line px-3 text-left text-sm text-ink hover:bg-muted', className)}
+        label={<><span className="min-w-0 flex-1 truncate"><span className="sr-only">{t('nav.project.choose')}: </span>{label}</span><ChevronDownIcon /></>}>
+        {(close) => (
+          <ul className="max-h-80 overflow-y-auto">
+            {[{ id: null, text: t('nav.project.noneOption') }, ...current.choices.map((p) => ({ id: p.id, text: `${p.code} · ${p.name}` }))].map((o) => (
+              <li key={o.id ?? 'all'}>
+                <button type="button" aria-current={o.id === current.projectId || undefined}
+                  onClick={() => { current.setProjectId(o.id); close() }}
+                  className={cx(rowClass, 'text-sm', o.id === current.projectId ? 'font-semibold text-brand-dark' : 'text-ink')}>
+                  {o.text}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </Disclosure>
+    </div>
   )
 }
 

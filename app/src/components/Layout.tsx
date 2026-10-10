@@ -166,7 +166,7 @@ function BarLink({ navKey, active, count }: { navKey: NavKey; active: boolean; c
 function ProjectBar() {
   return (
     <div className="mx-auto flex max-w-5xl items-center gap-2 px-2 md:px-4">
-      <div className="min-w-0 flex-1 pb-2 empty:hidden md:max-w-sm"><ProjectSwitcher /></div>
+      <div className="min-w-0 flex-1 pb-2 empty:hidden md:max-w-sm"><ProjectSwitcher caption="md" /></div>
       <div className="ml-auto hidden w-56 shrink-0 pb-2 md:block"><AccountMenu alignRight /></div>
     </div>
   )

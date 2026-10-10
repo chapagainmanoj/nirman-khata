@@ -13,6 +13,8 @@ import { canEnter } from './permissions'
 
 type Filter = 'open' | 'pending' | 'draft' | 'all'
 const FILTERS: Array<[Filter, string]> = [['open', 'Open'], ['pending', 'To approve'], ['draft', 'Drafts'], ['all', 'All']]
+// Empty lists name the tab: "No slips to approve on P-2 yet."
+const WHAT: Record<Filter, string> = { open: 'open slips', pending: 'slips to approve', draft: 'draft slips', all: 'slips' }
 
 export function SlipsPage() {
   const auth = useCompany()
@@ -20,7 +22,7 @@ export function SlipsPage() {
   const projects = useProjects(auth.companyId)
   const [filter, setFilter] = useState<Filter>('open')
   const code = (id: string) => projects.data?.find((p) => p.id === id)?.code
-  const { projectId, chip } = useProjectFilter()
+  const { projectId, chip, empty, recordProject } = useProjectFilter()
   const mine = slips.data?.filter((s) => !projectId || s.order_slip_lines.some((l) => l.project_id === projectId))
 
   const list = mine?.filter((s) => {
@@ -33,7 +35,7 @@ export function SlipsPage() {
 
   return (
     <>
-      <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink to={projectId ? `/slips/new?project=${projectId}` : '/slips/new'}>New slip</ButtonLink>} />
+      <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink to={recordProject ? `/slips/new?project=${recordProject}` : '/slips/new'}>New slip</ButtonLink>} />
       {chip}
       <div className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="group" aria-label="Show slips">
         {FILTERS.map(([key, label]) => {
@@ -48,9 +50,9 @@ export function SlipsPage() {
       </div>
       {slips.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void slips.refetch()}>{slips.error && friendlyError(slips.error)}</ErrorBanner>
-      {list?.length === 0 && (
-        <EmptyState title="No slips here">Create a slip to order material from a supplier for one or more projects.</EmptyState>
-      )}
+      {list?.length === 0 && empty(WHAT[filter], (
+        <EmptyState title={`No ${WHAT[filter]}`}>Create a slip to order material from a supplier for one or more projects.</EmptyState>
+      ))}
       <ul className="grid gap-3 sm:grid-cols-2">
         {list?.map((s) => {
           const [statusLabel, statusTone] = SLIP_STATUS[s.status]

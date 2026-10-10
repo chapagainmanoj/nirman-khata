@@ -58,12 +58,14 @@ export function PaymentNewPage() {
   const [choosingParty, setChoosingParty] = useState(false)
   const accounts = canPost(auth)
   const start = partyFromParams(params)
+  // The current project (from "+ Record" or a list page): where an advance goes unless changed.
+  const projectParam = params.get('project') ?? ''
 
   const form = useForm<Values>({
     defaultValues: {
       id: newId(), op_key: newId(), party_kind: start.kind, party_id: start.id, package_id: params.get('package') ?? '',
       mode: 'bills', payment_date: todayKathmandu(), amount: '', method: 'cash', reference: '', notes: '',
-      allocations: [], settle: {}, extra_project: '', photos: [],
+      allocations: [], settle: {}, extra_project: projectParam, photos: [],
     },
   })
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: 'payment-new' })
@@ -85,6 +87,12 @@ export function PaymentNewPage() {
   const kindLabel = PARTY[v.party_kind].one
   const pkgProject = pkg.data?.project_id ?? ''
   const visible = projects.data ?? []
+  // A new split row starts on the current project, unless it is already listed.
+  const firstFree = () => {
+    const used = new Set(getValues('allocations').map((a) => a.project_id))
+    if (projectParam && !used.has(projectParam)) return projectParam
+    return visible.length === 1 && !used.has(visible[0].id) ? visible[0].id : ''
+  }
   const code = (id: string | null) => projects.data?.find((p) => p.id === id)?.code ?? ''
 
   // Ticking bills sets the amount; the amount can still be raised to pay extra as advance.
@@ -262,7 +270,7 @@ export function PaymentNewPage() {
               </div>
             ))}
             <Button type="button" variant="secondary"
-              onClick={() => allocations.append({ project_id: visible.length === 1 ? visible[0].id : '', amount: unallocated > 0 ? paisaToInput(unallocated) : '' })}>
+              onClick={() => allocations.append({ project_id: firstFree(), amount: unallocated > 0 ? paisaToInput(unallocated) : '' })}>
               Add project
             </Button>
             {amountPaisa !== null && amountPaisa > 0 && (

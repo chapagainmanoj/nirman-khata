@@ -2306,14 +2306,14 @@ isOneToOne: false
                   ]
                 },"payment_summaries": {
                   Row: {
-                    "allocated_paisa": number | null,"amount_paisa": number | null,"company_id": string | null,"created_by": string | null,"crew_id": string | null,"id": string | null,"method": Database["public"]['Enums']["payment_method"] | null,"notes": string | null,"number": string | null,"party_id": string | null,"payee_id": string | null,"payment_date": string | null,"posted_at": string | null,"reference": string | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"subcontractor_id": string | null,"supplier_id": string | null,"work_package_id": string | null
+                    "allocated_paisa": number | null,"amount_paisa": number | null,"company_id": string | null,"created_by": string | null,"crew_id": string | null,"id": string | null,"method": Database["public"]['Enums']["payment_method"] | null,"notes": string | null,"number": string | null,"party_id": string | null,"payee_id": string | null,"payment_date": string | null,"posted_at": string | null,"project_ids": (string)[] | null,"reference": string | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"subcontractor_id": string | null,"supplier_id": string | null,"work_package_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
+                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
                          }
                         Update: {
-                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
+                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
                          }
                         Relationships: [
                     {
@@ -2391,6 +2391,9 @@ isOneToOne: false
 "close_slip_short":
 { Args: { "p_reason": string,"p_slip": string }; Returns: undefined
                            },
+"company_dashboard":
+{ Args: { "p_as_of"?: string,"p_company": string,"p_from": string,"p_to": string }; Returns: Json
+                           },
 "copy_stages":
 { Args: { "p_from": string,"p_to": string }; Returns: number
                            },
@@ -2466,6 +2469,9 @@ isOneToOne: false
 "project_cost_summary":
 { Args: { "p_as_known"?: boolean,"p_as_of"?: string,"p_project": string }; Returns: Json
                            },
+"project_dashboard":
+{ Args: { "p_as_known"?: boolean,"p_as_of"?: string,"p_project": string }; Returns: Json
+                           },
 "promote_payee":
 { Args: { "p_payee": string }; Returns: string
                            },
@@ -2484,9 +2490,44 @@ isOneToOne: false
 "remove_attachment":
 { Args: { "p_attachment": string }; Returns: undefined
                            },
+"report_cost_by_heading":
+{ Args: { "p_as_known"?: boolean,"p_as_of"?: string,"p_company": string,"p_project"?: string }; Returns: {
+              "budget_effective_date": string,"budget_paisa": number,"budget_revision_id": string,"cost_paisa": number,"heading": string,"heading_id": string,"parent_heading": string,"project_id": string
+            }[]
+                           },
+"report_daily_activity":
+{ Args: { "p_company": string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
+              "area": string,"created_by": string,"headcount": number,"issues": string,"labour_paisa": number,"project_id": string,"report_id": string,"stage": string,"weather": string,"work_date": string,"work_done": string
+            }[]
+                           },
 "report_day":
 { Args: { "p_date": string,"p_project": string }; Returns: {
               "at": string,"created_by": string,"detail": string,"id": string,"kind": string,"label": string
+            }[]
+                           },
+"report_labour":
+{ Args: { "p_company": string,"p_crew"?: string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
+              "amount_paisa": number,"crew": string,"crew_id": string,"daily_report_id": string,"headcount": number,"labour_cost_id": string,"paid_paisa": number,"person_days": number,"project_id": string,"reversed_on": string,"work_date": string,"work_type": string
+            }[]
+                           },
+"report_material_purchases":
+{ Args: { "p_company": string,"p_from": string,"p_project"?: string,"p_supplier"?: string,"p_to": string }; Returns: {
+              "bills": number,"cost_paisa": number,"material": string,"material_id": string,"project_id": string,"qty": number,"suppliers": string,"unit": string
+            }[]
+                           },
+"report_payments":
+{ Args: { "p_as_of"?: string,"p_company": string,"p_from": string,"p_party"?: string,"p_project"?: string,"p_to": string }; Returns: {
+              "amount_paisa": number,"method": Database["public"]['Enums']["payment_method"],"number": string,"party_id": string,"party_kind": string,"party_name": string,"payment_date": string,"payment_id": string,"project_paisa": number,"reference": string,"reversed_on": string,"settled_paisa": number
+            }[]
+                           },
+"report_pending_orders":
+{ Args: { "p_company": string,"p_project"?: string }; Returns: {
+              "age_days": number,"doc_date": string,"doc_id": string,"doc_number": string,"item": string,"kind": string,"project_id": string,"qty": number,"supplier_name": string,"unit": string
+            }[]
+                           },
+"report_progress_history":
+{ Args: { "p_company": string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
+              "created_at": string,"created_by": string,"effective_date": string,"notes": string,"pct": number,"previous_pct": number,"project_id": string,"reason": string,"stage": string,"update_id": string
             }[]
                            },
 "reverse_bill":

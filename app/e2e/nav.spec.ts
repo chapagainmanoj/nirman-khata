@@ -42,7 +42,7 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await expect(bar.getByRole('link', { name: 'Bills' })).toBeVisible() // admin bar
   await expect(bar.getByRole('link', { name: 'Deliveries' })).toHaveCount(0)
 
-  await newProject(page, 'P-1', 'Ward 5 school building')
+  const p1 = await newProject(page, 'P-1', 'Ward 5 school building')
   const p2 = await newProject(page, 'P-2', 'Private house Pokhara')
 
   await page.goto('/suppliers')
@@ -87,6 +87,27 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   // The slip page lights up Slips and shows the way back.
   await expect(bar.getByRole('link', { name: 'Slips' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Order slips')
+
+  // Lists follow the sidebar project; the toggle shows which view is on and "All" is temporary.
+  const shown = page.getByRole('group', { name: 'Projects shown' })
+  const switchTo = async (name: string) => {
+    await page.getByRole('button', { name: /Working on/ }).click()
+    await page.getByRole('button', { name }).click()
+  }
+  await page.goto('/slips')
+  await page.getByRole('button', { name: /^To approve/ }).click()
+  await expect(shown.getByRole('button', { name: 'P-2 · Private house Pokhara' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
+  await switchTo('P-1 · Ward 5 school building')
+  await expect(page.getByText('No slips to approve on P-1 yet.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'New slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`)
+  await shown.getByRole('button', { name: 'All projects' }).click()
+  await expect(shown.getByRole('button', { name: 'All projects' })).toHaveAttribute('aria-pressed', 'true')
+  await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'New slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`) // still the sidebar project
+  await page.screenshot(shots('nav-04-slips-all-projects'))
+  await switchTo('P-2 · Private house Pokhara') // a new current project starts filtered again
+  await expect(shown.getByRole('button', { name: 'P-2 · Private house Pokhara' })).toHaveAttribute('aria-pressed', 'true')
   await signOut(page)
 
   // Owner on a desktop: sidebar, a count of slips waiting, and the record menu.
