@@ -31,7 +31,7 @@ export function useProjectFilter() {
   const empty = (what: string, otherwise: ReactNode) => (projectId && p ? (
     <p className="text-sm text-subtle">
       No {what} on {p.code} yet.{' '}
-      <button type="button" onClick={() => setAllFor(p.id)} className="font-medium text-brand underline underline-offset-4">Show all projects</button>
+      <button type="button" onClick={() => setAllFor(p.id)} className="font-medium text-slate underline underline-offset-4">Show all projects</button>
     </p>
   ) : otherwise)
 

@@ -7,7 +7,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, Card, ErrorBanner, Field, FormActions, Input, MoreDetails, Notice, PageHeader, Select, Spinner } from '../../components/ui'
+import { Button, Card, ErrorBanner, Field, FormActions, Input, MoreDetails, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -66,10 +66,13 @@ export function SlipEditPage() {
         })),
       }
     : undefined
-  return <SlipForm key={slipId ?? 'new'} initial={initial} />
+  return <SlipForm key={slipId ?? 'new'} initial={initial} number={data?.slip.number} />
 }
 
-function SlipForm({ initial }: { initial?: SlipValues }) {
+function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }) {
+  const crumbs: Crumb[] = initial
+    ? [{ to: '/slips', label: 'Order slips' }, { to: `/slips/${initial.id}`, label: number ?? 'Slip' }]
+    : [{ to: '/slips', label: 'Order slips' }]
   const auth = useCompany()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -170,7 +173,7 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
 
   return (
     <>
-      <PageHeader title={initial ? 'Edit slip' : 'New order slip'} subtitle="One supplier. Each line says which project it is for." />
+      <PageHeader title={initial ? 'Edit slip' : 'New order slip'} crumbs={crumbs} subtitle="One supplier. Each line says which project it is for." />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved slip.</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); run(true) }} className="flex flex-col gap-4">
         <Card>

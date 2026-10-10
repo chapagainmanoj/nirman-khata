@@ -136,7 +136,7 @@ export function CalendarPage() {
               return (
                 <>
                   <span aria-hidden className="flex gap-0.5">
-                    {site && <span className="size-1.5 rounded-full bg-brand" />}
+                    {site && <span className="size-1.5 rounded-full bg-bar" />}
                     {list.some((e) => e.money === 'cost') && <span className="size-1.5 rounded-full bg-warn" />}
                     {paid && <span className="size-1.5 rounded-full bg-good-ink" />}
                   </span>

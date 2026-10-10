@@ -23,6 +23,7 @@ import { useUnits } from '../catalog/api'
 import { useCrews } from '../costs/api'
 import { useCurrentProject } from '../projects/current'
 import { useProjects } from '../projects/api'
+import { projectCrumbs } from '../projects/crumbs'
 import { rpc } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
 import { useRefreshSite, useReportDay, useStages, WEATHER } from './api'
@@ -142,7 +143,7 @@ export function DailyReportPage() {
   if (saved) {
     return (
       <>
-        <PageHeader title="Report sent" />
+        <PageHeader title="Report sent" crumbs={projectCrumbs(projects.data, v.project_id)} />
         <Card>
           <p className="text-sm">The daily report is saved for the office.</p>
           {saved.labour && (
@@ -169,7 +170,7 @@ export function DailyReportPage() {
 
   return (
     <>
-      <PageHeader title="Daily report" subtitle="What happened on site today. Only the work done is required." />
+      <PageHeader title="Daily report" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="What happened on site today. Only the work done is required." />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored a report you had not sent.</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>
@@ -189,7 +190,7 @@ export function DailyReportPage() {
           {earlier.length > 0 && (
             <p className="mt-3 text-sm text-subtle">
               Already sent for this day: {earlier.map((r, i) => (
-                <span key={r.id}>{i > 0 && ', '}<Link className="text-brand underline-offset-4 hover:underline" to={`/daily/${r.id}`}>{r.label}</Link></span>
+                <span key={r.id}>{i > 0 && ', '}<Link className="text-slate underline-offset-4 hover:underline" to={`/daily/${r.id}`}>{r.label}</Link></span>
               ))}. Add another report only for different work.
             </p>
           )}
@@ -258,7 +259,7 @@ export function DailyReportPage() {
             {deliveries.length === 0 ? (
               <p className="text-sm text-subtle">
                 No deliveries recorded for this day.{' '}
-                <Link className="font-medium text-brand underline-offset-4 hover:underline" to={`/deliveries/new?project=${v.project_id}`}>Record a delivery</Link>
+                <Link className="font-medium text-slate underline-offset-4 hover:underline" to={`/deliveries/new?project=${v.project_id}`}>Record a delivery</Link>
               </p>
             ) : (
               <>

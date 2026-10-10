@@ -11,7 +11,7 @@ export function DeliveriesPage() {
   return (
     <>
       <PageHeader title="Deliveries"
-        actions={canEnter(auth) && <ButtonLink to={recordProject ? `/deliveries/new?project=${recordProject}` : '/deliveries/new'}>Record delivery</ButtonLink>} />
+        actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/deliveries/new?project=${recordProject}` : '/deliveries/new'}>Record delivery</ButtonLink>} />
       {chip}
       <DeliveryList key={projectId ?? 'all'} filter={projectId ? { projectId } : {}} empty={empty('deliveries', undefined)} />
     </>

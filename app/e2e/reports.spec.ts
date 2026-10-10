@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { signOut } from './helpers'
 import { readFileSync } from 'node:fs'
 
 // Milestone 5 on a phone and a desktop: the dashboard after sign-in, the project's recorded
@@ -57,7 +58,8 @@ test('dashboard, reports and exports agree', async ({ page }) => {
   const totals = page.getByRole('region', { name: 'Totals' })
   await expect(totals).toContainText('Rs. 6,000')
   await expect(page.getByRole('progressbar', { name: 'Budget used' })).toBeVisible()
-  await expect(page.getByRole('progressbar', { name: 'Work done' })).toBeVisible()
+  // Work done is kept apart from budget used; with no progress entered it offers a way to set it.
+  await expect(page.getByRole('link', { name: /Set progress/ })).toHaveAttribute('href', `/projects/${projectId}?tab=site`)
   await page.screenshot(shots('m5-01-dashboard'))
 
   // Project page: recorded cost by heading and by source.
@@ -142,8 +144,7 @@ test('dashboard, reports and exports agree', async ({ page }) => {
   await page.getByLabel('P-1 · Karki house').check()
   await page.locator('form').getByRole('button', { name: 'Add staff' }).click()
   await expect(page.getByText('Sita Supervisor')).toBeVisible()
-  await page.getByRole('button', { name: /^Account:/ }).click()
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await signOut(page)
   await page.getByLabel('Mobile number or email').fill(staffPhone)
   await page.getByLabel('Password').fill('staff-pass-1')
   await page.getByRole('button', { name: 'Sign in' }).click()

@@ -7,7 +7,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, Card, ErrorBanner, Field, FormActions, Input, PageHeader, Select, Spinner } from '../../components/ui'
+import { Button, Card, ErrorBanner, Field, FormActions, Input, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { PACKAGE_STATUS } from '../../lib/labels'
@@ -15,6 +15,7 @@ import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
 import { useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
 import { rpc } from '../supply/api'
+import { PARTY } from '../parties/kinds'
 import { useSubcontractors, useWorkPackage } from './api'
 
 type Pkg = NonNullable<ReturnType<typeof useWorkPackage>['data']>
@@ -98,9 +99,21 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
     if (!problem) save.mutate()
   }
 
+  // Where it was started from: the package itself, a subcontractor, a project, or Parties.
+  const fromSub = params.get('subcontractor')
+  const fromProject = params.get('project')
+  const subsCrumbs: Crumb[] = [{ to: '/parties', label: 'Parties' }, { to: PARTY.subcontractor.path, label: PARTY.subcontractor.many }]
+  const crumbs: Crumb[] = initial
+    ? [...subsCrumbs, { to: `/work/${initial.id}`, label: initial.scope }]
+    : fromSub
+      ? [...subsCrumbs, { to: `${PARTY.subcontractor.path}/${fromSub}`, label: subs.data?.find((s) => s.id === fromSub)?.name ?? PARTY.subcontractor.one }]
+      : fromProject
+        ? [{ to: '/projects', label: 'Projects' }, { to: `/projects/${fromProject}`, label: projects.data?.find((p) => p.id === fromProject)?.name ?? 'Project' }]
+        : subsCrumbs
+
   return (
     <>
-      <PageHeader title={initial ? 'Edit work package' : 'New work package'} subtitle="Work given to a subcontractor on one project." />
+      <PageHeader title={initial ? 'Edit work package' : 'New work package'} crumbs={crumbs} subtitle="Work given to a subcontractor on one project." />
       <form onSubmit={submit} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">

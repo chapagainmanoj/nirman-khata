@@ -40,7 +40,7 @@ export function SlipDetailPage() {
 
   if (slip.isPending) return <Spinner />
   if (slip.error) return <ErrorBanner onRetry={() => void slip.refetch()}>{friendlyError(slip.error)}</ErrorBanner>
-  if (!slip.data) return <EmptyState title="Slip not found"><Link className="text-brand" to="/slips">Back to slips</Link></EmptyState>
+  if (!slip.data) return <EmptyState title="Slip not found"><Link className="text-slate" to="/slips">Back to slips</Link></EmptyState>
 
   const { slip: s, lines, perms } = slip.data
   const [statusLabel, statusTone] = SLIP_STATUS[s.status]

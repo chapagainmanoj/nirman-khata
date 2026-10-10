@@ -57,7 +57,7 @@ export function ReportPage() {
     queryFn: () => def!.load(f, ctx),
   })
 
-  if (!def || !allowed) return <EmptyState title="Report not found">It does not exist or needs finance access. <Link className="text-brand" to="/reports">All reports</Link></EmptyState>
+  if (!def || !allowed) return <EmptyState title="Report not found">It does not exist or needs finance access. <Link className="text-slate" to="/reports">All reports</Link></EmptyState>
 
   // With one project chosen, the project column says the same thing on every row.
   const columns = def.columns.filter((c) => !(c.key === 'project' && f.project && def.key !== 'project-cost'))
@@ -168,7 +168,7 @@ export function ReportPage() {
                       const right = !(c.kind === 'text' || c.kind === 'date')
                       return (
                         <td key={c.key} className={`py-2 pr-3 ${right ? 'text-right tabular-nums' : ''} ${c.kind === 'date' ? 'whitespace-nowrap' : ''}`}>
-                          {j === 0 && r.link ? <Link className="font-medium text-brand hover:underline print:text-ink" to={r.link}>{text || 'Open'}</Link> : text}
+                          {j === 0 && r.link ? <Link className="font-medium text-slate hover:underline print:text-ink" to={r.link}>{text || 'Open'}</Link> : text}
                         </td>
                       )
                     })}

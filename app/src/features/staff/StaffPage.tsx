@@ -22,7 +22,7 @@ export function StaffPage() {
 
   return (
     <>
-      <PageHeader title={t('staff.title')} actions={!adding && <Button onClick={() => setAdding(true)}>{t('staff.add')}</Button>} />
+      <PageHeader title={t('staff.title')} actions={!adding && <Button variant="tonal" onClick={() => setAdding(true)}>{t('staff.add')}</Button>} />
       {adding && <AddStaffForm onDone={() => setAdding(false)} />}
       {members.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void members.refetch()}>{members.error && friendlyError(members.error)}</ErrorBanner>

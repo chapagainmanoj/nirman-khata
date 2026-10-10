@@ -79,7 +79,7 @@ export function ProjectNewPage() {
 
   return (
     <>
-      <PageHeader title={t('projects.new')} />
+      <PageHeader title={t('projects.new')} crumbs={[{ to: '/projects', label: t('nav.projects') }]} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved draft.</Notice></div>}
       <form onSubmit={handleSubmit((v) => create.mutate(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
         <Card title={t('project.details')}>

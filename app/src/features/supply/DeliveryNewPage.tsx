@@ -7,7 +7,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
-import { Button, ButtonLink, Card, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner } from '../../components/ui'
+import { Button, ButtonLink, Card, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -141,10 +141,18 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
     if (!problem) save.mutate()
   }
 
+  // Where it was started from: the slip, the project, or the Deliveries list.
+  const fromProject = projects.data?.find((p) => p.id === projectParam)
+  const crumbs: Crumb[] = slip
+    ? [{ to: '/slips', label: 'Order slips' }, { to: `/slips/${slip.slip.id}`, label: slip.slip.number }]
+    : projectParam
+      ? [{ to: '/projects', label: 'Projects' }, { to: `/projects/${projectParam}`, label: fromProject?.name ?? 'Project' }]
+      : [{ to: '/deliveries', label: 'Deliveries' }]
+
   if (saved) {
     return (
       <>
-        <PageHeader title="Delivery recorded" />
+        <PageHeader title="Delivery recorded" crumbs={crumbs} />
         <Card title="Challan photo">
           {photoFailed > 0 && <div className="mb-3"><Notice>A photo did not upload. Take it again.</Notice></div>}
           {photos.length === 0 && <p className="mb-3 text-sm text-subtle">Take a photo of the challan so accounts can match the bill.</p>}
@@ -159,7 +167,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
 
   return (
     <>
-      <PageHeader title="Record delivery" subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : undefined} />
+      <PageHeader title="Record delivery" crumbs={crumbs} subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : undefined} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved delivery.</Notice></div>}
       <form onSubmit={submit} className="flex flex-col gap-4">
         {!slip && <OpenSlips supplierId={supplierId} projectId={projectId} />}
@@ -282,7 +290,7 @@ function OpenSlips({ supplierId, projectId }: { supplierId: string; projectId: s
               <Link to={`/deliveries/new?slip=${s.id}&project=${project}`}
                 className="flex min-h-12 items-center justify-between gap-3 py-2 text-sm hover:text-brand-dark">
                 <span className="min-w-0 truncate"><span className="font-semibold text-ink">{s.number}</span> · {s.suppliers?.name}</span>
-                <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-brand">Receive against it<ChevronRightIcon size={16} /></span>
+                <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-slate">Receive against it<ChevronRightIcon size={16} /></span>
               </Link>
             </li>
           )

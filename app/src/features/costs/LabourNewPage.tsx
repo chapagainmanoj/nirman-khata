@@ -18,6 +18,7 @@ import { newId } from '../../lib/ids'
 import { PAYMENT_METHODS, WORK_TYPES } from '../../lib/labels'
 import { formatNPR, paisaToInput, parseNPR, splitEvenly } from '../../lib/money'
 import { useProjects } from '../projects/api'
+import { projectCrumbs } from '../projects/crumbs'
 import { rpc, useRefreshMoney } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
 import { useCrews } from './api'
@@ -142,7 +143,7 @@ export function LabourNewPage() {
   if (saved) {
     return (
       <>
-        <PageHeader title="Labour saved" />
+        <PageHeader title="Labour saved" crumbs={projectCrumbs(projects.data, v.project_id)} />
         <Card>
           <p className="text-sm">
             {saved.days === 1 ? 'One day' : `${saved.labour_cost_ids.length} days`} of labour, {formatNPR(saved.total_paisa)}.{' '}
@@ -164,7 +165,7 @@ export function LabourNewPage() {
 
   return (
     <>
-      <PageHeader title="Enter labour" subtitle="Daily cost for a crew. No worker names needed." />
+      <PageHeader title="Enter labour" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="Daily cost for a crew. No worker names needed." />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored labour you had not saved. Check it was not already entered.</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>

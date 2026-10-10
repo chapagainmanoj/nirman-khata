@@ -73,7 +73,7 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
         <button
           type="button"
           onClick={() => setMode(mode === 'bs' ? 'ad' : 'bs')}
-          className="min-h-11 min-w-11 shrink-0 rounded-lg border border-field px-2.5 text-xs font-semibold text-brand active:bg-muted"
+          className="min-h-11 min-w-11 shrink-0 rounded-lg border border-field px-2.5 text-xs font-semibold text-slate active:bg-muted"
           // Name starts with the visible text so "tap BS" works for voice control users.
           aria-label={mode === 'bs' ? 'BS, switch to AD calendar' : 'AD, switch to BS calendar'}
         >
@@ -86,7 +86,7 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
           aria-haspopup="dialog"
           aria-expanded={picking}
           onClick={() => { setMonth(monthOf(iso && inBsRange(iso) ? iso : todayKathmandu(), mode)); setPicking(!picking) }}
-          className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-field text-brand active:bg-muted ${picking ? 'bg-brand-soft' : ''}`}
+          className={`inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg border border-field text-slate active:bg-muted ${picking ? 'bg-brand-soft' : ''}`}
         >
           <CalendarIcon />
         </button>

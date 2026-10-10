@@ -30,7 +30,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
   const r = rows.data.find((x) => x.id === partyId)
   if (!r) {
-    return <EmptyState title={`${PARTY[kind].one} not found`}><Link className="text-brand" to={PARTY[kind].path}>Back to {PARTY[kind].many.toLowerCase()}</Link></EmptyState>
+    return <EmptyState title={`${PARTY[kind].one} not found`}><Link className="text-slate" to={PARTY[kind].path}>Back to {PARTY[kind].many.toLowerCase()}</Link></EmptyState>
   }
   const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
   const sub = subtitleOf(kind, r, code)
@@ -59,7 +59,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
         ) : (
           <Card title="Details" actions={canManageSuppliers(auth) && <Button variant="ghost" onClick={() => setEditing(true)}>Edit</Button>}>
             {kind === 'subcontractor' && <Detail label="Contact">{r.contact_person}</Detail>}
-            <Detail label="Phone">{r.phone && <a className="text-brand" href={`tel:${r.phone}`}>{r.phone}</a>}</Detail>
+            <Detail label="Phone">{r.phone && <a className="text-slate" href={`tel:${r.phone}`}>{r.phone}</a>}</Detail>
             {kind === 'subcontractor' && <Detail label="Address">{r.address}</Detail>}
             {kind === 'subcontractor' && <Detail label="PAN">{r.pan_vat}</Detail>}
             {kind === 'crew' && <Detail label="Project">{r.project_id ? code(r.project_id) : 'Any project'}</Detail>}
@@ -97,7 +97,7 @@ function PackageList({ subcontractorId }: { subcontractorId: string }) {
           const [label, tone] = PACKAGE_STATUS[w.status]
           return (
             <li key={w.id}>
-              <Link to={`/work/${w.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
+              <Link to={`/work/${w.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 font-semibold break-words text-ink">{w.scope}</div>
                   <Badge tone={tone}>{label}</Badge>
@@ -126,7 +126,7 @@ function PromotePayee({ payeeId, supplierId }: { payeeId: string; supplierId: st
     },
   })
   if (supplierId) {
-    return <p className="mt-2 text-sm">Now a supplier: <Link className="text-brand" to={`/suppliers/${supplierId}`}>open supplier</Link>. Earlier expenses stay here.</p>
+    return <p className="mt-2 text-sm">Now a supplier: <Link className="text-slate" to={`/suppliers/${supplierId}`}>open supplier</Link>. Earlier expenses stay here.</p>
   }
   if (!canManageSuppliers(auth)) return null
   return (

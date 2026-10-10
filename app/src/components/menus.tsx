@@ -84,7 +84,7 @@ function RecordList({ role, onPick }: { role: NavRole; onPick?: () => void }) {
       <div className="px-4 py-3">
         <p className="text-sm font-semibold text-ink">{t('record.noProject')}</p>
         {role.isAdmin ? (
-          <Link to="/projects/new" onClick={onPick} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4">
+          <Link to="/projects/new" onClick={onPick} className="mt-1 inline-flex min-h-11 items-center text-sm font-semibold text-slate underline underline-offset-4">
             {t('projects.new')}
           </Link>
         ) : (
@@ -184,21 +184,25 @@ export function ProjectSwitcher({ className, caption = 'always' }: { className?:
   )
 }
 
-/** Company and name; opens to roles and Sign out. */
-export function AccountMenu({ className, alignRight }: { className?: string; alignRight?: boolean }) {
+/**
+ * Company and name; opens to roles and Sign out. `up` (sidebar foot) opens above the button and
+ * leads with the person, since the brand above already names the company.
+ */
+export function AccountMenu({ className, alignRight, up }: { className?: string; alignRight?: boolean; up?: boolean }) {
   const auth = useCompany()
   const navigate = useNavigate()
   const roles = auth.membership?.roles.map((r) => ROLE_LABELS[r]).join(', ')
   return (
-    <Disclosure ariaLabel={`${t('nav.account')}: ${auth.company.name}`} panelClass={alignRight ? 'right-0' : undefined}
+    <Disclosure ariaLabel={`${t('nav.account')}: ${auth.company.name}`}
+      panelClass={cx(alignRight && 'right-0', up && 'bottom-full mb-1')}
       buttonClass={cx('flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted', className)}
       label={
         <>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-ink">{auth.company.name}</span>
-            <span className="block truncate text-xs text-subtle">{auth.profile?.full_name}</span>
+            <span className="block truncate text-sm font-bold text-ink">{up ? auth.profile?.full_name : auth.company.name}</span>
+            <span className="block truncate text-xs text-subtle">{up ? roles : auth.profile?.full_name}</span>
           </span>
-          <ChevronDownIcon />
+          <ChevronDownIcon className={up ? 'rotate-180' : undefined} />
         </>
       }>
       {() => (

@@ -28,7 +28,7 @@ export function SuppliersPage() {
       <PageHeader
         title="Suppliers"
         subtitle={auth.canSeeFinance && balances.data ? <>Total: <BalanceText paisa={total} /></> : undefined}
-        actions={canManageSuppliers(auth) && !adding && <Button onClick={() => setAdding(true)}>Add supplier</Button>}
+        actions={canManageSuppliers(auth) && !adding && <Button variant="tonal" onClick={() => setAdding(true)}>Add supplier</Button>}
       />
       {adding && <SupplierForm onDone={() => setAdding(false)} />}
       {auth.canSeeFinance && !companyLevel && balances.data && (
@@ -54,7 +54,7 @@ export function SuppliersPage() {
           const b = balance.get(s.id)
           return (
             <li key={s.id}>
-              <Link to={`/suppliers/${s.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
+              <Link to={`/suppliers/${s.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 font-semibold break-words text-ink">{s.name}</div>
                   {!s.active && <Badge>Inactive</Badge>}

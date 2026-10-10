@@ -17,6 +17,7 @@ import { newId } from '../../lib/ids'
 import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { useHeadings, useProjects } from '../projects/api'
+import { projectCrumbs } from '../projects/crumbs'
 import { rpc, useRefreshMoney } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
 import { usePayees } from './api'
@@ -104,7 +105,7 @@ export function ExpenseNewPage() {
   if (saved) {
     return (
       <>
-        <PageHeader title="Expense saved" />
+        <PageHeader title="Expense saved" crumbs={projectCrumbs(projects.data, saved.project_id)} />
         <Card>
           <p className="text-sm">
             {formatNPR(saved.amount)} for {v.description}. {saved.payment ? `Paid now (${saved.payment.number}).` : 'Not paid yet; it shows as owed to the payee.'}
@@ -121,7 +122,7 @@ export function ExpenseNewPage() {
 
   return (
     <>
-      <PageHeader title="Enter expense" subtitle="Equipment hire, transport, fuel, khaja, permits, small purchases." />
+      <PageHeader title="Enter expense" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="Equipment hire, transport, fuel, khaja, permits, small purchases." />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored an expense you had not saved. Check it was not already entered.</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>

@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
+import { ArrowRightIcon } from '../../components/icons'
 import { Badge, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { fiscalYear, fiscalYearRange, formatDate, todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
@@ -13,6 +14,7 @@ import { formatNPR } from '../../lib/money'
 import { monthDays, monthLabel, monthOf } from '../../lib/months'
 import type { ProjectStatus } from '../../lib/supabase'
 import { rpc } from '../supply/api'
+import { canEnter } from '../supply/permissions'
 import { Completeness, type ProjectFigures, UsedBars } from './parts'
 
 type Period = 'month' | 'year' | 'all'
@@ -80,14 +82,16 @@ export function DashboardPage() {
         ))}
       </div>
 
+      {/* A quiet row of figures, not boxed cards. "To date" only when it differs from the
+          period figure; an advance of nothing is left out. */}
       {d.money_visible && (
-        <section aria-label="Totals" className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Figure label={`Recorded cost, ${range.label}`} value={d.cost_period_paisa} sub={`To date ${formatNPR(d.cost_to_date_paisa ?? 0)}`} to="/reports/project-cost" />
-          <Figure label={`Cash paid, ${range.label}`} value={d.cash_period_paisa} sub={`To date ${formatNPR(d.cash_to_date_paisa ?? 0)}`} to="/reports/payments" />
+        <section aria-label="Totals" className="mb-6 grid gap-x-6 gap-y-4 border-b border-line pb-5 sm:grid-cols-2 lg:grid-cols-4">
+          <Figure label={`Recorded cost, ${range.label}`} value={d.cost_period_paisa} sub={toDate(d.cost_period_paisa, d.cost_to_date_paisa)} to="/reports/project-cost" />
+          <Figure label={`Cash paid, ${range.label}`} value={d.cash_period_paisa} sub={toDate(d.cash_period_paisa, d.cash_to_date_paisa)} to="/reports/payments" />
           <Figure label="Still owed" value={owedTotal}
             sub={Object.entries(owed).filter(([, n]) => n).map(([k, n]) => `${OWED_LABEL[k as keyof typeof OWED_LABEL]} ${formatNPR(n)}`).join(' · ') || 'Nothing owed'}
             to="/parties" />
-          <Figure label="Paid in advance" value={d.advances_paisa} sub="Payments not yet matched to charges" to="/parties" />
+          {!!d.advances_paisa && <Figure label="Paid in advance" value={d.advances_paisa} sub="Not yet matched to charges" to="/parties" />}
         </section>
       )}
 
@@ -96,15 +100,17 @@ export function DashboardPage() {
           <ul>
             {attention.map((a) => (
               <li key={a.text} className="border-b border-line last:border-0">
-                <Link to={a.to} className="flex min-h-11 items-center gap-2 py-2 text-sm hover:underline">
-                  <span className="font-semibold text-ink tabular-nums">{a.n}</span><span>{a.text}</span>
+                <Link to={a.to} className="group flex min-h-11 items-center gap-2 py-2 text-sm">
+                  <span className="font-semibold text-ink tabular-nums">{a.n}</span><span className="min-w-0 flex-1">{a.text}</span>
+                  <Review />
                 </Link>
               </li>
             ))}
             {unallocated > 0 && (
               <li>
-                <Link to="/payments" className="flex min-h-11 items-center gap-2 py-2 text-sm hover:underline">
-                  <span className="font-semibold text-ink tabular-nums">{formatNPR(unallocated)}</span><span>paid but not given to a project yet</span>
+                <Link to="/payments" className="group flex min-h-11 items-center gap-2 py-2 text-sm">
+                  <span className="font-semibold text-ink tabular-nums">{formatNPR(unallocated)}</span><span className="min-w-0 flex-1">paid but not given to a project yet</span>
+                  <Review />
                 </Link>
               </li>
             )}
@@ -116,21 +122,20 @@ export function DashboardPage() {
       {d.projects.length === 0 && <EmptyState title="No open projects">Create a project to see it here.</EmptyState>}
       <ul className="grid gap-3 lg:grid-cols-2">
         {d.projects.map((p) => (
-          <li key={p.id}>
-            <Link to={`/projects/${p.id}`} className="block h-full rounded-xl border border-line bg-surface p-4 hover:border-brand">
-              <span className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-semibold text-ink">{p.code} · {p.name}</span>
-                <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge>
+          // The whole card opens the project (stretched title link); "Set progress" sits above it.
+          <li key={p.id} className="relative h-full rounded-xl border border-line bg-surface p-4 hover:border-subtle">
+            <span className="flex flex-wrap items-center justify-between gap-2">
+              <Link to={`/projects/${p.id}`} className="font-semibold text-ink after:absolute after:inset-0 after:rounded-xl">{p.code} · {p.name}</Link>
+              <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge>
+            </span>
+            <UsedBars figures={p} setProgress={canEnter(auth) ? `/projects/${p.id}?tab=site` : undefined} />
+            {d.money_visible && (
+              <span className="mt-2 block text-sm text-subtle">
+                Recorded cost <span className="font-semibold text-ink tabular-nums">{formatNPR(Number(p.cost_paisa ?? 0))}</span>
+                {p.budget_paisa ? <> of {formatNPR(p.budget_paisa)}</> : null}
               </span>
-              <UsedBars figures={p} />
-              {d.money_visible && (
-                <span className="mt-2 block text-sm text-subtle">
-                  Recorded cost <span className="font-semibold text-ink tabular-nums">{formatNPR(Number(p.cost_paisa ?? 0))}</span>
-                  {p.budget_paisa ? <> of {formatNPR(p.budget_paisa)}</> : null}
-                </span>
-              )}
-              <Completeness figures={p} compact />
-            </Link>
+            )}
+            <Completeness figures={p} status={p.status} compact />
           </li>
         ))}
       </ul>
@@ -138,12 +143,26 @@ export function DashboardPage() {
   )
 }
 
-function Figure({ label, value, sub, to }: { label: string; value: number | undefined; sub: string; to: string }) {
+/** "To date Rs. …" under a period figure, or nothing when it would repeat the figure. */
+function toDate(period: number | undefined, total: number | undefined) {
+  return (period ?? 0) === (total ?? 0) ? undefined : `To date ${formatNPR(total ?? 0)}`
+}
+
+function Figure({ label, value, sub, to }: { label: string; value: number | undefined; sub?: string; to: string }) {
   return (
-    <Link to={to} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
+    <Link to={to} className="group block min-w-0">
       <span className="block text-xs font-medium text-subtle">{label}</span>
-      <span className="block text-2xl font-semibold text-ink tabular-nums">{formatNPR(value ?? 0)}</span>
-      <span className="mt-1 block text-xs text-subtle">{sub}</span>
+      <span className="block text-2xl font-semibold text-ink tabular-nums group-hover:underline">{formatNPR(value ?? 0)}</span>
+      {sub && <span className="mt-0.5 block text-xs text-subtle">{sub}</span>}
     </Link>
+  )
+}
+
+/** The visible way into an attention item: an alert you can act on. */
+function Review() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 font-medium text-brand group-hover:underline">
+      Review<ArrowRightIcon size={16} />
+    </span>
   )
 }

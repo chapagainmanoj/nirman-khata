@@ -26,7 +26,7 @@ export function SupplierDetailPage() {
   if (suppliers.isPending) return <Spinner />
   if (suppliers.error) return <ErrorBanner onRetry={() => void suppliers.refetch()}>{friendlyError(suppliers.error)}</ErrorBanner>
   const s = suppliers.data.find((x) => x.id === supplierId)
-  if (!s) return <EmptyState title="Supplier not found"><Link className="text-brand" to="/suppliers">Back to suppliers</Link></EmptyState>
+  if (!s) return <EmptyState title="Supplier not found"><Link className="text-slate" to="/suppliers">Back to suppliers</Link></EmptyState>
 
   // The main action follows the situation: pay when money is owed, otherwise order.
   const owes = (balances.data?.find((x) => x.party_id === supplierId)?.balance_paisa ?? 0) > 0
@@ -55,7 +55,7 @@ export function SupplierDetailPage() {
         ) : (
           <Card title="Details" actions={canManageSuppliers(auth) && <Button variant="ghost" onClick={() => setEditing(true)}>Edit</Button>}>
             <Detail label="Contact">{s.contact_person}</Detail>
-            <Detail label="Phone">{s.phone && <a className="text-brand" href={`tel:${s.phone}`}>{s.phone}</a>}</Detail>
+            <Detail label="Phone">{s.phone && <a className="text-slate" href={`tel:${s.phone}`}>{s.phone}</a>}</Detail>
             <Detail label="Address">{s.address}</Detail>
             <Detail label="PAN / VAT">{s.pan_vat}</Detail>
             <Detail label="Payment terms">{s.payment_terms}</Detail>

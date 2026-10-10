@@ -70,7 +70,7 @@ function ProgressList({ projectId, canUpdate, onUpdate, updating }: {
             </div>
             <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={`${name} progress`}
               aria-valuenow={Number(r.pct ?? 0)} aria-valuemin={0} aria-valuemax={100}>
-              <div className={`h-full rounded-full ${r.overdue ? 'bg-danger' : 'bg-brand'}`} style={{ width: `${Number(r.pct ?? 0)}%` }} />
+              <div className={`h-full rounded-full ${r.overdue ? 'bg-danger' : 'bg-bar'}`} style={{ width: `${Number(r.pct ?? 0)}%` }} />
             </div>
             {r.effective_date && (
               <div className="mt-1 text-xs text-subtle">As of <DateText value={r.effective_date} display={auth.dateDisplay} />

@@ -52,7 +52,7 @@ export function BillDetailPage() {
 
   if (bill.isPending) return <Spinner />
   if (bill.error) return <ErrorBanner onRetry={() => void bill.refetch()}>{friendlyError(bill.error)}</ErrorBanner>
-  if (!b) return <EmptyState title="Bill not found">It does not exist or you cannot see it. <Link className="text-brand" to="/suppliers">Suppliers</Link></EmptyState>
+  if (!b) return <EmptyState title="Bill not found">It does not exist or you cannot see it. <Link className="text-slate" to="/suppliers">Suppliers</Link></EmptyState>
 
   const { charges, lines } = bill.data
   const [statusLabel, statusTone] = BILL_STATUS[b.status]
@@ -77,7 +77,7 @@ export function BillDetailPage() {
         crumbs={[{ to: '/bills', label: 'Bills' }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Link className="text-brand" to={`/suppliers/${b.supplier_id}`}>{b.suppliers?.name}</Link>
+            <Link className="text-slate" to={`/suppliers/${b.supplier_id}`}>{b.suppliers?.name}</Link>
             <Badge tone={statusTone}>{statusLabel}</Badge>
             {b.status === 'posted' && status.data && (() => {
               const [l, t] = settlementLabel(outstanding, settled)

@@ -10,7 +10,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner } from '../../components/ui'
+import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
 import { addDays, formatDate, todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -250,9 +250,13 @@ function BillForm({ initial }: { initial?: BillValues }) {
   const notOnBill = supplierId ? (unbilled.data ?? []).filter((u) => !onBill.has(u.id!)) : []
   const projectName = (id: string) => projects.data?.find((p) => p.id === id)?.code ?? ''
 
+  const crumbs: Crumb[] = initial
+    ? [{ to: '/bills', label: 'Bills' }, { to: `/bills/${initial.id}`, label: billTitle(initial.bill_no) }]
+    : [{ to: '/bills', label: 'Bills' }]
+
   return (
     <>
-      <PageHeader title={initial ? 'Edit bill' : 'Enter supplier bill'} subtitle={accounts ? 'Check the lines against the paper bill, then post it.' : 'Nothing counts as cost until Accounts posts the bill.'} />
+      <PageHeader title={initial ? 'Edit bill' : 'Enter supplier bill'} crumbs={crumbs} subtitle={accounts ? 'Check the lines against the paper bill, then post it.' : 'Nothing counts as cost until Accounts posts the bill.'} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved bill.</Notice></div>}
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start lg:gap-6">
       <Card title="Bill photo" className="lg:sticky lg:top-4">
@@ -321,7 +325,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
         {notOnBill.length > 0 && (
           <Notice>
             {notOnBill.length} delivered item(s) from this supplier are not billed yet.{' '}
-            <button type="button" className="font-semibold text-brand underline" onClick={() => addFromDeliveries()}>Add them as lines</button>
+            <button type="button" className="font-semibold text-slate underline" onClick={() => addFromDeliveries()}>Add them as lines</button>
           </Notice>
         )}
 
@@ -459,7 +463,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
               <Controller control={control} name="transport" render={({ field }) => <MoneyInput id="b-trans" value={field.value} onChange={field.onChange} />} />
             </Field>
             <Field label="VAT" htmlFor="b-vat" hint={
-              <button type="button" className="text-brand underline" onClick={() => {
+              <button type="button" className="text-slate underline" onClick={() => {
                 const base = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0)
                 setValue('vat', paisaToInput(Math.round((base * Number(values.vat_rate || 13)) / 100)))
               }}>Work out {values.vat_rate || 13}% VAT</button>

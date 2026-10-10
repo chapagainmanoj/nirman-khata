@@ -1,6 +1,8 @@
 // Pieces shared by the company dashboard and the project page (req §18.1, §18.2).
-// Work done and budget used are always shown as two separate bars (acceptance #10), and
-// recorded cost always comes with what is still missing from it (completeness banner).
+// Work done and budget used are always shown separately (acceptance #10); work done that was
+// never entered shows a way to set it rather than an empty bar. Recorded cost comes with a
+// quiet note of what is still missing from it (completeness).
+import type { ProjectStatus } from '../../lib/supabase'
 import { Link } from 'react-router'
 import { formatNPR, percent } from '../../lib/money'
 
@@ -48,19 +50,34 @@ function Bar({ label, value, tone }: { label: string; value: number | null; tone
   )
 }
 
-/** Physical progress against budget used, side by side. */
-export function UsedBars({ figures: f }: { figures: ProjectFigures }) {
+/**
+ * Physical progress against budget used, side by side. Bars are neutral; only over budget is red.
+ * `setProgress` is where to enter progress when none is set (omit for people who cannot).
+ */
+export function UsedBars({ figures: f, setProgress }: { figures: ProjectFigures; setProgress?: string }) {
   const used = f.budget_paisa ? (Number(f.cost_paisa) / f.budget_paisa) * 100 : null
   return (
     <span className="mt-3 grid gap-2 sm:grid-cols-2">
-      <Bar label="Work done" value={f.progress_pct === null ? null : Number(f.progress_pct)} tone="bg-good-ink" />
-      {f.money_visible && <Bar label="Budget used" value={used} tone={used !== null && used > 100 ? 'bg-danger' : 'bg-brand'} />}
+      {f.progress_pct === null ? (
+        <span className="flex justify-between text-xs text-subtle">
+          <span>Work done</span>
+          {setProgress
+            ? <Link to={setProgress} className="relative z-10 font-medium text-brand hover:underline">Set progress <span aria-hidden>→</span></Link>
+            : <span>Not set</span>}
+        </span>
+      ) : <Bar label="Work done" value={Number(f.progress_pct)} tone="bg-bar" />}
+      {f.money_visible && <Bar label="Budget used" value={used} tone={used !== null && used > 100 ? 'bg-danger' : 'bg-bar'} />}
     </span>
   )
 }
 
-/** What the recorded cost does not include yet: unbilled receipts, unposted bills, a quiet site. */
-export function Completeness({ figures: f, compact }: { figures: ProjectFigures; compact?: boolean }) {
+/**
+ * What the recorded cost does not include yet: unbilled receipts, unposted bills, a quiet site.
+ * Quiet grey text, not a banner: it qualifies the number, nothing is wrong. Planned projects
+ * have nothing to be missing yet, so they show nothing.
+ */
+export function Completeness({ figures: f, compact, status }: { figures: ProjectFigures; compact?: boolean; status?: ProjectStatus }) {
+  if (status === 'planned') return null
   const items: string[] = []
   if (f.unbilled_lines > 0) {
     const est = f.money_visible && f.unbilled_estimate_paisa
@@ -74,8 +91,8 @@ export function Completeness({ figures: f, compact }: { figures: ProjectFigures;
   else if (f.days_since_report > 2) items.push(`last daily report ${f.days_since_report} days ago`)
   if (!items.length) return compact ? null : <p className="mt-2 text-xs text-subtle">Nothing waiting: every receipt is billed and posted.</p>
   return (
-    <span className={`mt-2 block rounded-lg bg-warn-soft px-3 py-2 text-xs text-warn-ink ${compact ? '' : 'text-sm'}`}>
-      <span className="font-semibold">Not in recorded cost yet: </span>{items.join(' · ')}
+    <span className={`mt-2 block text-subtle ${compact ? 'text-xs' : 'text-sm'}`}>
+      Not in recorded cost yet: {items.join(' · ')}
     </span>
   )
 }
@@ -100,14 +117,14 @@ export function HeadingTable({ figures: f, projectId }: { figures: ProjectFigure
               </span>
               {used !== null && (
                 <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-                  <span className={`block h-full rounded-full ${h.over ? 'bg-danger' : 'bg-brand'}`} style={{ width: `${Math.min(100, used)}%` }} />
+                  <span className={`block h-full rounded-full ${h.over ? 'bg-danger' : 'bg-bar'}`} style={{ width: `${Math.min(100, used)}%` }} />
                 </span>
               )}
             </li>
           )
         })}
       </ul>
-      <Link className="mt-2 inline-block text-sm font-medium text-brand hover:underline" to={`/reports/budget-vs-cost?project=${projectId}`}>
+      <Link className="mt-2 inline-block text-sm font-medium text-slate hover:underline" to={`/reports/budget-vs-cost?project=${projectId}`}>
         Budget vs recorded cost report
       </Link>
     </>

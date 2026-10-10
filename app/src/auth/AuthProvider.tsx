@@ -1,6 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { DateDisplay } from '../lib/dates'
 import { clearUserDrafts, listUserDrafts } from '../lib/drafts'
 import { supabase, type AppRole, type Tables } from '../lib/supabase'
@@ -25,6 +25,8 @@ export type AuthState = {
   canSeeFinance: boolean
   /** Returns false if the user cancelled because of unsent drafts. */
   signOut: () => Promise<boolean>
+  /** The session ended because the user signed out (not expiry), so sign-in starts fresh at home. */
+  signedOut: boolean
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -33,6 +35,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient()
   const [session, setSession] = useState<Session | null>(null)
   const [sessionLoaded, setSessionLoaded] = useState(false)
+  const [signedOut, setSignedOut] = useState(false)
+  const leaving = useRef(false)
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -40,6 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSessionLoaded(true)
     })
     const { data: sub } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSignedOut(!next && leaving.current)
+      if (next) leaving.current = false
       setSession(next)
       if (!next) queryClient.clear()
     })
@@ -99,11 +105,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           await clearUserDrafts(userId)
         }
+        leaving.current = true
         await supabase.auth.signOut()
         return true
       },
+      signedOut,
     }
-  }, [me.data, me.isPending, me.error, refetchMe, session, sessionLoaded, userId])
+  }, [me.data, me.isPending, me.error, refetchMe, session, sessionLoaded, signedOut, userId])
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

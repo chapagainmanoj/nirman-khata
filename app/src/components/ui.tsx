@@ -6,7 +6,12 @@ import { AlertIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from './icons'
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
 
-type Variant = 'primary' | 'secondary' | 'danger' | 'ghost'
+/**
+ * primary: the one solid button on a screen, the step that finishes the job (Save, Pay this bill).
+ * tonal: frequent starters (New project, Add supplier, "+ Record"): brand colour without the weight.
+ * danger: outlined, so a destructive confirm never looks like a second main action.
+ */
+type Variant = 'primary' | 'tonal' | 'secondary' | 'danger' | 'ghost'
 
 function buttonClass(variant: Variant, className?: string) {
   return cx(
@@ -15,7 +20,8 @@ function buttonClass(variant: Variant, className?: string) {
     // Filled buttons go grey when disabled; a faded oxblood reads as pink, not as unavailable.
     variant === 'primary' && 'bg-brand text-white hover:bg-brand-dark active:bg-brand-dark disabled:bg-line disabled:text-subtle',
     variant === 'secondary' && 'border border-field bg-surface text-ink hover:bg-muted active:bg-line disabled:opacity-50',
-    variant === 'danger' && 'bg-danger text-white hover:bg-danger-ink active:bg-danger-ink disabled:bg-line disabled:text-subtle',
+    variant === 'tonal' && 'bg-brand-soft text-brand-dark hover:bg-brand-tint active:bg-brand-tint disabled:bg-muted disabled:text-subtle',
+    variant === 'danger' && 'border-2 border-danger bg-surface text-danger-ink hover:bg-danger-soft active:bg-danger-soft disabled:opacity-50',
     // Row and secondary actions stay neutral; brand colour is kept for the one main action.
     variant === 'ghost' && 'text-ink underline decoration-line underline-offset-4 hover:bg-muted hover:decoration-subtle active:bg-line disabled:opacity-50',
     className,
@@ -120,7 +126,7 @@ export function Field({
 }
 
 const inputClass =
-  'min-h-11 w-full rounded-lg border border-field bg-surface px-3 text-base text-ink placeholder:text-subtle focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand disabled:border-line disabled:bg-muted aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger'
+  'min-h-11 w-full rounded-lg border border-field bg-surface px-3 text-base text-ink placeholder:text-subtle focus:border-slate focus:outline-none focus:ring-3 focus:ring-slate-soft disabled:border-line disabled:bg-muted aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest }, ref,
@@ -194,11 +200,22 @@ export function Breadcrumbs({ trail }: { trail: Crumb[] }) {
   )
 }
 
+const APP_NAME = 'NirmanKhata'
+
+/** The browser tab and history entries name the page: "Bill 1187 · NirmanKhata". */
+function useDocumentTitle(title: string) {
+  useEffect(() => {
+    document.title = title ? `${title} · ${APP_NAME}` : APP_NAME
+    return () => { document.title = APP_NAME }
+  }, [title])
+}
+
 export function PageHeader({ title, subtitle, actions, crumbs, after }: {
   title: string; subtitle?: ReactNode; actions?: ReactNode; crumbs?: Crumb[]
   /** A line in body colour under the subtitle: the one fact this page turns on. */
   after?: ReactNode
 }) {
+  useDocumentTitle(title)
   return (
     <div className="mb-4">
       {crumbs && <Breadcrumbs trail={crumbs} />}
@@ -263,7 +280,7 @@ export function Status({ children, className }: { children: ReactNode; className
 export function Spinner({ label = 'Loading…' }: { label?: string }) {
   return (
     <div role="status" className="flex items-center gap-2 py-8 text-sm text-subtle">
-      <span aria-hidden className="size-5 animate-spin rounded-full border-2 border-brand border-t-transparent" />
+      <span aria-hidden className="size-5 animate-spin rounded-full border-2 border-slate border-t-transparent" />
       {label}
     </div>
   )

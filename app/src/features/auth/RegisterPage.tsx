@@ -55,7 +55,7 @@ export function RegisterPage() {
         </Field>
         <ErrorBanner>{error}</ErrorBanner>
         <Button type="submit" busy={busy}>Create company</Button>
-        <Link to="/login" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">Already registered? {t('auth.login')}</Link>
+        <Link to="/login" className="flex min-h-11 items-center justify-center text-sm font-medium text-slate">Already registered? {t('auth.login')}</Link>
       </form>
     </AuthShell>
   )

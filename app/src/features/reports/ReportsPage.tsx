@@ -22,7 +22,7 @@ export function ReportsPage() {
             <ul className="grid gap-2 sm:grid-cols-2">
               {items.map((r) => (
                 <li key={r.key}>
-                  <Link to={`/reports/${r.key}`} className="block h-full rounded-xl border border-line bg-surface p-4 hover:border-brand">
+                  <Link to={`/reports/${r.key}`} className="block h-full rounded-xl border border-line bg-surface p-4 hover:border-slate">
                     <span className="block font-semibold text-ink">{r.title}</span>
                     <span className="mt-1 block text-sm text-subtle">{r.description}</span>
                   </Link>

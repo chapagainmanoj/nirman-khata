@@ -72,7 +72,7 @@ export function PaymentDetailPage() {
         crumbs={[{ to: '/payments', label: 'Payments' }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Link className="text-brand" to={partyPath}>{party?.name}</Link>
+            <Link className="text-slate" to={partyPath}>{party?.name}</Link>
             {p.status === 'reversed' && <Badge tone="bad">Reversed</Badge>}
           </span>
         }
@@ -85,7 +85,7 @@ export function PaymentDetailPage() {
           <div className="mb-2 text-lg font-semibold text-ink tabular-nums">{formatNPR(p.amount_paisa)}</div>
           <Detail label="Paid on"><DateText value={p.payment_date} display={auth.dateDisplay} dual /></Detail>
           <Detail label="How">{PAYMENT_METHODS[p.method]}</Detail>
-          {p.work_packages && <Detail label="Work package"><Link className="text-brand" to={`/work/${p.work_package_id}`}>{p.work_packages.scope}</Link></Detail>}
+          {p.work_packages && <Detail label="Work package"><Link className="text-slate" to={`/work/${p.work_package_id}`}>{p.work_packages.scope}</Link></Detail>}
           <Detail label="Reference">{p.reference}</Detail>
           <Detail label="Recorded by">{memberName(members.data, p.created_by)}</Detail>
           <Detail label="Notes">{p.notes}</Detail>
@@ -110,7 +110,7 @@ export function PaymentDetailPage() {
               <li key={`${m.doc_id}:${m.project_id}`} className="border-b border-line py-2 text-sm last:border-0">
                 <div className="flex items-start justify-between gap-2">
                   {m.to
-                    ? <Link className="font-medium text-brand" to={m.to}>{m.label} · {project(m.project_id)?.code}</Link>
+                    ? <Link className="font-medium text-slate" to={m.to}>{m.label} · {project(m.project_id)?.code}</Link>
                     : <span className="font-medium text-ink">{m.label} · {project(m.project_id)?.code}</span>}
                   <span className="tabular-nums">{formatNPR(m.amount)}</span>
                 </div>

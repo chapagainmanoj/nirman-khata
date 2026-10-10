@@ -19,8 +19,8 @@ export default defineConfig({
         name: 'NirmanKhata',
         short_name: 'NirmanKhata',
         description: 'Construction site and cost register',
-        theme_color: '#9c3d26',
-        background_color: '#faf7f5',
+        theme_color: '#ffffff',
+        background_color: '#ffffff',
         display: 'standalone',
         start_url: '/projects',
         icons: [

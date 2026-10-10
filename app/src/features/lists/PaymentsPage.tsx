@@ -39,7 +39,7 @@ export function PaymentsPage() {
   return (
     <>
       <PageHeader title="Payments" subtitle="Money paid to suppliers, subcontractors, crews and payees."
-        actions={canRecordPayments(auth) && <ButtonLink to={recordProject ? `/payments/new?project=${recordProject}` : '/payments/new'}>Record payment</ButtonLink>} />
+        actions={canRecordPayments(auth) && <ButtonLink variant="tonal" to={recordProject ? `/payments/new?project=${recordProject}` : '/payments/new'}>Record payment</ButtonLink>} />
       {chip}
       <Card>
         {payments.isPending && <Spinner />}

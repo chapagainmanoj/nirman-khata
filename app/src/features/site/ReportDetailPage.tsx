@@ -21,7 +21,7 @@ export function ReportDetailPage() {
   if (report.isPending) return <Spinner />
   if (report.error) return <ErrorBanner onRetry={() => void report.refetch()}>{friendlyError(report.error)}</ErrorBanner>
   if (!report.data) {
-    return <EmptyState title="Report not found">It does not exist or you are not assigned to its project. <Link className="text-brand" to="/projects">Back to projects</Link></EmptyState>
+    return <EmptyState title="Report not found">It does not exist or you are not assigned to its project. <Link className="text-slate" to="/projects">Back to projects</Link></EmptyState>
   }
   const r = report.data
   const d = auth.dateDisplay

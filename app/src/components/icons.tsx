@@ -51,3 +51,13 @@ export const ShareIcon = icon(Share2, 'ShareIcon')
 export const TrashIcon = icon(Trash2, 'TrashIcon')
 export const AlertIcon = icon(TriangleAlert, 'AlertIcon')
 export const InfoIcon = icon(Info, 'InfoIcon')
+
+/** The app mark (same drawing as public/favicon.svg): a house on a Lal Bahi tile. Decorative. */
+export function BrandMark({ size = 32, className }: { size?: number; className?: string }) {
+  return (
+    <svg viewBox="0 0 64 64" width={size} height={size} aria-hidden focusable="false" className={className}>
+      <rect width="64" height="64" rx="14" fill="#6a1f24" />
+      <path d="M14 46V22l18-10 18 10v24M24 46V32h16v14" fill="none" stroke="#fff" strokeWidth="5" strokeLinejoin="round" />
+    </svg>
+  )
+}

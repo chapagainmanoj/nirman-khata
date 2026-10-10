@@ -66,7 +66,7 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
       <PageHeader
         title={PARTY[kind].many}
         subtitle={auth.canSeeFinance && balances.data ? <>Total: <BalanceText paisa={total} /></> : undefined}
-        actions={canAdd && !adding && <Button onClick={() => setAdding(true)}>Add {PARTY[kind].one.toLowerCase()}</Button>}
+        actions={canAdd && !adding && <Button variant="tonal" onClick={() => setAdding(true)}>Add {PARTY[kind].one.toLowerCase()}</Button>}
       />
       {adding && <PartyForm kind={kind} onDone={() => setAdding(false)} />}
       {auth.canSeeFinance && !companyLevel && balances.data && (
@@ -91,7 +91,7 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
           const sub = subtitleOf(kind, r, code)
           return (
             <li key={r.id}>
-              <Link to={`${PARTY[kind].path}/${r.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
+              <Link to={`${PARTY[kind].path}/${r.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 font-semibold break-words text-ink">{r.name}</div>
                   {!r.active && <Badge>{r.promoted_supplier_id ? 'Now a supplier' : 'Inactive'}</Badge>}

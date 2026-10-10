@@ -52,7 +52,7 @@ export function BillsPage() {
   return (
     <>
       <PageHeader title="Bills" subtitle={posts ? 'Post bills sent from site, and see what is still unpaid.' : undefined}
-        actions={canEnter(auth) && <ButtonLink to={recordProject ? `/bills/new?project=${recordProject}` : '/bills/new'}>{posts ? 'Enter bill' : 'Bill photo'}</ButtonLink>} />
+        actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/bills/new?project=${recordProject}` : '/bills/new'}>{posts ? 'Enter bill' : 'Bill photo'}</ButtonLink>} />
       {chip}
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Bills">
         <Card>

@@ -12,7 +12,7 @@ import { focusFirstError } from '../../lib/forms'
 import { t } from '../../lib/i18n'
 import { FULFILMENT, ROLE_LABELS, STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
 import { formatNPR, percent } from '../../lib/money'
-import { supabase, type Tables } from '../../lib/supabase'
+import { supabase, type ProjectStatus, type Tables } from '../../lib/supabase'
 import { ExpenseSection, LabourSection, SubcontractSection } from '../costs/CostLists'
 import { DeliveryList } from '../supply/DeliveryList'
 import { useDeliveries, useDeliveryLineStatus, useOpenSlips, useProjectCost } from '../supply/api'
@@ -43,7 +43,7 @@ export function ProjectDetailPage() {
   if (project.isPending) return <Spinner />
   if (project.error) return <ErrorBanner onRetry={() => void project.refetch()}>{friendlyError(project.error)}</ErrorBanner>
   if (!project.data) {
-    return <EmptyState title="Project not found">It does not exist or you are not assigned to it. <Link className="text-brand" to="/projects">Back to projects</Link></EmptyState>
+    return <EmptyState title="Project not found">It does not exist or you are not assigned to it. <Link className="text-slate" to="/projects">Back to projects</Link></EmptyState>
   }
   const p = project.data
   const canEdit = auth.isAdmin || auth.hasRole('project_manager')
@@ -70,7 +70,7 @@ export function ProjectDetailPage() {
       />
       <ScheduleWarnings project={p} />
       {auth.canSeeFinance && <SummaryStrip projectId={p.id} />}
-      <ProjectCompleteness projectId={p.id} />
+      <ProjectCompleteness projectId={p.id} status={p.status} />
       <Tabs tabs={tabs} value={tab} label="Project sections"
         onChange={(next) => setParams(next === 'overview' ? {} : { tab: next }, { replace: true })}>
         {tab === 'overview' && (
@@ -110,10 +110,10 @@ export function ProjectDetailPage() {
 }
 
 /** What recorded cost leaves out yet (req §18.2 completeness banner), next to the summary. */
-function ProjectCompleteness({ projectId }: { projectId: string }) {
+function ProjectCompleteness({ projectId, status }: { projectId: string; status: ProjectStatus }) {
   const dash = useProjectDashboard(projectId)
   if (!dash.data) return null
-  return <div className="mt-2"><Completeness figures={dash.data} compact /></div>
+  return <div className="mt-2"><Completeness figures={dash.data} status={status} compact /></div>
 }
 
 /** Cost by heading against the heading budget, and by source (req §18.2). */
@@ -175,7 +175,7 @@ function SummaryStrip({ projectId }: { projectId: string }) {
           <>
             <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Budget used"
               aria-valuenow={Math.round(used)} aria-valuemin={0} aria-valuemax={100}>
-              <div className={`h-full rounded-full ${over ? 'bg-danger' : 'bg-brand'}`} style={{ width: `${used}%` }} />
+              <div className={`h-full rounded-full ${over ? 'bg-danger' : 'bg-bar'}`} style={{ width: `${used}%` }} />
             </div>
             <div className={`mt-1 text-xs ${over ? 'font-medium text-danger' : 'text-subtle'}`}>
               {percent(c.cost_paisa, budget)} of {formatNPR(budget)} budget{over && ' (over budget)'}
@@ -186,11 +186,13 @@ function SummaryStrip({ projectId }: { projectId: string }) {
       {/* Work done is entered on site, not worked out from cost (acceptance #10). */}
       <div>
         <div className="text-xs font-medium text-subtle">Work done</div>
-        <div className="text-2xl font-semibold text-ink tabular-nums">{done === null ? 'Not set' : `${Number(done)}%`}</div>
+        {done === null
+          ? <Link to="?tab=site" className="mt-1 inline-flex min-h-11 items-center font-medium text-brand hover:underline">Set progress <span aria-hidden>&nbsp;→</span></Link>
+          : <div className="text-2xl font-semibold text-ink tabular-nums">{`${Number(done)}%`}</div>}
         {done !== null && (
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Work done"
             aria-valuenow={Number(done)} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full rounded-full bg-good-ink" style={{ width: `${Number(done)}%` }} />
+            <div className="h-full rounded-full bg-bar" style={{ width: `${Number(done)}%` }} />
           </div>
         )}
         <div className="mt-1 text-xs text-subtle">Overall progress from site updates</div>

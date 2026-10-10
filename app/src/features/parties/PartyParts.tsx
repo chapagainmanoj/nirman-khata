@@ -177,7 +177,7 @@ export function MatchCard({ kind, partyId }: { kind: PartyKind; partyId: string 
         <p className="mb-3 text-sm">
           {unallocated.map((u) => (
             <span key={u.doc_id} className="block">
-              <Link className="text-brand underline" to={`/payments/${u.doc_id}`}>{u.label}</Link> has {formatNPR(u.amount_paisa)} not assigned to a project yet.
+              <Link className="text-slate underline" to={`/payments/${u.doc_id}`}>{u.label}</Link> has {formatNPR(u.amount_paisa)} not assigned to a project yet.
             </span>
           ))}
         </p>

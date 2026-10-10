@@ -45,7 +45,7 @@ export function LoginPage() {
         {EMAIL_RESET
           ? <Link to="/forgot" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">Forgot password?</Link>
           : <p className="text-xs text-subtle">{t('auth.forgot')}</p>}
-        <Link to="/register" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">{t('auth.register')}</Link>
+        <Link to="/register" className="flex min-h-11 items-center justify-center text-sm font-medium text-slate">{t('auth.register')}</Link>
       </form>
     </AuthShell>
   )

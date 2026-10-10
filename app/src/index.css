@@ -1,34 +1,51 @@
 @import "tailwindcss";
 
 /* Colour tokens. Light theme only in v1; field phones are used outdoors.
-   Brand is "fired brick" (pakki eeta): the dusty red-brown of kiln-fired Nepali brick,
-   with neutrals warmed toward it. It is spent on actions and selection only. Each status
-   has a solid soft surface + ink text pair (no alpha), all ≥6:1 so badges read in sunlight.
-   Errors use a cool crimson so they never read as the brand. */
+   One accent (decided 2026-10-10): when everything is fine the screen is calm and nearly
+   colourless; colour shows where someone can act. Slate-teal is the solid button, selection,
+   links and counts. Progress bars are neutral and turn red only when over budget. Lal Bahi,
+   the red cloth of the khata, lives only in the logo tile.
+   Each status has a solid soft surface + ink text pair (no alpha), all >=6:1 so badges read in
+   sunlight: haldi for pending, green for paid, raspberry crimson for errors. */
 @theme {
-  --color-brand: #9c3d26;
-  --color-brand-dark: #7e2f1c;
-  --color-brand-soft: #f6e7e1;
+  --color-bahi: #6a1f24;
+
+  /* The accent. White on it 6.2:1; as link text on white 6.2:1. */
+  --color-brand: #2a6a6e;
+  --color-brand-dark: #1d4f52;
+  /* Selection and soft buttons; brand-dark on it 7.8:1. */
+  --color-brand-soft: #e3efef;
+  --color-brand-tint: #d3e6e6;
+  /* Same accent under the name the code uses for links, counts and info. */
+  --color-slate: #2a6a6e;
+  --color-slate-dark: #1d4f52;
+  --color-slate-soft: #e3efef;
+
   --color-ink: #221b19;
   --color-subtle: #5c524e;
-  --color-line: #e8e1dd;
-  /* Form-control edges: 3.6:1 on white so empty fields are findable outdoors. */
+  --color-line: #e4dfd6;
+  /* Form-control edges: >=3.2:1 on paper and white so empty fields are findable outdoors. */
   --color-field: #8f847f;
-  --color-muted: #f4efec;
+  --color-muted: #f3f1ec;
   --color-surface: #ffffff;
-  --color-page: #faf7f5;
+  --color-page: #ffffff;
+  /* Sidebar: a warm near-white, just off the page. */
+  --color-side: #faf9f6;
+  /* Progress bars: neutral, so only "over budget" carries colour. */
+  --color-bar: #6b625d;
 
-  --color-good-ink: #166534;
-  --color-good-soft: #dcfce7;
-  --color-warn: #b45309;
-  --color-warn-ink: #92400e;
-  --color-warn-soft: #fef3c7;
-  --color-danger: #b4123a;
-  --color-danger-ink: #8e0e2e;
-  --color-danger-soft: #fce4ea;
-  /* Neutral information (planned work, roles, contract revisions); blue so it never reads as a button. */
-  --color-info-ink: #1e40af;
-  --color-info-soft: #dbeafe;
+  --color-good-ink: #1f5a2e;
+  --color-good-soft: #e1efd8;
+  /* Haldi: pending and waiting. */
+  --color-warn: #96600a;
+  --color-warn-ink: #6b4600;
+  --color-warn-soft: #fcebb6;
+  --color-danger: #c0124f;
+  --color-danger-ink: #8f0d3b;
+  --color-danger-soft: #fbe3ec;
+  /* Neutral information (planned work, roles, contract revisions): quiet grey, not the accent. */
+  --color-info-ink: #3f3935;
+  --color-info-soft: #efece6;
 
   --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Devanagari", sans-serif;
 }
@@ -72,4 +89,16 @@ input,
   .animate-spin {
     animation-duration: 2.5s;
   }
+}
+
+/* A soft shadow at the top or bottom edge only while there is more to scroll to (the sidebar,
+   so the covers are the sidebar colour).
+   The "local" covers move with the content and hide each shadow once that end is reached. */
+.scroll-shadows {
+  background:
+    linear-gradient(var(--color-side) 40%, transparent) top / 100% 2rem no-repeat local,
+    linear-gradient(transparent, var(--color-side) 60%) bottom / 100% 2rem no-repeat local,
+    radial-gradient(farthest-side at 50% 0, color-mix(in oklab, var(--color-ink) 14%, transparent), transparent) top / 100% 0.75rem no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, color-mix(in oklab, var(--color-ink) 14%, transparent), transparent) bottom / 100% 0.75rem no-repeat scroll;
+  background-color: var(--color-side);
 }

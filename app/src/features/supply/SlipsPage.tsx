@@ -31,7 +31,7 @@ export function SlipsPage() {
 
   return (
     <>
-      <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink to={recordProject ? `/slips/new?project=${recordProject}` : '/slips/new'}>New slip</ButtonLink>} />
+      <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/slips/new?project=${recordProject}` : '/slips/new'}>New slip</ButtonLink>} />
       {chip}
       <div className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="group" aria-label="Show slips">
         {FILTERS.map(([key, label]) => {
@@ -56,7 +56,7 @@ export function SlipsPage() {
           const codes = s.project_ids.map((id) => code(id)).filter(Boolean)
           return (
             <li key={s.id}>
-              <Link to={`/slips/${s.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
+              <Link to={`/slips/${s.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="text-xs font-semibold text-subtle">{s.number}</div>

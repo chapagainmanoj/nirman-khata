@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { signOut } from './helpers'
 
 // Navigation by role (UX review): the phone bar follows the role, "+" starts records on the
 // current project, counts show work waiting, and detail pages light up their section.
@@ -6,11 +7,6 @@ const run = Date.now().toString().slice(-7)
 const ownerPhone = `983${run}`
 const staffPhone = `984${run}`
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
-
-async function signOut(page: Page) {
-  await page.getByRole('button', { name: /^Account:/ }).click()
-  await page.getByRole('button', { name: 'Sign out' }).click()
-}
 
 async function signIn(page: Page, phone: string, password: string) {
   await page.getByLabel('Mobile number or email').fill(phone)
@@ -88,6 +84,14 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   // The slip page lights up Slips and shows the way back.
   await expect(bar.getByRole('link', { name: 'Slips' })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Order slips')
+  await expect(page).toHaveTitle(/^OS-0001 · .* · NirmanKhata$/)
+  const slipId = page.url().split('/').at(-1)!
+  // Recording a delivery from the slip shows the way back to it.
+  await page.goto(`/deliveries/new?slip=${slipId}`)
+  await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('OS-0001')
+  // The brand in the phone header goes home: Projects for site staff.
+  await page.getByRole('link', { name: /, home$/ }).click()
+  await expect(page).toHaveURL(/\/projects$/)
 
   // Lists follow the sidebar project; the toggle shows which view is on and "All" is temporary.
   const shown = page.getByRole('group', { name: 'Projects shown' })
@@ -136,4 +140,51 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
     expect(overflow, `${size.width}px`).toBeLessThanOrEqual(0)
     await page.screenshot(shots(`nav-03-slip-${size.width}`))
   }
+})
+
+test.describe('desktop with a mouse', () => {
+  test.use({ viewport: { width: 1440, height: 800 }, isMobile: false, hasTouch: false })
+
+  test('the sidebar fits a laptop screen; the brand goes home; forms show where they came from', async ({ page }) => {
+    await page.goto('/register')
+    await page.getByLabel('Company name').fill(`Fit Nirman ${run}`)
+    await page.getByLabel('Your name').fill('Sita Owner')
+    await page.getByLabel('Mobile number or email').fill(`985${run}`)
+    await page.getByLabel('Password').fill('owner-pass-1')
+    await page.getByRole('button', { name: 'Create company' }).click()
+    await expect(page.getByText('No projects yet')).toBeVisible()
+
+    // Every section, the setup items, the account and the bell without scrolling.
+    const list = page.locator('aside .scroll-shadows')
+    const { scroll, client } = await list.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }))
+    expect(scroll).toBeLessThanOrEqual(client)
+    await expect(page.getByRole('button', { name: /^Account:/ })).toBeInViewport()
+    await page.screenshot(shots('nav-05-sidebar-1440x800'))
+
+    // The account menu opens upward from the foot.
+    await page.getByRole('button', { name: /^Account:/ }).click()
+    await expect(page.getByRole('button', { name: 'Sign out' })).toBeInViewport()
+    await page.screenshot(shots('nav-06-account-up'))
+    await page.keyboard.press('Escape')
+
+    // Forms carry a trail back to where they were started.
+    await page.goto('/suppliers')
+    await page.getByRole('button', { name: 'Add supplier' }).click()
+    await page.getByLabel('Business name').fill('Gurung Hardware')
+    await page.getByLabel('Materials supplied').fill('Rod')
+    await page.getByRole('button', { name: 'Save' }).click()
+    await page.getByRole('link', { name: /Gurung Hardware/ }).click()
+    const supplierId = page.url().split('/').at(-1)!
+    await page.goto(`/payments/new?supplier=${supplierId}`)
+    const trail = page.getByRole('navigation', { name: 'Breadcrumb' })
+    await expect(trail).toContainText('Suppliers')
+    await expect(trail).toContainText('Gurung Hardware')
+    await expect(page).toHaveTitle('Record payment · NirmanKhata')
+    await page.goto('/bills/new')
+    await expect(trail).toContainText('Bills')
+
+    // The brand goes home: the dashboard for the owner.
+    await page.getByRole('link', { name: /, home$/ }).click()
+    await expect(page).toHaveURL(/\/dashboard$/)
+  })
 })

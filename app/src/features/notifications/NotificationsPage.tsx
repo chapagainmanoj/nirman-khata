@@ -44,7 +44,7 @@ export function NotificationsPage() {
         {list.data?.map((n) => (
           <li key={n.id}>
             <Link to={n.slip_id ? `/slips/${n.slip_id}` : '#'}
-              className={`block rounded-xl border bg-surface p-3 hover:border-brand ${n.read_at ? 'border-line' : 'border-brand'}`}>
+              className={`block rounded-xl border bg-surface p-3 hover:border-slate ${n.read_at ? 'border-line' : 'border-brand'}`}>
               <div className="font-medium text-ink">{n.title}</div>
               {n.body && <div className="text-sm text-subtle">{n.body}</div>}
               <div className="mt-1 text-xs text-subtle">{formatDateTime(n.created_at, auth.dateDisplay)}</div>

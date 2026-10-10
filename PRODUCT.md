@@ -64,7 +64,12 @@ Today these companies run on paper khata and challan files, Excel / Google Sheet
 
 - Name: **NirmanKhata**. Descriptor in use: "Construction site and cost register".
 - Voice in existing copy: plain, direct, task-first English, using familiar Nepali trade terms alongside the English ones.
-- Brand colour: **Fired brick** (pakki eeta), the dusty red-brown of kiln-fired Nepali brick (`#9c3d26`), chosen by the product owner on 2026-10-10 over the earlier Tailwind orange (read as a common AI default). It marks actions and selection only; errors use a separate cool crimson.
+- Palette: **one accent, calm by default** (decided by the product owner 2026-10-10, replacing the earlier fired-brick and Lal Bahi palette; values in `app/src/index.css`). When everything is fine the screen is nearly colourless; colour shows where someone can act.
+  - **Accent: slate-teal** `#2a6a6e`, the only accent: the solid button, selection, links and counts. Starters ("New project", "Add supplier") use the soft accent; "+ Record" is solid.
+  - **Lal Bahi** `#6a1f24`, the red cloth of the khata: the logo tile only (app icon, sidebar, sign-in).
+  - **Surfaces:** white page, a warm near-white sidebar `#faf9f6`, warm-grey lines.
+  - **Progress bars** are neutral and turn red only when over budget. Completeness notes are quiet grey text, never banners, and are not shown on Planned projects.
+  - Status: haldi for pending, green for paid, raspberry crimson for errors (outlined danger buttons).
 - No logo or brand guide beyond the shipped app icon; the token values live in `app/src/index.css`.
 
 ## Evidence on Hand

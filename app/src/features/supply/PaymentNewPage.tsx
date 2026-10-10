@@ -13,12 +13,12 @@ import { useCompany } from '../../auth/AuthProvider'
 import { PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select } from '../../components/ui'
+import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, type Crumb } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
-import { PAYMENT_METHODS } from '../../lib/labels'
+import { billTitle, PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
 import { useParties, usePartyOpenItems } from '../parties/api'
 import { DOC_WORD, PARTY, PARTY_KINDS, partyFromParams, type PartyKind } from '../parties/kinds'
@@ -172,9 +172,22 @@ export function PaymentNewPage() {
 
   const fixedParty = !!start.id && v.party_id === start.id && !choosingParty
 
+  // Where the payment was started from: a bill, a work package, a party, or the Payments list.
+  const fromPackage = params.get('package')
+  const fromBill = params.get('bill')
+  const billDoc = fromBill ? openItems.data?.find((i) => i.kind === 'bill' && i.doc_id === fromBill) : undefined
+  const startParty = parties.data?.find((p) => p.id === start.id)
+  const crumbs: Crumb[] = fromBill
+    ? [{ to: '/bills', label: 'Bills' }, { to: `/bills/${fromBill}`, label: billDoc ? billTitle(billDoc.label) : 'Bill' }]
+    : fromPackage
+      ? [{ to: '/parties', label: 'Parties' }, { to: PARTY.subcontractor.path, label: PARTY.subcontractor.many }, { to: `/work/${fromPackage}`, label: pkg.data?.scope ?? 'Work package' }]
+      : start.id
+        ? [{ to: '/parties', label: 'Parties' }, { to: PARTY[start.kind].path, label: PARTY[start.kind].many }, { to: `${PARTY[start.kind].path}/${start.id}`, label: startParty?.name ?? PARTY[start.kind].one }]
+        : [{ to: '/payments', label: 'Payments' }]
+
   return (
     <>
-      <PageHeader title="Record payment" subtitle="Payments reduce what you owe. They are never project cost." />
+      <PageHeader title="Record payment" crumbs={crumbs} subtitle="Payments reduce what you owe. They are never project cost." />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored a payment you had not saved. Check it was not already recorded.</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>

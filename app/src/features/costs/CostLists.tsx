@@ -139,7 +139,7 @@ export function SubcontractSection({ projectId }: { projectId: string }) {
           const f = fig.get(w.id)
           return (
             <li key={w.id}>
-              <Link to={`/work/${w.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
+              <Link to={`/work/${w.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-semibold break-words text-ink">{w.scope}</div>

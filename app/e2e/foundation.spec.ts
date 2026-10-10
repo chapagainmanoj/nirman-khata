@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { signOut } from './helpers'
 
 // Milestone 1 walk-through: owner registers, creates projects, adds a site staff
 // member; the staff member sees only the assigned project and no amounts.
@@ -77,8 +78,7 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await page.screenshot(shots('04-staff'))
 
   // Sign out, sign in as the staff member
-  await page.getByRole('button', { name: /^Account:/ }).click()
-  await page.getByRole('button', { name: 'Sign out' }).click()
+  await signOut(page)
   await page.getByLabel('Mobile number or email').fill(staffPhone)
   await page.getByLabel('Password').fill('staff-pass-1')
   await page.getByRole('button', { name: 'Sign in' }).click()

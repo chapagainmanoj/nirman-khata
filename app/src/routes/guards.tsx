@@ -11,7 +11,8 @@ export function RequireCompany({ children }: { children: ReactNode }) {
   const auth = useAuth()
   const location = useLocation()
   if (auth.loading) return <div className="mx-auto max-w-md px-4"><Spinner /></div>
-  if (!auth.session) return <Navigate to="/login" replace state={{ from: location.pathname }} />
+  // After an expired session, sign-in returns to the page; after "Sign out", the next person starts at home.
+  if (!auth.session) return <Navigate to="/login" replace state={auth.signedOut ? undefined : { from: location.pathname }} />
   if (auth.loadError) {
     return (
       <div className="mx-auto max-w-md px-4 py-16">

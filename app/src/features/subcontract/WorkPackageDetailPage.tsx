@@ -45,9 +45,9 @@ export function WorkPackageDetailPage() {
         crumbs={[{ to: '/parties', label: 'Parties' }, { to: '/subcontractors', label: 'Subcontractors' }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            <Link className="text-brand" to={`/subcontractors/${w.subcontractor_id}`}>{w.subcontractors?.name}</Link>
+            <Link className="text-slate" to={`/subcontractors/${w.subcontractor_id}`}>{w.subcontractors?.name}</Link>
             <span>·</span>
-            <Link className="text-brand" to={`/projects/${w.project_id}`}>{w.projects?.code}</Link>
+            <Link className="text-slate" to={`/projects/${w.project_id}`}>{w.projects?.code}</Link>
             <Badge tone={statusTone}>{statusLabel}</Badge>
           </span>
         }

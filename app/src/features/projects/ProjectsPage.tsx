@@ -20,7 +20,7 @@ export function ProjectsPage() {
       <PageHeader
         title={t('projects.title')}
         // With no projects yet, the button sits in the empty state instead.
-        actions={auth.isAdmin && !!projects.data?.length && <ButtonLink to="/projects/new">{t('projects.new')}</ButtonLink>}
+        actions={auth.isAdmin && !!projects.data?.length && <ButtonLink variant="tonal" to="/projects/new">{t('projects.new')}</ButtonLink>}
       />
       <GettingStarted />
       {projects.isPending && <Spinner />}
@@ -34,7 +34,7 @@ export function ProjectsPage() {
       <ul className="grid gap-3 sm:grid-cols-2">
         {projects.data?.map((p) => (
           <li key={p.id} className="min-w-0">
-            <Link to={`/projects/${p.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-brand">
+            <Link to={`/projects/${p.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <div className="truncate text-xs font-semibold text-subtle">{p.code}</div>

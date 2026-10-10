@@ -68,8 +68,8 @@ export function GettingStarted() {
               <div className="text-xs text-subtle">{hint}</div>
             </div>
             {i === 0
-              ? <ButtonLink to={to}>{action}</ButtonLink>
-              : <Link to={to} className="inline-flex min-h-11 items-center text-sm font-medium text-brand underline underline-offset-4">{action}</Link>}
+              ? <ButtonLink variant="tonal" to={to}>{action}</ButtonLink>
+              : <Link to={to} className="inline-flex min-h-11 items-center text-sm font-medium text-slate underline underline-offset-4">{action}</Link>}
           </li>
         ))}
       </ol>
