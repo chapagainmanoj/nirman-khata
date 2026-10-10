@@ -21,6 +21,7 @@ import { useMaterials, useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
 import { rpc, useBill, useDeliveryLineStatus, useSuppliers } from './api'
 import { canEnter, canPost } from './permissions'
+import { TrashIcon } from '../../components/icons'
 
 type Match = { delivery_line_id: string; billed_qty: string }
 type BillLine = {
@@ -333,7 +334,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
           const matched = l.matches.reduce((s, m) => s + Number(m.billed_qty || 0), 0)
           return (
             <Card key={field.key} title={l.line_type === 'charge' ? `Line ${i + 1}: charge` : `Line ${i + 1}`}
-              actions={<Button type="button" variant="ghost" onClick={() => lines.remove(i)}>Remove</Button>}>
+              actions={<Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />Remove</Button>}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Project" htmlFor={`bl${i}-p`}>
                   <Select id={`bl${i}-p`} {...register(`lines.${i}.project_id`)}>

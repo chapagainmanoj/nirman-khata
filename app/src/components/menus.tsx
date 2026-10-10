@@ -1,14 +1,16 @@
 // Nav menus: "+ Record", the current-project switcher and the account menu.
 // Desktop uses a small disclosure panel; the phone "+" opens a bottom sheet (<dialog>, which
 // traps focus and closes on Escape by itself).
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useCompany } from '../auth/AuthProvider'
 import { useCurrentProject } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import { ROLE_LABELS } from '../lib/labels'
-import { ChevronDownIcon, PlusIcon } from './icons'
-import { recordActionsFor, recordHref, sectionsFor, type NavRole } from './nav'
+import {
+  BillIcon, ChevronDownIcon, DailyReportIcon, DeliveryIcon, ExpenseIcon, LabourIcon, PaymentIcon, PlusIcon, SlipIcon,
+} from './icons'
+import { recordActionsFor, recordHref, sectionsFor, type NavRole, type RecordKey } from './nav'
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
 
@@ -69,6 +71,11 @@ function Disclosure({ label, buttonClass, panelClass, children, ariaLabel }: {
 
 const rowClass = 'flex min-h-11 w-full flex-col justify-center px-4 py-2 text-left hover:bg-muted active:bg-line'
 
+// Same pictures as the sections the records land in, so the sheet scans like the nav.
+const RECORD_ICONS: Record<RecordKey, ComponentType<{ size?: number; className?: string }>> = {
+  report: DailyReportIcon, delivery: DeliveryIcon, bill: BillIcon, slip: SlipIcon, labour: LabourIcon, expense: ExpenseIcon, payment: PaymentIcon,
+}
+
 function RecordList({ role, onPick }: { role: NavRole; onPick?: () => void }) {
   const current = useCurrentProject()
   // Every record belongs to a project: with none open, point at the one step that unblocks it.
@@ -88,14 +95,21 @@ function RecordList({ role, onPick }: { role: NavRole; onPick?: () => void }) {
   }
   return (
     <ul>
-      {recordActionsFor(role).map((a) => (
-        <li key={a.key}>
-          <Link to={recordHref(a, current.projectId)} onClick={onPick} className={cx(rowClass, 'min-h-14')}>
-            <span className="text-sm font-semibold text-ink">{t(a.label)}</span>
-            <span className="text-xs text-subtle">{t(a.hint)}</span>
-          </Link>
-        </li>
-      ))}
+      {recordActionsFor(role).map((a) => {
+        const Icon = RECORD_ICONS[a.key]
+        return (
+          <li key={a.key}>
+            <Link to={recordHref(a, current.projectId)} onClick={onPick}
+              className="flex min-h-14 w-full items-center gap-3 px-4 py-2 text-left hover:bg-muted active:bg-line">
+              <Icon size={22} className="shrink-0 text-subtle" />
+              <span className="flex min-w-0 flex-col">
+                <span className="text-sm font-semibold text-ink">{t(a.label)}</span>
+                <span className="text-xs text-subtle">{t(a.hint)}</span>
+              </span>
+            </Link>
+          </li>
+        )
+      })}
     </ul>
   )
 }

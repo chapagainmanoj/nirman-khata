@@ -17,6 +17,7 @@ import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useProjects } from '../projects/api'
 import { rpc, useSlip, useSuppliers } from './api'
+import { TrashIcon } from '../../components/icons'
 
 export type LineValues = {
   id: string
@@ -199,7 +200,7 @@ function SlipForm({ initial }: { initial?: SlipValues }) {
           const unit = units.data?.find((u) => u.id === watch(`lines.${i}.unit_id`))
           return (
             <Card key={line.key} title={`Line ${i + 1}`}
-              actions={lines.fields.length > 1 && <Button type="button" variant="ghost" onClick={() => lines.remove(i)}>Remove</Button>}>
+              actions={lines.fields.length > 1 && <Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />Remove</Button>}>
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Material" htmlFor={`l${i}-material`}>
                   <Select id={`l${i}-material`} value={materialId} onChange={(e) => pickMaterial(i, e.target.value)}>

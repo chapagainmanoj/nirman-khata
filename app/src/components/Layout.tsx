@@ -8,7 +8,7 @@ import { useCompany } from '../auth/AuthProvider'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import {
-  BellIcon, BillIcon, CalendarIcon, CatalogIcon, DashboardIcon, DeliveryIcon, MoreIcon, PaymentIcon, ProjectsIcon, ReportIcon, SettingsIcon, SlipIcon, StaffIcon, SupplierIcon,
+  BellIcon, BillIcon, CalendarIcon, CatalogIcon, DashboardIcon, DeliveryIcon, MoreIcon, PartiesIcon, PaymentIcon, ProjectsIcon, ReportIcon, SettingsIcon, SlipIcon, StaffIcon,
 } from './icons'
 import { AccountMenu, ProjectSwitcher, RecordMenu, RecordSheetButton, SetupMenu } from './menus'
 import { activeSection, navItem, phoneBarFor, recordActionsFor, sectionsFor, type NavKey } from './nav'
@@ -18,7 +18,7 @@ import { useNavRole } from './useNavRole'
 
 const ICONS: Record<NavKey, ComponentType> = {
   dashboard: DashboardIcon, projects: ProjectsIcon, calendar: CalendarIcon, reports: ReportIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon,
-  parties: SupplierIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
+  parties: PartiesIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
 }
 
 function Count({ n, label }: { n?: number; label: string }) {

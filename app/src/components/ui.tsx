@@ -2,6 +2,7 @@
 import type { ComponentProps, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { createContext, forwardRef, useContext, useEffect, useId, useRef, useState } from 'react'
 import { Link, type LinkProps } from 'react-router'
+import { AlertIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from './icons'
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
 
@@ -178,13 +179,13 @@ export function Breadcrumbs({ trail }: { trail: Crumb[] }) {
   const parent = trail[trail.length - 1]
   return (
     <nav aria-label="Breadcrumb" className="mb-1 text-sm">
-      <Link to={parent.to} className="-ml-1 inline-flex min-h-11 items-center rounded-lg px-1 text-subtle hover:text-ink sm:hidden">
-        ‹ {parent.label}
+      <Link to={parent.to} className="-ml-1 inline-flex min-h-11 items-center gap-0.5 rounded-lg px-1 text-subtle hover:text-ink sm:hidden">
+        <ChevronLeftIcon size={16} />{parent.label}
       </Link>
       <ol className="hidden flex-wrap items-center gap-1 text-subtle sm:flex">
         {trail.map((c, i) => (
           <li key={c.to} className="flex min-w-0 items-center gap-1">
-            {i > 0 && <span aria-hidden>›</span>}
+            {i > 0 && <ChevronRightIcon size={14} className="shrink-0" />}
             <Link to={c.to} className="truncate rounded px-0.5 hover:text-ink hover:underline">{c.label}</Link>
           </li>
         ))}
@@ -235,7 +236,7 @@ export function ErrorBanner({ children, onRetry }: { children: ReactNode; onRetr
   if (!children) return null
   return (
     <div role="alert" className="flex flex-wrap items-center justify-between gap-x-3 rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger-ink">
-      <span className="min-w-0 break-words">{children}</span>
+      <span className="flex min-w-0 items-start gap-2 break-words"><AlertIcon size={18} className="mt-px shrink-0" />{children}</span>
       {onRetry && (
         <button type="button" onClick={onRetry} className="min-h-11 shrink-0 font-semibold underline underline-offset-2">
           Try again
@@ -246,7 +247,12 @@ export function ErrorBanner({ children, onRetry }: { children: ReactNode; onRetr
 }
 
 export function Notice({ children }: { children: ReactNode }) {
-  return <div className="rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-ink">{children}</div>
+  return (
+    <div className="flex items-start gap-2 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2 text-sm text-ink">
+      <InfoIcon size={18} className="mt-px shrink-0 text-warn-ink" />
+      <div className="min-w-0">{children}</div>
+    </div>
+  )
 }
 
 /** Always-mounted live region, so a message that appears inside it ("Saved.") is read out. */
@@ -290,7 +296,7 @@ export function MoreDetails({ summary, open, children }: { summary: string; open
   return (
     <details className="group mt-3" open={open || undefined}>
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
-        <span aria-hidden className="shrink-0 text-subtle transition-transform group-open:rotate-90">▸</span>
+        <ChevronRightIcon size={16} className="shrink-0 text-subtle transition-transform group-open:rotate-90" />
         <span>More details <span className="font-normal text-subtle">({summary.toLowerCase()})</span></span>
       </summary>
       <div className="mt-2">{children}</div>

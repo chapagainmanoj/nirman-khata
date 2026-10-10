@@ -26,6 +26,7 @@ import { useProjects } from '../projects/api'
 import { useCharges, useWorkPackage } from '../subcontract/api'
 import { rpc, useRefreshMoney } from './api'
 import { canPost } from './permissions'
+import { TrashIcon } from '../../components/icons'
 
 type Values = {
   id: string
@@ -266,7 +267,7 @@ export function PaymentNewPage() {
                     <MoneyInput id={`pa${i}-a`} value={field.value} onChange={field.onChange} />
                   )} />
                 </Field>
-                <Button type="button" variant="ghost" aria-label="Remove project" onClick={() => allocations.remove(i)}>Remove</Button>
+                <Button type="button" variant="ghost" aria-label="Remove project" onClick={() => allocations.remove(i)}><TrashIcon size={16} />Remove</Button>
               </div>
             ))}
             <Button type="button" variant="secondary"

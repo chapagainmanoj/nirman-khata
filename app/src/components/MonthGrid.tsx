@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import { adToBs, todayKathmandu, type DateDisplay, type IsoDate } from '../lib/dates'
 import { monthDays, monthInRange, monthLabel, monthOf, shiftMonth, type MonthRef } from '../lib/months'
+import { ChevronLeftIcon, ChevronRightIcon } from './icons'
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 const weekday = (iso: IsoDate) => new Date(`${iso}T00:00:00Z`).getUTCDay()
@@ -30,14 +31,14 @@ export function MonthGrid({ month, onMonth, selected, onSelect, renderDay, dayLa
       <div className="mb-2 flex items-center justify-between gap-2">
         <button type="button" aria-label="Previous month" onClick={() => onMonth(shiftMonth(month, -1))}
           disabled={!monthInRange(shiftMonth(month, -1))}
-          className="inline-flex size-11 items-center justify-center rounded-lg text-xl text-subtle hover:bg-muted hover:text-ink disabled:opacity-30">‹</button>
+          className="inline-flex size-11 items-center justify-center rounded-lg text-subtle hover:bg-muted hover:text-ink disabled:opacity-30"><ChevronLeftIcon size={20} /></button>
         <div className="text-center">
           <div className="font-semibold text-ink" aria-live="polite">{monthLabel(month)}</div>
           <div className="text-xs text-subtle">{monthLabel(monthOf(days[0], other))} – {monthLabel(monthOf(days[days.length - 1], other))}</div>
         </div>
         <button type="button" aria-label="Next month" onClick={() => onMonth(shiftMonth(month, 1))}
           disabled={!monthInRange(shiftMonth(month, 1))}
-          className="inline-flex size-11 items-center justify-center rounded-lg text-xl text-subtle hover:bg-muted hover:text-ink disabled:opacity-30">›</button>
+          className="inline-flex size-11 items-center justify-center rounded-lg text-subtle hover:bg-muted hover:text-ink disabled:opacity-30"><ChevronRightIcon size={20} /></button>
       </div>
       <div role="group" aria-label={monthLabel(month)} className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-line bg-line">
         <div aria-hidden className="contents">

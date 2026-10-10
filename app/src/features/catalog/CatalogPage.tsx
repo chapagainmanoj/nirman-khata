@@ -9,6 +9,7 @@ import { t } from '../../lib/i18n'
 import { supabase, type Tables } from '../../lib/supabase'
 import { useHeadings } from '../projects/api'
 import { useMaterials, useUnits } from './api'
+import { ChevronRightIcon } from '../../components/icons'
 
 type Tab = 'headings' | 'materials' | 'units'
 
@@ -134,7 +135,7 @@ function HeadingsTab() {
         return (
           <details key={h.id} open className="group rounded-xl border border-line bg-surface px-4">
             <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 py-2 [&::-webkit-details-marker]:hidden">
-              <span aria-hidden className="text-subtle transition-transform group-open:rotate-90">▸</span>
+              <ChevronRightIcon size={16} className="shrink-0 text-subtle transition-transform group-open:rotate-90" />
               <span className={`font-semibold ${h.active ? 'text-ink' : 'text-subtle line-through'}`}>{h.name}</span>
               <span className="text-sm text-subtle">({kids.length})</span>
               {auth.isAdmin && editing?.id !== h.id && (

@@ -26,6 +26,7 @@ import { SiteSection } from '../site/SiteSection'
 import { useProgress } from '../site/api'
 import { useProjectDashboard } from '../dashboard/api'
 import { Completeness, HeadingTable, SourceList } from '../dashboard/parts'
+import { ChevronDownIcon } from '../../components/icons'
 
 type Tab = 'overview' | 'site' | 'deliveries' | 'subcontract' | 'labour' | 'history'
 
@@ -352,7 +353,7 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
   return (
     <Card title={t('project.amounts')} actions={
       <Button variant="secondary" aria-expanded={picking} onClick={() => setPicking(!picking)}>
-        As of {asOf === todayKathmandu() ? 'today' : formatDate(asOf, auth.dateDisplay)} <span aria-hidden>▾</span>
+        As of {asOf === todayKathmandu() ? 'today' : formatDate(asOf, auth.dateDisplay)} <ChevronDownIcon size={16} className="inline" />
       </Button>
     }>
       {picking && (

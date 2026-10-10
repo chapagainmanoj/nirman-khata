@@ -15,6 +15,7 @@ import { memberName, useMembers, useProjects } from '../projects/api'
 import { rpc, useSlip } from './api'
 import { DeliveryList } from './DeliveryList'
 import { useState } from 'react'
+import { ArrowRightIcon, CheckIcon, ShareIcon } from '../../components/icons'
 
 const qty = (n: number | null | undefined) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 }))
 
@@ -95,10 +96,12 @@ export function SlipDetailPage() {
           s.status === 'approved' ? (
             // One progress line instead of three badges: Approved → Sent → Received.
             <ol className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm" aria-label="Progress">
-              <li className="font-medium text-good-ink">✓ {statusLabel}</li>
-              <li aria-hidden className="text-subtle">→</li>
-              <li className={s.sent_at ? 'font-medium text-good-ink' : 'font-medium text-warn-ink'}>{s.sent_at ? '✓ Sent' : 'Not sent yet'}</li>
-              <li aria-hidden className="text-subtle">→</li>
+              <li className="inline-flex items-center gap-1 font-medium text-good-ink"><CheckIcon size={16} />{statusLabel}</li>
+              <li aria-hidden className="text-subtle"><ArrowRightIcon size={14} /></li>
+              <li className={`inline-flex items-center gap-1 font-medium ${s.sent_at ? 'text-good-ink' : 'text-warn-ink'}`}>
+                {s.sent_at ? <><CheckIcon size={16} />Sent</> : 'Not sent yet'}
+              </li>
+              <li aria-hidden className="text-subtle"><ArrowRightIcon size={14} /></li>
               <li><Badge tone={fTone}>{fLabel}</Badge>{received && <span className="ml-1 text-subtle tabular-nums">{received}</span>}</li>
             </ol>
           ) : <Badge tone={statusTone}>{statusLabel}</Badge>
@@ -119,7 +122,7 @@ export function SlipDetailPage() {
         {perms?.can_approve && (
           <Button busy={act.isPending} onClick={() => act.mutate(() => rpc('decide_slip', { p_slip: s.id, p_approve: true }))}>Approve</Button>
         )}
-        {perms?.can_share && <Button variant={s.sent_at ? 'secondary' : 'primary'} onClick={() => void share()}>Share with supplier</Button>}
+        {perms?.can_share && <Button variant={s.sent_at ? 'secondary' : 'primary'} onClick={() => void share()}><ShareIcon size={18} />Share with supplier</Button>}
         {perms?.can_delete && (
           <ConfirmButton confirmLabel="Delete draft"
             onConfirm={() => act.mutate(async () => { await rpc('delete_slip_draft', { p_slip: s.id }); navigate('/slips', { replace: true }) })}>

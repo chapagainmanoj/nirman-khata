@@ -9,6 +9,7 @@ import { compressImage } from '../lib/images'
 import { supabase } from '../lib/supabase'
 import { platform } from '../platform'
 import { Button, ConfirmButton, ErrorBanner, Status } from './ui'
+import { CameraIcon, TrashIcon } from './icons'
 
 // keyof on a union of single-key objects is `never`, so the owner column is named explicitly.
 type OwnerColumn =
@@ -86,12 +87,12 @@ export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Pho
             <li key={p.id} className="flex flex-col items-center gap-1">
               {urls[p.id] && <img src={urls[p.id]} alt={`${what} ${i + 1} of ${value.length}`} className={large ? IMG_LARGE : IMG_SMALL} />}
               <Button type="button" variant="ghost" aria-label={`Remove ${what.toLowerCase()} ${i + 1}`}
-                onClick={() => onChange(value.filter((x) => x.id !== p.id))}>Remove</Button>
+                onClick={() => onChange(value.filter((x) => x.id !== p.id))}><TrashIcon size={16} />Remove</Button>
             </li>
           ))}
         </ul>
       )}
-      <div><Button type="button" variant="secondary" busy={busy} onClick={() => void pick()}>{value.length ? 'Add another photo' : label}</Button></div>
+      <div><Button type="button" variant="secondary" busy={busy} onClick={() => void pick()}>{!busy && <CameraIcon size={18} />}{value.length ? 'Add another photo' : label}</Button></div>
     </div>
   )
 }
@@ -188,7 +189,7 @@ export function Attachments({
       {files.data?.length === 0 && !canAdd && <p className="text-sm text-subtle">No photos.</p>}
       {canAdd && (
         <div>
-          <Button type="button" variant="secondary" busy={add.isPending} onClick={() => add.mutate()}>{label}</Button>
+          <Button type="button" variant="secondary" busy={add.isPending} onClick={() => add.mutate()}>{!add.isPending && <CameraIcon size={18} />}{label}</Button>
         </div>
       )}
       <Status className="text-xs text-subtle">{status}</Status>

@@ -16,6 +16,7 @@ import { DELIVERY_ISSUES } from '../../lib/labels'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useProjects } from '../projects/api'
 import { rpc, useSlip, useSlips, useSuppliers } from './api'
+import { ChevronRightIcon, TrashIcon } from '../../components/icons'
 
 type Line = {
   id: string
@@ -195,7 +196,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
         {slip && projectId && lines.length === 0 && <Notice>Everything on this slip for this project has been received.</Notice>}
         {lines.map((l, i) => (
           <Card key={l.id} title={l.slip_line_id ? l.label : `Item ${i + 1}`}
-            actions={lines.length > 1 && <Button type="button" variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}>Remove</Button>}>
+            actions={lines.length > 1 && <Button type="button" variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}><TrashIcon size={16} />Remove</Button>}>
             <div className="grid gap-3 sm:grid-cols-2">
               {!l.slip_line_id && (
                 <>
@@ -284,7 +285,7 @@ function OpenSlips({ supplierId, projectId }: { supplierId: string; projectId: s
               <Link to={`/deliveries/new?slip=${s.id}&project=${project}`}
                 className="flex min-h-12 items-center justify-between gap-3 py-2 text-sm hover:text-brand-dark">
                 <span className="min-w-0 truncate"><span className="font-semibold text-ink">{s.number}</span> · {s.suppliers?.name}</span>
-                <span className="shrink-0 font-medium text-brand">Receive against it ›</span>
+                <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-brand">Receive against it<ChevronRightIcon size={16} /></span>
               </Link>
             </li>
           )

@@ -26,6 +26,7 @@ import { useProjects } from '../projects/api'
 import { rpc } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
 import { useRefreshSite, useReportDay, useStages, WEATHER } from './api'
+import { TrashIcon } from '../../components/icons'
 
 type Line = { id: string; description: string; qty: string; unit_id: string }
 
@@ -237,7 +238,7 @@ export function DailyReportPage() {
                         {units.data?.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}
                       </Select>
                       <Button type="button" variant="ghost" aria-label={`Remove item ${i + 1}`}
-                        onClick={() => setValue('lines', lines.filter((_, j) => j !== i))}>Remove</Button>
+                        onClick={() => setValue('lines', lines.filter((_, j) => j !== i))}><TrashIcon size={16} />Remove</Button>
                     </div>
                   ))}
                   <Button type="button" variant="secondary" onClick={() => setValue('lines', [...lines, blankLine()])}>Add quantity</Button>
