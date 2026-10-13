@@ -67,7 +67,9 @@ export function usePartyPayments(kind: PartyKind, partyId: string) {
 /** Parties of one kind, by name (contact details; every member may read them). */
 export function useParties(companyId: string, kind: PartyKind) {
   return useQuery({
-    queryKey: [PARTY[kind].table, companyId],
+    // Its own key: useSuppliers caches full rows under [table, companyId], and sharing it let a
+    // supplier page read these short rows (no categories) and crash.
+    queryKey: [PARTY[kind].table, companyId, 'brief'],
     queryFn: async () => {
       const { data, error } = await supabase.from(PARTY[kind].table).select('id, name, active, phone').eq('company_id', companyId).order('name')
       if (error) throw error

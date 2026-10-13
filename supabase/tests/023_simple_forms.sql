@@ -1,7 +1,7 @@
 -- Simple forms: a company setting, off by default, changed only by an admin.
 begin;
 \ir helpers/helpers.psql
-select plan(4);
+select plan(3);
 
 select tests.create_user('owner') as owner \gset
 select tests.create_user('acc') as acc \gset
@@ -16,8 +16,7 @@ select is((select simple_forms from public.companies where id = :'co'), true, 't
 
 select tests.login(:'acc');
 update public.companies set simple_forms = false where id = :'co';
-select is((select simple_forms from public.companies where id = :'co'), true, 'accounts staff cannot change it');
-select is((select simple_forms from public.companies where id = :'co'), true, '... and they can read it, so their forms fold too');
+select is((select simple_forms from public.companies where id = :'co'), true, 'accounts staff can read it (their forms fold too) but cannot change it');
 
 select * from finish();
 rollback;

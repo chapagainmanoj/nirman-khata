@@ -8,7 +8,9 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { Button, ButtonLink, Card, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
+import { useSimpleForms } from '../../auth/useSimpleForms'
 import { More } from '../../components/More'
+import { revealField } from '../../lib/forms'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -63,6 +65,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
   supplierParam: string
 }) {
   const auth = useCompany()
+  const simple = useSimpleForms()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const suppliers = useSuppliers(auth.companyId)
@@ -127,6 +130,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
   function submit(e: FormEvent) {
     e.preventDefault()
     const filled = lines.filter((l) => Number(l.received) > 0)
+    const overRejected = filled.find((l) => Number(l.rejected) > Number(l.received))
     const problem =
       !supplierId ? 'Choose the supplier.'
       : !projectId ? 'Choose the project.'
@@ -134,11 +138,13 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
       : !filled.length ? 'Enter at least one received quantity.'
       : filled.find((l) => !l.slip_line_id && (!l.unit_id || (!l.material_id || (l.material_id === 'other' && !l.material_text.trim()))))
         ? 'Each item needs a material and unit.'
-      : filled.find((l) => Number(l.rejected) > Number(l.received)) ? 'Rejected cannot be more than received.'
+      : overRejected ? 'Rejected cannot be more than received.'
       : filled.find((l) => units.data?.find((u) => u.id === l.unit_id)?.needs_note && !l.unit_note.trim())
         ? 'Describe the trip or load (vehicle, size).'
       : ''
     setError(problem)
+    // The rejected field may sit in a closed fold (simple forms); show it.
+    if (overRejected && problem.startsWith('Rejected')) revealField(`dl${lines.indexOf(overRejected)}-x`)
     if (!problem) save.mutate()
   }
 
@@ -237,29 +243,44 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
                   )}
                 </>
               )}
-              <div className="grid grid-cols-2 gap-3">
-                <Field label={`Received${l.slip_line_id ? ` (${units.data?.find((u) => u.id === l.unit_id)?.code ?? ''})` : ''}`} htmlFor={`dl${i}-r`}>
-                  <Input id={`dl${i}-r`} inputMode="decimal" value={l.received} onChange={(e) => setLine(i, { received: e.target.value })} />
-                </Field>
-              </div>
-              <More label="Problem with this item?" summary="none">
-                <div className="grid grid-cols-2 gap-3">
+              {(() => {
+                const received = (
+                  <Field label={`Received${l.slip_line_id ? ` (${units.data?.find((u) => u.id === l.unit_id)?.code ?? ''})` : ''}`} htmlFor={`dl${i}-r`}>
+                    <Input id={`dl${i}-r`} inputMode="decimal" value={l.received} onChange={(e) => setLine(i, { received: e.target.value })} />
+                  </Field>
+                )
+                const rejected = (
                   <Field label="Rejected" htmlFor={`dl${i}-x`}>
                     <Input id={`dl${i}-x`} inputMode="decimal" value={l.rejected} onChange={(e) => setLine(i, { rejected: e.target.value })} />
                   </Field>
+                )
+                const issue = (
                   <Field label="Problem" htmlFor={`dl${i}-i`}>
                     <Select id={`dl${i}-i`} value={l.issue} onChange={(e) => setLine(i, { issue: e.target.value })}>
                       <option value="">No problem</option>
                       {Object.entries(DELIVERY_ISSUES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </Select>
                   </Field>
-                </div>
-                {(l.issue || Number(l.rejected) > 0) && (
+                )
+                const wrong = (l.issue || Number(l.rejected) > 0) && (
                   <Field label="What was wrong?" htmlFor={`dl${i}-n`}>
                     <Input id={`dl${i}-n`} value={l.note} onChange={(e) => setLine(i, { note: e.target.value })} />
                   </Field>
-                )}
-              </More>
+                )
+                // Simple forms fold the problem fields; Detailed keeps Received and Rejected side by side.
+                if (!simple) return <><div className="grid grid-cols-2 gap-3">{received}{rejected}</div>{issue}{wrong}</>
+                const problemSummary = [Number(l.rejected) > 0 && `${l.rejected} rejected`, l.issue && DELIVERY_ISSUES[l.issue as keyof typeof DELIVERY_ISSUES]]
+                  .filter(Boolean).join(', ') || 'none'
+                return (
+                  <>
+                    {received}
+                    <More label="Problem with this item?" summary={problemSummary}>
+                      <div className="grid grid-cols-2 gap-3">{rejected}{issue}</div>
+                      {wrong}
+                    </More>
+                  </>
+                )
+              })()}
             </div>
           </Card>
         ))}

@@ -43,20 +43,21 @@ test('simple forms fold the less-used fields; values and detailed mode keep them
   await page.getByLabel('Project code').fill('P-1')
   await page.getByLabel('Project name').fill('Thapa house')
   await page.getByLabel('Contract amount (Thekka Rakam)').fill('20,00,000')
-  await page.locator('#planned_start').click()
-  await page.getByRole('dialog', { name: 'Choose date' }).getByRole('button', { name: 'Today' }).click()
   await page.getByRole('button', { name: 'Create project' }).click()
   await expect(page.getByRole('heading', { name: 'Thapa house' })).toBeVisible()
   const projectUrl = page.url()
 
-  // Editing: the fold opens by itself because it holds a planned start.
-  await page.getByRole('tab', { name: 'Details' }).click()
-  await page.getByRole('button', { name: 'Edit', exact: true }).click()
-  await expect(page.locator('#planned_start')).toBeVisible()
-  // The to-do link to a date opens the fold and focuses the field.
+  // No dates yet, so the fold starts closed; the to-do link to a date opens it and focuses the field.
   await page.goto(`${projectUrl}?tab=details&edit=planned_end`)
   await expect(page.locator('#planned_end')).toBeVisible()
   await expect(page.locator('#planned_end')).toBeFocused()
+  await page.locator('#planned_start').click()
+  await page.getByRole('dialog', { name: 'Choose date' }).getByRole('button', { name: 'Today' }).click()
+  await page.getByRole('button', { name: 'Save' }).click()
+  // Editing again: the fold opens by itself because it now holds a planned start.
+  await page.goto(`${projectUrl}?tab=details`)
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await expect(page.locator('#planned_start')).toBeVisible()
 
   await page.goto('/suppliers')
   await page.getByRole('button', { name: 'Add supplier' }).click()
@@ -64,6 +65,14 @@ test('simple forms fold the less-used fields; values and detailed mode keep them
   await page.getByLabel('Materials supplied').fill('Cement')
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByRole('link', { name: /Pokhara Cement Traders/ })).toBeVisible()
+  // The payment form caches a short supplier list; the supplier page opened after it must still
+  // load its full row (it once read the short one and crashed on its categories).
+  await page.goto('/payments/new')
+  await expect(page.getByRole('heading', { name: 'Record payment' })).toBeVisible()
+  await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'More' }).click()
+  await page.getByRole('link', { name: 'Suppliers' }).click()
+  await page.getByRole('link', { name: /Pokhara Cement Traders/ }).click()
+  await expect(page.getByRole('heading', { name: 'Pokhara Cement Traders' })).toBeVisible()
 
   // Bill: the charges fold away with a short summary; the total stays in view.
   await page.goto('/bills/new')
@@ -85,12 +94,19 @@ test('simple forms fold the less-used fields; values and detailed mode keep them
   await expect(page.getByText('Problem with this item?')).toBeVisible()
   await expect(page.getByLabel('Rejected')).toBeHidden()
   await expect(page.getByLabel('Note', { exact: true })).toBeVisible()
+  // The heading says what is in the fold once something is entered.
+  const problem = page.getByText('Problem with this item?')
+  await problem.click()
+  await page.getByLabel('Rejected').fill('3')
+  await problem.click()
+  await expect(page.getByText('(3 rejected)')).toBeVisible()
 
   // Expense: the heading the form picks itself is shown in the summary.
   await page.goto('/expenses/new')
   await expect(page.getByLabel('Cost heading')).toBeHidden()
   await expect(page.getByLabel('Bill number')).toBeHidden()
-  await expect(page.getByText('More details')).toBeVisible()
+  // The heading the form fills in itself is named in the summary.
+  await expect(page.getByText(/^More details \(.+\)$/)).toBeVisible()
 
   // Detailed shows every field again.
   await chooseForms(page, 'Detailed')

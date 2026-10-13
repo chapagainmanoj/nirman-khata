@@ -13,7 +13,8 @@ const FILLED = (el: Element) => {
   if (el instanceof HTMLInputElement) {
     if (el.type === 'checkbox' || el.type === 'radio') return el.checked
     if (el.type === 'file' || el.type === 'hidden') return false
-    return el.value.trim() !== ''
+    // An amount of 0 (saved for an empty charge) is not a value someone entered.
+    return el.value.trim() !== '' && !/^0+(\.0*)?$/.test(el.value.trim())
   }
   return (el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) && el.value.trim() !== ''
 }
@@ -34,15 +35,16 @@ function Fold({ label, summary, className, children }: { label: string; summary?
   const ref = useRef<HTMLDetailsElement>(null)
   const [open, setOpen] = useState(false)
 
-  // Open once if anything inside is already filled in (an edited record).
+  // Open when the fields inside become filled: on mount (an edited record) and later (a draft
+  // restored or a form reset after mount). Only the change to "filled" opens it, so a user can
+  // still close a fold they filled in. Also open whenever a field inside is marked invalid.
+  const wasFilled = useRef(false)
   useLayoutEffect(() => {
     const el = ref.current
-    if (el && Array.from(el.querySelectorAll('input, select, textarea, [data-has-value]')).some(FILLED)) el.open = true
-  }, [])
-  // Open whenever a field inside is marked invalid, so its message and focus can be seen.
-  useLayoutEffect(() => {
-    const el = ref.current
-    if (el && !el.open && el.querySelector('[aria-invalid="true"]')) el.open = true
+    if (!el) return
+    const filled = Array.from(el.querySelectorAll('input, select, textarea, [data-has-value]')).some(FILLED)
+    if ((filled && !wasFilled.current) || el.querySelector('[aria-invalid="true"]')) el.open = true
+    wasFilled.current = filled
   })
 
   // Looks like MoreDetails (ui.tsx), the fold the forms already use for optional extras.
@@ -56,3 +58,4 @@ function Fold({ label, summary, className, children }: { label: string; summary?
     </details>
   )
 }
+

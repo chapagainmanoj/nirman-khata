@@ -556,7 +556,11 @@ update policy), pgTAP `022`, `app/e2e/simple.spec.ts`. `components/More.tsx` wra
 less-used fields: in Detailed it renders them as before; in Simple it is a closed `<details>` in
 the style of `MoreDetails`, kept mounted so react-hook-form still registers the fields. It opens
 when a field inside holds a value (inputs, selects, or `data-has-value` on the date field;
-`data-default` marks values the form filled in itself) or is `aria-invalid`. Payment and client
+`data-default` marks values the form filled in itself; an amount of 0 is empty). It re-checks on
+every render and opens on the change to filled, so a draft restored after mount opens it too.
+Form errors about a folded field call `revealField` (`lib/forms.ts`) to open the fold and focus
+it. The bill's paper-total check stays outside the fold; the expense cost heading folds only when
+the site heading exists to fill it in. Payment and client
 receipt forms are not folded: their only optional field (reference) already shows just for
 non-cash methods.
 

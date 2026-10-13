@@ -14,3 +14,11 @@ export function focusFirstError<T extends FieldValues>(errors: FieldErrors<T>, f
   first?.focus()
   first?.scrollIntoView({ block: 'center' })
 }
+
+/** Open the simple-forms fold holding a field (if any) and focus it, for a form error about that field. */
+export function revealField(id: string) {
+  const el = document.getElementById(id)
+  const fold = el?.closest('details')
+  if (fold) fold.open = true
+  el?.focus()
+}

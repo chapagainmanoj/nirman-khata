@@ -10,7 +10,9 @@ import { Attachments } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select } from '../../components/ui'
+import { useSimpleForms } from '../../auth/useSimpleForms'
 import { More } from '../../components/More'
+import { revealField } from '../../lib/forms'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -43,6 +45,7 @@ type Saved = { expense_id: string; payment: { number: string } | null; amount: n
 
 export function ExpenseNewPage() {
   const auth = useCompany()
+  const simple = useSimpleForms()
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const projects = useProjects(auth.companyId)
@@ -72,6 +75,8 @@ export function ExpenseNewPage() {
     return parent ? `${parent.name} › ${h.name}` : h.name
   }
   const chosenHeading = choices.find((h) => h.id === headingId)
+  // Simple forms fold the heading only when the form can fill it in (the site heading exists).
+  const foldHeading = simple && !!siteHeading
   const headingName = chosenHeading && name(chosenHeading)
 
   const save = useMutation({
@@ -102,6 +107,7 @@ export function ExpenseNewPage() {
       : vals.expense_date > todayKathmandu() ? 'The date cannot be in the future.'
       : ''
     setError(problem)
+    if (problem === 'Choose a cost heading.') revealField('ex-heading')
     if (!problem) save.mutate(vals)
   }
 
@@ -123,6 +129,15 @@ export function ExpenseNewPage() {
     )
   }
 
+  const headingField = (
+    <Field label="Cost heading" htmlFor="ex-heading">
+      <Select id="ex-heading" value={headingId} data-default={!v.heading_id} onChange={(e) => form.setValue('heading_id', e.target.value)}>
+        <option value="">Choose heading</option>
+        {choices.map((h) => <option key={h.id} value={h.id}>{name(h)}</option>)}
+      </Select>
+    </Field>
+  )
+
   return (
     <>
       <PageHeader title="Enter other expense" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="Equipment hire, transport, fuel, khaja, permits, small purchases." />
@@ -142,6 +157,7 @@ export function ExpenseNewPage() {
             <Field label="What for" htmlFor="ex-desc" hint="e.g. JCB 4 hours, diesel 20 L, khaja for crew">
               <Input id="ex-desc" {...register('description')} />
             </Field>
+            {!foldHeading && headingField}
             <Field label="Date" htmlFor="ex-date">
               <Controller control={control} name="expense_date" render={({ field }) => (
                 <DateInput id="ex-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
@@ -153,13 +169,8 @@ export function ExpenseNewPage() {
                 {payees.data?.filter((p) => p.active).map((p) => <option key={p.id} value={p.name}>{p.kind ?? ''}</option>)}
               </datalist>
             </Field>
-            <More className="sm:col-span-2" summary={[headingName ?? 'choose heading', v.bill_no && `bill ${v.bill_no}`].filter(Boolean).join(', ')}>
-              <Field label="Cost heading" htmlFor="ex-heading">
-                <Select id="ex-heading" value={headingId} data-default={!v.heading_id} onChange={(e) => form.setValue('heading_id', e.target.value)}>
-                  <option value="">Choose heading</option>
-                  {choices.map((h) => <option key={h.id} value={h.id}>{name(h)}</option>)}
-                </Select>
-              </Field>
+            <More className="sm:col-span-2" summary={[foldHeading && headingName, v.bill_no && `bill ${v.bill_no}`].filter(Boolean).join(', ') || undefined}>
+              {foldHeading && headingField}
               {v.payee_name.trim() && !known && (
                 <Field label="Payee type" htmlFor="ex-payee-kind" hint="Optional, e.g. JCB owner, transporter, shop">
                   <Input id="ex-payee-kind" {...register('payee_kind')} />

@@ -274,7 +274,7 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
           <More label="Site contact and instructions">
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label="Site contact" htmlFor="slip-contact" hint="Who the driver should call">
-                <Input id="slip-contact" inputMode="tel" {...register('site_contact')} />
+                <Input id="slip-contact" inputMode="tel" data-default={watch('site_contact') === (auth.profile?.phone ?? '')} {...register('site_contact')} />
               </Field>
               <Field label="Delivery instructions" htmlFor="slip-instr" hint="Optional, e.g. unload at the back gate before 10 am">
                 <Input id="slip-instr" {...register('delivery_instructions')} />
