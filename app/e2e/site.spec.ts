@@ -44,7 +44,8 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   await page.getByRole('button', { name: 'Set up stages' }).click()
   await page.getByLabel('Plaster').uncheck()
   await page.getByRole('button', { name: 'Add stages' }).click()
-  await expect(page.getByText('Foundation', { exact: true })).toBeVisible()
+  // The progress list row, not the setup form's own checkbox, which also says Foundation.
+  await expect(page.getByRole('progressbar', { name: 'Foundation progress' })).toBeVisible()
   await expect(page.getByText('Plaster', { exact: true })).toHaveCount(0)
 
   // A delivery recorded earlier today, without a slip.

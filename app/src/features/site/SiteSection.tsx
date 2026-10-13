@@ -167,13 +167,15 @@ function StagesSetup({ projectId, onDone }: { projectId: string; onDone: () => v
   const [own, setOwn] = useState('')
   const [from, setFrom] = useState('')
 
+  // Close straight away and refresh behind: waiting for every site query to refetch kept the
+  // form open for seconds on a slow connection (and outran the e2e wait on CI).
   const create = useMutation({
     mutationFn: () => rpc('create_stages', { p_project: projectId, p_names: [...picked, ...own.split(',').map((s) => s.trim()).filter(Boolean)] }),
-    onSuccess: async () => { await refresh(); onDone() },
+    onSuccess: () => { onDone(); void refresh() },
   })
   const copy = useMutation({
     mutationFn: () => rpc('copy_stages', { p_from: from, p_to: projectId }),
-    onSuccess: async () => { await refresh(); onDone() },
+    onSuccess: () => { onDone(); void refresh() },
   })
   const others = projects.data?.filter((p) => p.id !== projectId) ?? []
 
