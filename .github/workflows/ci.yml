@@ -5,6 +5,12 @@ on:
     branches: [master, main]
   pull_request:
 
+# One run per branch or PR at a time. A newer push cancels an older run on a PR branch; on
+# master/main runs queue instead, so a deploy (migrations included) is never cut off midway.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' && github.ref != 'refs/heads/main' }}
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -52,12 +58,32 @@ jobs:
       - name: Typecheck and build
         run: pnpm --dir app build
 
-      # Against the build from the step above, not the dev server: on a cold runner the dev server
+      # Chromium is cached per Playwright version; the system libraries it needs are not cacheable
+      # and are installed every run.
+      - name: Playwright version
+        id: playwright
+        run: echo "version=$(pnpm --dir app exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Playwright browser
+        id: playwright-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium
+
+      - name: Install Playwright browser
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
+        run: pnpm --dir app exec playwright install --with-deps chromium
+
+      - name: Install Playwright system libraries
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm --dir app exec playwright install-deps chromium
+
+      # Against the build from "Typecheck and build", not the dev server: on a cold runner the dev server
       # compiles each page on first visit, which outran the tests' waits. Port 5173 is where auth
       # emails (password reset) redirect.
       - name: End-to-end (phone screen)
         run: |
-          pnpm --dir app exec playwright install --with-deps chromium
           pnpm --dir app exec vite preview --port 5173 --strictPort &
           for i in $(seq 30); do curl -sf http://localhost:5173 >/dev/null && break; sleep 1; done
           E2E_BASE_URL=http://localhost:5173 pnpm --dir app e2e
