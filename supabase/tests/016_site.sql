@@ -133,7 +133,7 @@ select is((select array_agg(distinct kind order by kind) from public.calendar_ev
 select is((select sum(cost_paisa) from public.calendar_events(:'co', '2026-05-04', '2026-05-04'))::bigint, 65000000::bigint,
   'day total cost: bill 6,35,600 + labour 14,400');
 select is((select money from public.calendar_events(:'co', '2026-05-04', '2026-05-04') where kind = 'payment_post' and party_name = 'Gandaki Hardware'),
-  'advance', 'a payment not matched to a bill shows as advance');
+  'payment', 'a payment not matched to a bill, and not peski, shows as a payment');
 select tests.logout();
 
 -- Site staff see the site rows but no money; nothing from a project they are not on.

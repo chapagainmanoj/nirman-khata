@@ -63,15 +63,15 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
 
   // Delivery: 60 of 100 arrive
   await page.getByRole('link', { name: 'Record delivery' }).click()
-  await expect(page.getByLabel(/^Received/)).toHaveValue('100')
-  await page.getByLabel(/^Received/).fill('60')
+  await expect(page.getByLabel(/^Received \(/)).toHaveValue('100')
+  await page.getByLabel(/^Received \(/).fill('60')
   await page.getByLabel('Challan number').fill('CH-501')
   // The phone reloads mid-entry: the challan is still there.
   await page.waitForTimeout(800)
   await page.reload()
   await expect(page.getByText('Restored your unsaved delivery.')).toBeVisible()
   await expect(page.getByLabel('Challan number')).toHaveValue('CH-501')
-  await expect(page.getByLabel(/^Received/)).toHaveValue('60')
+  await expect(page.getByLabel(/^Received \(/)).toHaveValue('60')
   await page.getByRole('button', { name: 'Save delivery' }).click()
   await expect(page.getByRole('heading', { name: 'Delivery recorded' })).toBeVisible()
   await page.getByRole('link', { name: 'Back to slip' }).click()
@@ -102,31 +102,26 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByText('Unpaid', { exact: true })).toBeVisible()
   await page.screenshot(shots('m2-06-bill-posted'))
 
-  // Payment from the bill: the bill comes ticked and sets the amount. Switching to an advance
-  // drops the tick so it cannot block saving; the money is kept as "not assigned".
+  // Payment from the bill: the bill comes ticked and sets the amount. Peski is not offered while
+  // the bill is unpaid. Accounts unticks it and pays the 51,000 anyway: it is overpaid on the
+  // project, to be matched to the bill afterwards.
   await page.getByRole('link', { name: 'Pay this bill' }).click()
   await expect(page.getByLabel('Amount paid')).toHaveValue(/51,?000/)
   await expect(page.getByText('Which bills does it pay?')).toBeVisible()
   await expect(page.getByLabel('Bill 1001 · P-1')).toBeChecked()
+  await expect(page.getByLabel('This is peski')).toBeHidden()
   await expect(page.getByLabel('Reference')).toBeHidden() // cash needs no reference
   await page.screenshot(shots('m2-06b-payment-form'))
-  // Accounts pays it as an advance instead: the tick goes, the amount stays, nothing is split.
-  await page.getByRole('button', { name: 'Pay as advance instead' }).click()
-  await expect(page.getByText('Which bills does it pay?')).toBeHidden()
-  await expect(page.getByLabel('Amount paid')).toHaveValue(/51,?000/)
+  await page.getByLabel('Bill 1001 · P-1').uncheck()
+  await page.getByLabel('Amount paid').fill('51,000')
+  await expect(page.getByText(/Extra Rs\. 51,000 is overpaid on/)).toBeVisible()
   await page.getByLabel('How').selectOption('cheque')
   await page.getByLabel('Reference').fill('Cheque 000123')
   await page.getByRole('button', { name: 'Record payment' }).click()
   await expect(page.getByRole('heading', { name: /Payment PAY-0001/ })).toBeVisible()
-  await expect(row(page, 'Not assigned to a project')).toContainText('Rs. 51,000')
+  await expect(page.getByText('It counts as overpaid until it is.')).toBeVisible()
 
-  // Accounts assigns it to the project, then matches it to the bill.
-  await page.getByRole('button', { name: 'Change split' }).click()
-  await page.getByLabel('To', { exact: true }).selectOption({ label: 'P-1 · Ward 5 school building' })
-  await page.getByLabel('Amount').fill('51,000')
-  await page.getByLabel('Reason').fill('Paid for the school')
-  await page.getByRole('button', { name: 'Move', exact: true }).click()
-  await expect(page.getByText('Not assigned to a project')).toBeHidden()
+  // Accounts matches it to the bill.
   await page.getByRole('link', { name: 'Shrestha Suppliers' }).click()
   await page.getByLabel('Bill', { exact: true }).selectOption({ index: 1 }) // the only unpaid bill, 1001
   await page.getByLabel('Paid from').selectOption({ index: 1 })

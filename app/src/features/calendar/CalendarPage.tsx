@@ -112,7 +112,7 @@ export function CalendarPage() {
               if (!list) return null
               const cost = showMoney ? sum(list, 'cost_paisa') : 0
               const site = list.some((e) => SITE_KINDS.has(e.kind))
-              const paid = list.some((e) => e.money === 'payment' || e.money === 'advance' || e.money === 'refund')
+              const paid = list.some((e) => e.money === 'payment' || e.money === 'peski' || e.money === 'refund')
               return (
                 <>
                   <span aria-hidden className="flex gap-0.5">

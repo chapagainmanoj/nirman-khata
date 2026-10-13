@@ -153,7 +153,7 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
           <MoneyInput id="rev-amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
         <Field label="Effective from" htmlFor="rev-date">
-          <DateInput id="rev-date" value={date} onChange={setDate} display={auth.dateDisplay} />
+          <DateInput id="rev-date" value={date} onChange={setDate} display={auth.dateDisplay} allowFuture />
         </Field>
       </div>
       <Field label="Reason" htmlFor="rev-reason" hint="e.g. Variation: extra floor approved by client">

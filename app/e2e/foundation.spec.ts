@@ -41,14 +41,22 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await expect(page.getByText('Planned margin (contract − budget)').locator('..')).toContainText('Rs. 10,00,000')
 
   // BS date picker for planned start: 1 Shrawan 2083
-  const planned = page.getByText('Planned start', { exact: true }).locator('..')
-  await planned.getByLabel('Year').selectOption('2083')
-  await planned.getByLabel('Month').selectOption({ label: 'Shrawan' })
-  await planned.getByLabel('Day').selectOption('1')
-  await expect(page.getByText('1 Shrawan 2083 · 17 Jul 2026')).toBeVisible()
-  // Switch to AD shows a normal date input with the same date
-  await planned.getByRole('button', { name: 'Switch to AD calendar' }).click()
-  await expect(page.locator('#planned_start')).toHaveValue('2026-07-17')
+  // One field opens the calendar; month and year jump inside it.
+  const planned = page.locator('#planned_start')
+  await planned.click()
+  const picker = page.getByRole('dialog', { name: 'Choose date' })
+  await picker.getByLabel('Year', { exact: true }).selectOption('2083')
+  await picker.getByLabel('Month', { exact: true }).selectOption({ label: 'Shrawan' })
+  await picker.getByRole('button', { name: '1 Shrawan 2083 · 17 Jul 2026' }).click()
+  await expect(picker).toHaveCount(0)
+  await expect(planned).toBeFocused()
+  await expect(planned).toContainText('1 Shrawan 2083')
+  await expect(planned).toContainText('17 Jul 2026')
+  // The AD calendar shows the same day chosen.
+  await planned.click()
+  await picker.getByRole('button', { name: 'AD', exact: true }).click()
+  await expect(picker.getByRole('button', { name: '17 Jul 2026 · 1 Shrawan 2083' })).toHaveAttribute('aria-pressed', 'true')
+  await page.keyboard.press('Escape')
   await page.screenshot(shots('02-new-project'))
 
   await page.getByRole('button', { name: 'Create project' }).click()
@@ -112,9 +120,14 @@ test('BS date picker fits on a phone', async ({ page }) => {
   await page.getByRole('link', { name: 'New project' }).click()
   const effective = page.getByText('Effective from', { exact: true }).locator('..')
   await effective.scrollIntoViewIfNeeded()
-  const year = effective.getByLabel('Year')
-  // The selected year must be fully visible, not clipped to "20".
-  const fits = await year.evaluate((el: HTMLSelectElement) => el.scrollWidth <= el.clientWidth + 1)
+  await effective.getByRole('button', { name: 'Effective from' }).click()
+  // The calendar fits the phone, and the selected year is not clipped to "20".
+  const picker = page.getByRole('dialog', { name: 'Choose date' })
+  const box = await picker.boundingBox()
+  const width = page.viewportSize()!.width
+  expect(box!.x).toBeGreaterThanOrEqual(0)
+  expect(box!.x + box!.width).toBeLessThanOrEqual(width)
+  const fits = await picker.getByLabel('Year', { exact: true }).evaluate((el: HTMLSelectElement) => el.scrollWidth <= el.clientWidth + 1)
   expect(fits).toBe(true)
-  await effective.screenshot({ path: 'e2e/.results/screens/07-bs-picker.png' })
+  await page.screenshot({ path: 'e2e/.results/screens/07-bs-picker.png' })
 })

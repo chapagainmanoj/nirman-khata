@@ -1299,14 +1299,14 @@ isOneToOne: false
                   ]
                 },"payments": {
                   Row: {
-                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"payment_date": string,"posted_at": string,"reference": string | null,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string,"work_package_id": string | null
+                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"is_peski": boolean,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"payment_date": string,"posted_at": string,"reference": string | null,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string,"work_package_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"payment_date": string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null
+                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"is_peski"?: boolean,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"payment_date": string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null
                   }
                   Update: {
-                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"payment_date"?: string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null
+                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"is_peski"?: boolean,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"payment_date"?: string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1587,14 +1587,14 @@ isOneToOne: false
                   ]
                 },"refunds": {
                   Row: {
-                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"project_id": string | null,"reference": string | null,"refund_date": string,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string
+                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"kind": string,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"project_id": string | null,"reference": string | null,"refund_date": string,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date": string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"kind"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date": string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
                   }
                   Update: {
-                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"kind"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
                   }
                   Relationships: [
                     {
@@ -2450,14 +2450,14 @@ isOneToOne: false
                   ]
                 },"payment_summaries": {
                   Row: {
-                    "allocated_paisa": number | null,"amount_paisa": number | null,"company_id": string | null,"created_by": string | null,"crew_id": string | null,"id": string | null,"method": Database["public"]['Enums']["payment_method"] | null,"notes": string | null,"number": string | null,"party_id": string | null,"payee_id": string | null,"payment_date": string | null,"posted_at": string | null,"project_ids": (string)[] | null,"reference": string | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"subcontractor_id": string | null,"supplier_id": string | null,"work_package_id": string | null
+                    "allocated_paisa": number | null,"amount_paisa": number | null,"company_id": string | null,"created_by": string | null,"crew_id": string | null,"id": string | null,"is_peski": boolean | null,"method": Database["public"]['Enums']["payment_method"] | null,"notes": string | null,"number": string | null,"party_id": string | null,"payee_id": string | null,"payment_date": string | null,"posted_at": string | null,"project_ids": (string)[] | null,"reference": string | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"subcontractor_id": string | null,"supplier_id": string | null,"work_package_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
+                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"is_peski"?: boolean | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
                          }
                         Update: {
-                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
+                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"is_peski"?: boolean | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
                          }
                         Relationships: [
                     {
@@ -2624,6 +2624,11 @@ isOneToOne: false
               "active": boolean,"balance_paisa": number,"charged_paisa": number,"company_level": boolean,"paid_paisa": number,"party_id": string,"party_name": string,"project_balance_paisa": number,"project_id": string,"unallocated_paisa": number
             }[]
                            },
+"party_held":
+{ Args: { "p_party": string }; Returns: {
+              "overpaid_paisa": number,"peski_paisa": number
+            }[]
+                           },
 "party_khata":
 { Args: { "p_from"?: string,"p_party": string,"p_project"?: string,"p_to"?: string }; Returns: {
               "balance_paisa": number,"business_date": string,"cash_paisa": number,"cost_paisa": number,"doc_id": string,"doc_kind": string,"event_id": string,"event_type": string,"label": string,"posted_at": string,"project_id": string,"reason": string,"running_balance_paisa": number
@@ -2675,11 +2680,11 @@ isOneToOne: false
 { Args: { "p_return": Json }; Returns: string
                            },
 "refund_available":
-{ Args: { "p_party": string,"p_project"?: string }; Returns: number
+{ Args: { "p_kind"?: string,"p_party": string,"p_project"?: string }; Returns: number
                            },
 "refund_rooms":
 { Args: { "p_party": string }; Returns: {
-              "available_paisa": number,"project_id": string
+              "available_paisa": number,"peski_paisa": number,"project_id": string
             }[]
                            },
 "reject_charge":

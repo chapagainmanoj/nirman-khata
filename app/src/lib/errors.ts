@@ -24,9 +24,15 @@ export function friendlyError(error: unknown): string {
   if (e.message?.startsWith('op_key_reused')) {
     return 'This may already be saved. Check the supplier\'s bills and payments before entering it again.'
   }
-  // A refund is capped at the advance held with the party.
-  if (e.message?.startsWith('refund_exceeds_advance')) {
-    return e.message.replace(/^refund_exceeds_advance: t/, 'T') + '. A refund cannot be more than what was paid in advance.'
+  // A refund is capped at the Overpayment held with the party; peski returned at the Peski.
+  if (e.message?.startsWith('refund_exceeds_overpayment')) {
+    return e.message.replace(/^refund_exceeds_overpayment: t/, 'T') + '. A refund cannot be more than what was overpaid.'
+  }
+  if (e.message?.startsWith('peski_returned_exceeds_peski')) {
+    return e.message.replace(/^peski_returned_exceeds_peski: t/, 'T') + '. Peski returned cannot be more than the peski not yet used.'
+  }
+  if (e.message?.startsWith('peski_with_unpaid')) {
+    return 'This party has unpaid bills, so the payment pays them. Peski is only for money given before any bill.'
   }
   // Our own RPC errors (P0001, 22023, ...) already carry a readable message.
   if (e.code && BY_CODE[e.code]) {

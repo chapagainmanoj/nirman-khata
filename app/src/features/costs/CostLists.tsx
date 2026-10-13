@@ -28,7 +28,7 @@ function Section({ title, action, children }: { title: string; action?: React.Re
   )
 }
 
-/** Reverse a labour cost or expense (Accounts/Admin): cost goes back down; money paid stays as advance. */
+/** Reverse a labour cost or expense (Accounts/Admin): cost goes back down; money already paid becomes overpaid. */
 function ReverseEntry({ id, what }: { id: string; what: string }) {
   const auth = useCompany()
   const refresh = useRefreshMoney()
@@ -37,7 +37,7 @@ function ReverseEntry({ id, what }: { id: string; what: string }) {
     { onSuccess: () => refresh() },
   )
   return (
-    <ReasonButton variant="ghost" title={`Reverse this ${what}`} hint="Cost goes back down. Money already paid stays as advance."
+    <ReasonButton variant="ghost" title={`Reverse this ${what}`} hint="Cost goes back down. Money already paid becomes overpaid, deducted from their next bill."
       confirmLabel="Reverse" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
       withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
       onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
@@ -92,11 +92,11 @@ export function ExpenseSection({ projectId }: { projectId: string }) {
   const auth = useCompany()
   const expenses = useExpenses({ projectId })
   return (
-    <Section title="Other expenses" action={canEnter(auth) && <ButtonLink variant="secondary" to={`/expenses/new?project=${projectId}`}>Enter expense</ButtonLink>}>
-      {!auth.canSeeFinance && <p className="mb-2 text-xs text-subtle">Shows expenses you entered in the last 7 days.</p>}
+    <Section title="Other expenses" action={canEnter(auth) && <ButtonLink variant="secondary" to={`/expenses/new?project=${projectId}`}>Enter other expense</ButtonLink>}>
+      {!auth.canSeeFinance && <p className="mb-2 text-xs text-subtle">Shows other expenses you entered in the last 7 days.</p>}
       {expenses.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void expenses.refetch()}>{expenses.error && friendlyError(expenses.error)}</ErrorBanner>
-      {expenses.data?.length === 0 && <p className="text-sm text-subtle">No expenses entered yet.</p>}
+      {expenses.data?.length === 0 && <p className="text-sm text-subtle">No other expenses entered yet.</p>}
       {expenses.data && expenses.data.length > 0 && (
         <ul className="rounded-xl border border-line bg-surface px-4">
           {expenses.data.map((e) => (
@@ -112,7 +112,7 @@ export function ExpenseSection({ projectId }: { projectId: string }) {
               <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">
                 <span>{formatNPR(e.amount_paisa)}</span>
                 <PaidBadge amount={e.amount_paisa} settled={e.settled_paisa} reversed={e.status === 'reversed'} />
-                {e.status === 'posted' && canPost(auth) && <ReverseEntry id={e.id} what="expense" />}
+                {e.status === 'posted' && canPost(auth) && <ReverseEntry id={e.id} what="other expense" />}
               </div>
             </li>
           ))}

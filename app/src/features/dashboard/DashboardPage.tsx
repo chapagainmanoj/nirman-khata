@@ -28,7 +28,8 @@ type Dashboard = {
   cost_to_date_paisa?: number
   cash_to_date_paisa?: number
   payable_by_kind?: Record<'supplier' | 'subcontractor' | 'crew' | 'payee', number>
-  advances_paisa?: number
+  peski_paisa?: number
+  overpaid_paisa?: number
   unallocated_paisa?: number
 }
 
@@ -83,7 +84,7 @@ export function DashboardPage() {
       </div>
 
       {/* A quiet row of figures, not boxed cards. "To date" only when it differs from the
-          period figure; an advance of nothing is left out. */}
+          period figure; peski or overpaid of nothing is left out. */}
       {d.money_visible && (
         <section aria-label="Totals" className="mb-6 grid gap-x-6 gap-y-4 border-b border-line pb-5 sm:grid-cols-2 lg:grid-cols-4">
           <Figure label={`Recorded cost, ${range.label}`} value={d.cost_period_paisa} sub={toDate(d.cost_period_paisa, d.cost_to_date_paisa)} to="/reports/project-cost" />
@@ -91,7 +92,8 @@ export function DashboardPage() {
           <Figure label="Still owed" value={owedTotal}
             sub={Object.entries(owed).filter(([, n]) => n).map(([k, n]) => `${OWED_LABEL[k as keyof typeof OWED_LABEL]} ${formatNPR(n)}`).join(' · ') || 'Nothing owed'}
             to="/parties" />
-          {!!d.advances_paisa && <Figure label="Paid in advance" value={d.advances_paisa} sub="Not yet matched to charges" to="/parties" />}
+          {!!d.peski_paisa && <Figure label="Peski not yet used" value={d.peski_paisa} sub="Deducted from their bills as they come" to="/parties" />}
+          {!!d.overpaid_paisa && <Figure label="Overpaid" value={d.overpaid_paisa} sub="Owed back; deducted from their next bills" to="/parties" />}
         </section>
       )}
 

@@ -176,7 +176,7 @@ check "L2: both concurrent submissions succeed" "yes yes" "$(succeeded "$RACE_A"
 check "L2: one report" 1 "$(q -c "select count(*) from public.daily_reports where id = '$REPORT'")"
 check "L2: one labour cost" 1 "$(q -c "select count(*) from public.labour_costs where daily_report_id = '$REPORT'")"
 
-# Refunds: two refunds of 30,000 racing for one 50,000 advance -> only one fits.
+# Refunds: two refunds of 30,000 racing for one 50,000 overpayment -> only one fits.
 SUPPLIER2=$(q -c "$(as_user "insert into public.suppliers (company_id, name) values ('$COMPANY', 'Refund Supplier') returning id;")" | tail -1)
 q -c "$(as_user "select public.record_payment(gen_random_uuid(), jsonb_build_object('id', gen_random_uuid(), 'supplier_id', '$SUPPLIER2',
   'payment_date', '2026-05-02', 'amount_paisa', 5000000));")" >/dev/null
@@ -185,8 +185,8 @@ REFUND="select public.record_refund(gen_random_uuid(), jsonb_build_object('id', 
 race "$REFUND" "$REFUND"
 check "Refund: first refund succeeds" yes "$(succeeded "$RACE_A")"
 check "Refund: concurrent second refund is refused" no "$(succeeded "$RACE_B")"
-check "Refund: refused as more than the advance" yes "$(mentions "$RACE_B" refund_exceeds_advance)"
-check "Refund: advance left is 20,000" -2000000 \
+check "Refund: refused as more than the overpayment" yes "$(mentions "$RACE_B" refund_exceeds_overpayment)"
+check "Refund: overpayment left is 20,000" -2000000 \
   "$(q -c "select sum(balance_paisa) from public.ledger_entries where party_id = '$SUPPLIER2'")"
 
 if [ "$failures" -gt 0 ]; then echo "$failures concurrency test(s) failed"; exit 1; fi

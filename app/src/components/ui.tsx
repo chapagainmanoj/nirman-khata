@@ -1,5 +1,5 @@
 // Small UI kit: large touch targets and plain styling for low-end phones (req §21).
-import type { ComponentProps, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, ComponentProps, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { createContext, forwardRef, useContext, useEffect, useId, useRef, useState } from 'react'
 import { Link, type LinkProps } from 'react-router'
 import { AlertIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from './icons'
@@ -133,6 +133,14 @@ export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputE
 ) {
   const aria = useFieldAria(rest['aria-describedby'])
   return <input ref={ref} {...rest} {...aria} className={cx(inputClass, className)} />
+})
+
+/** A button that looks like a text field, for pickers that open a popup (the date field). */
+export const FieldButton = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(function FieldButton(
+  { className, ...rest }, ref,
+) {
+  const aria = useFieldAria(rest['aria-describedby'])
+  return <button ref={ref} type="button" {...rest} {...aria} className={cx(inputClass, 'flex items-center gap-2 text-left', className)} />
 })
 
 export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSelectElement> & { compact?: boolean }>(function Select(

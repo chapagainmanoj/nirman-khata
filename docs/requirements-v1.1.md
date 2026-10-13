@@ -78,7 +78,7 @@ English labels with familiar Nepali words. Companies can rename terms, materials
 | Supplier Bill | Bill / Invoice | Supplier's charge |
 | Ledger | Khata | History of bills, payments, credits and balance |
 | Outstanding | Baki / Tirna Baki | Amount still payable |
-| Advance | Peski | Money paid before an equivalent bill or work charge |
+| Advance | Peski | Partial amount paid upfront when booking goods, a service or a contract, before any bill or work charge exists; deducted from the party's later bills (farchhyaut). Money paid beyond what is due otherwise is Overpayment (see `GLOSSARY.md`) |
 | Payment | Bhuktani | Money paid out |
 | Daily Site Report | Dainik Bibaran | Dated record of site work, issues and photos |
 
@@ -341,12 +341,12 @@ Supplier net balance = opening payable
 ```
 
 - Positive = company owes the supplier (baki).
-- Negative = company has an advance/credit with the supplier (peski).
+- Negative = the supplier holds the company's money: Peski (agreed upfront) and/or Overpayment (owed back).
 - Payments do not need to match a bill. Bill allocation can be added later without a new payment.
 - Payments with no project allocation stay visibly **unallocated** until assigned. Project-level balances show unallocated amounts alongside.
-- Bill settlement status is separate from net balance (a supplier can have unpaid bills and an unused advance at the same time).
+- Bill settlement status is separate from net balance (a supplier can have unpaid bills and unmatched money at the same time).
 
-**Example:** bills NPR 1,20,000, payments NPR 80,000, payable NPR 40,000. Another NPR 50,000 paid gives an advance of NPR 10,000. **Payments never add to project cost.**
+**Example:** bills NPR 1,20,000, payments NPR 80,000, payable NPR 40,000. Another NPR 50,000 paid leaves an Overpayment of NPR 10,000, deducted from the next bill. **Payments never add to project cost.**
 
 ### 12.3 Payment allocation rules
 
@@ -359,7 +359,7 @@ A payment can be split across projects and, later, matched to bills. Allocation 
 - Sum of project allocations ≤ payment amount. The remainder is **unallocated** and shown once, at company level.
 - Sum of bill allocations for a project ≤ that project's allocation from the same payment.
 - A bill allocation must match the bill line's project. A bill spanning two projects is settled per project.
-- Bill allocation total for a bill ≤ bill total (excess stays as advance).
+- Bill allocation total for a bill ≤ bill total (excess stays as Overpayment).
 - **Settlement uses the payable amount, not the cost amount.** Each bill line carries both `cost_amount` (what hits the project) and `payable_amount` (its share of the full bill including VAT). With recoverable VAT these differ. Project balances and bill settlement use `payable_amount`; project cost uses `cost_amount`.
 - Matching to bills **refines** the existing project allocation. It never adds to project cash paid again.
 - Changing or removing an allocation is logged and does not change the payment amount or the supplier net balance.
@@ -457,7 +457,7 @@ Example day:
 **Requirements**
 - Filter by project, activity type, supplier, subcontractor, staff.
 - Tap an event to open the record.
-- Show amounts; visually distinguish cost, payment and advance.
+- Show amounts; visually distinguish cost, payment and peski.
 - Day totals: cost recorded, cash paid.
 - Events use the **business date**. Entry timestamp is kept separately (a bill dated 8 Oct but entered 10 Oct shows on 8 Oct).
 
@@ -468,7 +468,7 @@ Example day:
 ### 18.1 Company dashboard
 - Active projects with status, progress % and budget used %
 - Recorded cost and cash paid out (period and to date), with completeness banner per project
-- Supplier and subcontractor payables; advances given
+- Supplier and subcontractor payables; peski not yet used and overpaid amounts
 - Slips awaiting approval; pending deliveries
 - Received materials awaiting bills
 - Unallocated payments
@@ -479,7 +479,7 @@ Example day:
 - Recorded cost to date; budget remaining; budget used %; planned margin; final result (Completed/Closed projects only)
 - Cost by heading vs heading budget (table + bar chart, over-budget highlighted)
 - Cost by source: materials, subcontract, labour, other
-- Cash paid, outstanding payable, advances
+- Cash paid, outstanding payable, peski and overpaid
 - Physical progress vs budget used
 - Pending orders/deliveries, unbilled receipts
 - Recent activity, latest report date
@@ -517,7 +517,8 @@ All reports: date filters, project/party filters, export to Excel and PDF/print,
 | Planned margin | Current contract amount - current spending budget |
 | Final result | Current contract amount - recorded cost, for Completed/Closed projects only |
 | Outstanding payable | Amount owed after payments and credits |
-| Advance | Payment or credit remaining against future charges |
+| Peski | Peski payments not yet matched to bills, less peski returned; capped at what the party holds |
+| Overpaid | Money a party holds beyond its Peski; owed back, cleared by later bills or a Refund |
 | Received from client | Client receipts dated on or before the as-of date, less those reversed by then. Never part of recorded cost or cash paid |
 | To collect | Current contract amount - received from client |
 

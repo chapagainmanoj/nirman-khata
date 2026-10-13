@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 // Milestone 3 walk-through on a phone: labour paid now, a weekly labour batch (with the
-// near-duplicate check), an expense to a new payee, and a subcontract advance -> claim ->
+// near-duplicate check), an other expense to a new payee, and subcontract peski -> claim ->
 // approval -> match. Project cost, cash and amounts owed must add up.
 const run = Date.now().toString().slice(-7)
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
@@ -61,17 +61,17 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await page.getByRole('button', { name: 'Yes, save it too' }).click()
   await expect(page.getByText(/7 days of labour, Rs\. 7,000\. Not paid yet/)).toBeVisible()
 
-  // An expense to a payee typed for the first time, paid now.
+  // An other expense to a payee typed for the first time, paid now.
   await page.goto(projectUrl)
   await page.getByRole('tab', { name: 'Labour & costs' }).click()
-  await page.getByRole('link', { name: 'Enter expense' }).click()
+  await page.getByRole('link', { name: 'Enter other expense' }).click()
   await page.getByLabel('Amount').fill('4,500')
   await page.getByLabel('What for').fill('JCB 3 hours')
   await page.getByLabel('Paid to').fill('Gurung JCB')
   await page.getByLabel('Payee type').fill('JCB owner')
   await page.screenshot(shots('m3-02-expense'))
-  await page.getByRole('button', { name: 'Save expense' }).click()
-  await expect(page.getByRole('heading', { name: 'Expense saved' })).toBeVisible()
+  await page.getByRole('button', { name: 'Save other expense' }).click()
+  await expect(page.getByRole('heading', { name: 'Other expense saved' })).toBeVisible()
   await expect(page.getByText(/Paid now \(PAY-0002\)/)).toBeVisible()
 
   // Subcontractor and a lump-sum work package.
@@ -91,8 +91,8 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await expect(page.getByRole('heading', { name: 'Plaster, ground floor' })).toBeVisible()
   const packageUrl = page.url()
 
-  // Advance of 20,000 before any work is approved.
-  await page.getByRole('link', { name: 'Pay advance or bill' }).click()
+  // Peski of 20,000 before any work is approved.
+  await page.getByRole('link', { name: 'Pay peski or bill' }).click()
   await expect(page.getByRole('heading', { name: 'Record payment' })).toBeVisible()
   await expect(page.getByText('Tamang Plaster').first()).toBeVisible()
   await page.getByLabel('Amount paid').fill('20,000')
@@ -111,7 +111,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await expect(row(page, 'Approved work (cost)')).toContainText('Rs. 30,000')
   await page.screenshot(shots('m3-03-package'))
 
-  // Match the advance to the approved claim on the subcontractor page.
+  // Farchhyaut: match the peski to the approved claim on the subcontractor page.
   await page.getByRole('link', { name: 'Tamang Plaster' }).click()
   await page.getByLabel('Unpaid charge').selectOption({ index: 1 })
   await page.getByLabel('Paid from').selectOption({ index: 1 })

@@ -3,7 +3,7 @@ import { addDays, adToBs, BS_FIRST_YEAR, BS_LAST_YEAR, BS_RANGE, bsMonthDays, bs
 
 export type MonthRef = { display: DateDisplay; year: number; month: number } // month 1-12
 
-const AD_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+export const AD_MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
 
 export function monthOf(iso: IsoDate, display: DateDisplay): MonthRef {
   if (display === 'bs') {

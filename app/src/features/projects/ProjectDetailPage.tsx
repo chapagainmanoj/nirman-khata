@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
-import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Field, PageHeader, Select, Spinner } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Field, Notice, PageHeader, Select, Spinner } from '../../components/ui'
 import { addDays, formatDate, relativeDay, todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { focusFirstError } from '../../lib/forms'
@@ -135,7 +135,8 @@ function CostBreakdown({ projectId }: { projectId: string }) {
       <Card title="Cost by heading"><HeadingTable figures={d} projectId={projectId} /></Card>
       <Card title="Where the money went">
         <SourceList figures={d} />
-        {!!d.advances_paisa && <p className="mt-2 text-sm text-subtle">Paid in advance, not yet used: <span className="font-semibold text-ink">{formatNPR(d.advances_paisa)}</span></p>}
+        {!!d.peski_paisa && <p className="mt-2 text-sm text-subtle">Peski not yet used: <span className="font-semibold text-ink">{formatNPR(d.peski_paisa)}</span></p>}
+        {!!d.overpaid_paisa && <p className="mt-2 text-sm text-subtle">Overpaid, owed back: <span className="font-semibold text-ink">{formatNPR(d.overpaid_paisa)}</span></p>}
         <p className="mt-2 text-sm text-subtle">
           Last daily report: {d.last_report_date ? formatDate(d.last_report_date, auth.dateDisplay) : 'none yet'}
         </p>
@@ -207,7 +208,7 @@ function NotSpentYet({ figures: f }: { figures: ProjectFigures }) {
 type ToDo = { key: string; title: string; detail?: string; to?: string; onClick?: () => void }
 
 /** How the Recent list names money: what it did to the project. */
-const RECENT_MONEY: Record<string, string> = { cost: 'Cost', payment: 'Paid', advance: 'Advance', refund: 'Refund', received: 'Received' }
+const RECENT_MONEY: Record<string, string> = { cost: 'Cost', payment: 'Paid', peski: 'Peski', refund: 'Refund', received: 'Received' }
 /** Routine steps that the calendar keeps but Recent leaves out. */
 const RECENT_SKIP = new Set(['slip_sent'])
 
@@ -336,6 +337,26 @@ const EDIT_FIELDS = ['actual_start', 'planned_end'] as const
 function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projects'>; members: Member[]; canEdit: boolean }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
+  // Closing warns, never blocks (GLOSSARY: Closed): draft bills and money parties still hold here.
+  const dash = useProjectDashboard(p.id)
+  const [closeWarning, setCloseWarning] = useState<string[] | null>(null)
+  const looseEnds = (() => {
+    const f = dash.data
+    if (!f) return []
+    return [
+      f.draft_bills ? `${f.draft_bills} draft bill${f.draft_bills === 1 ? '' : 's'} not posted` : '',
+      f.peski_paisa ? `${formatNPR(f.peski_paisa)} peski not yet used` : '',
+      f.overpaid_paisa ? `${formatNPR(f.overpaid_paisa)} overpaid, owed back` : '',
+    ].filter(Boolean)
+  })()
+  function onSave(v: DetailsValues, confirmed = false) {
+    if (!confirmed && v.status === 'closed' && p.status !== 'closed' && looseEnds.length) {
+      setCloseWarning(looseEnds)
+      return
+    }
+    setCloseWarning(null)
+    save.mutate(v)
+  }
   const [params, setParams] = useSearchParams()
   // A to-do opens the form at the field it is about: "?edit=actual_start".
   const focusField = EDIT_FIELDS.find((f) => f === params.get('edit'))
@@ -377,8 +398,16 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
   if (editing) {
     return (
       <Card title={t('project.details')} className="lg:col-span-2">
-        <form onSubmit={form.handleSubmit((v) => save.mutate(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
+        <form onSubmit={form.handleSubmit((v) => onSave(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
           <ProjectDetailsFields form={form} members={members} display={auth.dateDisplay} showActualDates />
+          {closeWarning && (
+            <Notice>
+              <span className="block font-semibold">This project still has:</span>
+              <ul className="list-disc pl-5">{closeWarning.map((w) => <li key={w}>{w}</li>)}</ul>
+              <span className="block">You can close it anyway. Overpaid or peski money can still be moved to another project after reopening.</span>
+              <Button type="button" variant="secondary" className="mt-2" onClick={() => onSave(form.getValues(), true)}>Close anyway</Button>
+            </Notice>
+          )}
           <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
           <div className="flex gap-2">
             <Button type="submit" busy={save.isPending}>{t('common.save')}</Button>

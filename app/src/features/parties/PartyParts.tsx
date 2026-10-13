@@ -18,13 +18,13 @@ import { usePartyBalances, usePartyKhata, usePartyOpenItems, usePartyOpeningBala
 import { ShowMore } from '../../components/ShowMore'
 import { DOC_WORD, docPath, PARTY, type PartyKind } from './kinds'
 
-/** Positive = we owe (baki), negative = advance with the party (peski). */
+/** Positive = we owe (baki), negative = the party holds our money (peski or overpaid). */
 export function BalanceText({ paisa }: { paisa: number }) {
   if (paisa === 0) return <span className="text-subtle">Settled</span>
   return (
     <span className="tabular-nums">
       <span className="font-semibold text-ink">{formatNPR(Math.abs(paisa))}</span>{' '}
-      <span className={paisa > 0 ? 'text-warn-ink' : 'text-good-ink'}>{paisa > 0 ? 'to pay (baki)' : 'advance (peski)'}</span>
+      <span className={paisa > 0 ? 'text-warn-ink' : 'text-good-ink'}>{paisa > 0 ? 'to pay (baki)' : 'they hold (peski or overpaid)'}</span>
     </span>
   )
 }
@@ -113,7 +113,7 @@ function OpeningBalance({ kind, partyId, prompt }: { kind: PartyKind; partyId: s
         <Field label="Who owes" htmlFor="ob-dir">
           <Select id="ob-dir" value={owed ? 'owe' : 'advance'} onChange={(e) => setOwed(e.target.value === 'owe')}>
             <option value="owe">We owe the {who} (baki)</option>
-            <option value="advance">The {who} holds our advance (peski)</option>
+            <option value="advance">The {who} holds our money (peski or overpaid)</option>
           </Select>
         </Field>
         <Field label="Cutover date" htmlFor="ob-date"><DateInput id="ob-date" value={date} onChange={setDate} display={auth.dateDisplay} /></Field>

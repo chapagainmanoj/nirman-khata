@@ -105,7 +105,7 @@ export function ExpenseNewPage() {
   if (saved) {
     return (
       <>
-        <PageHeader title="Expense saved" crumbs={projectCrumbs(projects.data, saved.project_id)} />
+        <PageHeader title="Other expense saved" crumbs={projectCrumbs(projects.data, saved.project_id)} />
         <Card>
           <p className="text-sm">
             {formatNPR(saved.amount)} for {v.description}. {saved.payment ? `Paid now (${saved.payment.number}).` : 'Not paid yet; it shows as owed to the payee.'}
@@ -122,8 +122,8 @@ export function ExpenseNewPage() {
 
   return (
     <>
-      <PageHeader title="Enter expense" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="Equipment hire, transport, fuel, khaja, permits, small purchases." />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored an expense you had not saved. Check it was not already entered.</Notice></div>}
+      <PageHeader title="Enter other expense" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="Equipment hire, transport, fuel, khaja, permits, small purchases." />
+      {draft.restoredAt && <div className="mb-4"><Notice>Restored an other expense you had not saved. Check it was not already entered.</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -183,7 +183,7 @@ export function ExpenseNewPage() {
 
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
-          <Button type="submit" busy={save.isPending}>Save expense</Button>
+          <Button type="submit" busy={save.isPending}>Save other expense</Button>
           <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
         </FormActions>
       </form>

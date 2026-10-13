@@ -218,7 +218,7 @@ export function BillDetailPage() {
         <div className="mt-6 flex flex-wrap items-start gap-2">
           {credits.data?.length === 0 && <CreditForm billId={b.id} lines={lines} />}
           <ReasonButton variant="danger" title="Reverse this bill"
-            hint="Credits on the bill are reversed with it, and payments matched to it become advance."
+            hint="Credits on the bill are reversed with it, and payments matched to it become overpaid (or peski again, if paid from peski)."
             confirmLabel="Reverse bill" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
             withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
             onConfirm={(reason, date) => reverse.mutate({ reason, date })}>

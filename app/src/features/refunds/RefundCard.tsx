@@ -1,6 +1,7 @@
-// Money a party gives back (req §12.2, §19): shown on a party page when the company holds an
-// advance with them. A refund lowers the advance and cash paid, never cost, and cannot be more
-// than the advance in the chosen project (or not-for-a-project) part.
+// Money a party gives back (req §12.2, §19; GLOSSARY.md): shown on a party page when they hold the
+// company's money. A Refund clears Overpayment; Peski Returned gives back unused Peski. Either
+// lowers what they hold and cash paid, never cost, and cannot be more than that kind of money in
+// the chosen project (or not-for-a-project) part.
 import { useQuery } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router'
@@ -20,7 +21,11 @@ import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { canPost, canRecordPayments } from '../supply/permissions'
 
 type PaymentMethod = Database['public']['Enums']['payment_method']
+type Room = { project_id: string | null; available_paisa: number; peski_paisa: number }
+type GiveBack = 'refund' | 'peski_returned'
 const NONE = 'none'
+/** What each kind can give back in a bucket: Overpayment for a Refund, Peski for Peski Returned. */
+const roomOf = (r: Room, k: GiveBack) => (k === 'refund' ? r.available_paisa : r.peski_paisa)
 
 function useRefundRooms(partyId: string, enabled: boolean) {
   return useQuery({
@@ -37,12 +42,15 @@ export function RefundCard({ kind, partyId }: { kind: PartyKind; partyId: string
   // Only buckets the person may refund into: Accounts and Admin also the not-for-a-project part.
   const usable = (rooms.data ?? []).filter((r) => r.project_id || canPost(auth))
   if (!usable.length) return null
-  const total = Math.max(...usable.map((r) => r.available_paisa))
+  const overpaid = Math.max(...usable.map((r) => r.available_paisa))
+  const peski = Math.max(...usable.map((r) => r.peski_paisa))
+  const held = [peski > 0 && `${formatNPR(peski)} peski not yet used`, overpaid > 0 && `${formatNPR(overpaid)} overpaid`]
+    .filter(Boolean).join(' and ')
   return (
-    <Card title="Refund received">
+    <Card title="Money given back">
       <p className="text-sm text-subtle">
-        This {PARTY[kind].one.toLowerCase()} holds up to <span className="font-semibold text-ink tabular-nums">{formatNPR(total)}</span> of
-        your advance. Record money they give back here; it is not a cost.
+        This {PARTY[kind].one.toLowerCase()} holds up to <span className="font-semibold text-ink tabular-nums">{held}</span>.
+        Record money they give back here; it is not a cost.
       </p>
       {open
         ? <RefundForm kind={kind} partyId={partyId} rooms={usable} onDone={() => setOpen(false)} />
@@ -51,19 +59,22 @@ export function RefundCard({ kind, partyId }: { kind: PartyKind; partyId: string
   )
 }
 
-function RefundForm({ kind, partyId, rooms, onDone }: {
+function RefundForm({ kind, partyId, rooms: all, onDone }: {
   kind: PartyKind
   partyId: string
-  rooms: Array<{ project_id: string | null; available_paisa: number }>
+  rooms: Room[]
   onDone: () => void
 }) {
   const auth = useCompany()
   const navigate = useNavigate()
   const projects = useProjects(auth.companyId)
   const refresh = useRefreshMoney()
+  const [giveBack, setGiveBack] = useState<GiveBack>(all.some((r) => r.available_paisa > 0) ? 'refund' : 'peski_returned')
+  const rooms = all.filter((r) => roomOf(r, giveBack) > 0)
   const [bucket, setBucket] = useState(rooms[0].project_id ?? NONE)
-  const room = rooms.find((r) => (r.project_id ?? NONE) === bucket)?.available_paisa ?? 0
-  const [amount, setAmount] = useState(paisaToInput(rooms[0].available_paisa))
+  const current = rooms.find((r) => (r.project_id ?? NONE) === bucket)
+  const room = current ? roomOf(current, giveBack) : 0
+  const [amount, setAmount] = useState(paisaToInput(roomOf(rooms[0], giveBack)))
   const [date, setDate] = useState(todayKathmandu())
   const [method, setMethod] = useState<PaymentMethod>('bank_transfer')
   const [reference, setReference] = useState('')
@@ -75,7 +86,7 @@ function RefundForm({ kind, partyId, rooms, onDone }: {
       p_op_key: key,
       p_refund: {
         id, [PARTY[kind].column]: partyId, project_id: bucket === NONE ? null : bucket, refund_date: date,
-        amount_paisa: paisa, method, reference, notes,
+        amount_paisa: paisa, method, reference, notes, kind: giveBack,
       },
     }),
     { onSuccess: async () => { await refresh(); onDone(); navigate(`/refunds/${id}`) } },
@@ -95,13 +106,24 @@ function RefundForm({ kind, partyId, rooms, onDone }: {
   return (
     <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="From the advance on" htmlFor="rf-bucket">
+        <Field label="What is it" htmlFor="rf-kind">
+          <Select id="rf-kind" value={giveBack} onChange={(e) => {
+            const k = e.target.value as GiveBack
+            const first = all.find((x) => roomOf(x, k) > 0)
+            setGiveBack(k)
+            if (first) { setBucket(first.project_id ?? NONE); setAmount(paisaToInput(roomOf(first, k))) }
+          }}>
+            {all.some((r) => r.available_paisa > 0) && <option value="refund">Refund of overpayment</option>}
+            {all.some((r) => r.peski_paisa > 0) && <option value="peski_returned">Peski returned</option>}
+          </Select>
+        </Field>
+        <Field label="From the money on" htmlFor="rf-bucket">
           <Select id="rf-bucket" value={bucket} onChange={(e) => {
             setBucket(e.target.value)
             const r = rooms.find((x) => (x.project_id ?? NONE) === e.target.value)
-            if (r) setAmount(paisaToInput(r.available_paisa))
+            if (r) setAmount(paisaToInput(roomOf(r, giveBack)))
           }}>
-            {rooms.map((r) => <option key={r.project_id ?? NONE} value={r.project_id ?? NONE}>{name(r.project_id)} (up to {formatNPR(r.available_paisa)})</option>)}
+            {rooms.map((r) => <option key={r.project_id ?? NONE} value={r.project_id ?? NONE}>{name(r.project_id)} (up to {formatNPR(roomOf(r, giveBack))})</option>)}
           </Select>
         </Field>
         <Field label="Amount received" htmlFor="rf-amount" error={tooMuch ? `No more than ${formatNPR(room)} here` : undefined}>
@@ -120,7 +142,7 @@ function RefundForm({ kind, partyId, rooms, onDone }: {
       </div>
       <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
       <div className="flex gap-2">
-        <Button type="submit" busy={save.isPending} disabled={paisa <= 0 || tooMuch}>Save refund</Button>
+        <Button type="submit" busy={save.isPending} disabled={paisa <= 0 || tooMuch}>{giveBack === 'refund' ? 'Save refund' : 'Save peski returned'}</Button>
         <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
       </div>
     </form>

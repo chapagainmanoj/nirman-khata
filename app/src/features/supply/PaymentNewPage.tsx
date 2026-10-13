@@ -1,8 +1,10 @@
 // Record a payment to a supplier, subcontractor, crew or payee (req §12.1, §13, §14, §15).
 // Most payments pay particular bills, so the form starts from what is owed: tick the bills,
 // the amount and the project split follow from them. Anything paid beyond the ticked bills is
-// an advance for one project. "Pay as advance" keeps the free project split.
-// A payment for a work package (an advance or part payment) goes wholly to the package's project.
+// Overpayment for one project, deducted from the next bill. With nothing unpaid, the payment is
+// Peski by default (GLOSSARY.md), with a free project split; untick it to pay a regular supplier
+// ahead on the khata. Peski is never offered while anything is unpaid.
+// A payment for a work package (peski or part payment) goes wholly to the package's project.
 // The payment id and operation key stay with the device draft until the server confirms,
 // so a retry after a lost connection never records it twice (acceptance #13).
 import { useMutation } from '@tanstack/react-query'
@@ -20,7 +22,7 @@ import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { billTitle, PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
-import { useParties, usePartyOpenItems } from '../parties/api'
+import { useParties, usePartyHeld, usePartyOpenItems } from '../parties/api'
 import { DOC_WORD, PARTY, PARTY_KINDS, partyFromParams, type PartyKind } from '../parties/kinds'
 import { useProjects } from '../projects/api'
 import { useCharges, useWorkPackage } from '../subcontract/api'
@@ -34,13 +36,13 @@ type Values = {
   party_kind: PartyKind
   party_id: string
   package_id: string
-  mode: 'bills' | 'advance'
+  is_peski: boolean // only when nothing is unpaid
   payment_date: string
   amount: string
   method: keyof typeof PAYMENT_METHODS
   reference: string
   notes: string
-  allocations: Array<{ project_id: string; amount: string }> // advance mode only
+  allocations: Array<{ project_id: string; amount: string }> // when nothing is unpaid
   settle: Record<string, string> // "docId:projectId" -> amount (bills mode)
   extra_project: string // where money beyond the ticked bills goes (bills mode)
   photos: PendingPhoto[]
@@ -59,13 +61,13 @@ export function PaymentNewPage() {
   const [choosingParty, setChoosingParty] = useState(false)
   const accounts = canPost(auth)
   const start = partyFromParams(params)
-  // The current project (from "+ Record" or a list page): where an advance goes unless changed.
+  // The current project (from "+ Record" or a list page): where money not for a bill goes unless changed.
   const projectParam = params.get('project') ?? ''
 
   const form = useForm<Values>({
     defaultValues: {
       id: newId(), op_key: newId(), party_kind: start.kind, party_id: start.id, package_id: params.get('package') ?? '',
-      mode: 'bills', payment_date: todayKathmandu(), amount: '', method: 'cash', reference: '', notes: '',
+      is_peski: true, payment_date: todayKathmandu(), amount: '', method: 'cash', reference: '', notes: '',
       allocations: [], settle: {}, extra_project: projectParam, photos: [],
     },
   })
@@ -80,7 +82,9 @@ export function PaymentNewPage() {
   const pkgChargeIds = new Set(pkgCharges.data?.map((c) => c.id))
   // A package payment can only clear that package's charges.
   const openDocs = openItems.data?.filter((i) => OWED.has(i.kind) && (!v.package_id || pkgChargeIds.has(i.doc_id!))) ?? []
-  const advanceHeld = openItems.data?.filter((i) => i.kind === 'payment').reduce((s, i) => s + i.amount_paisa, 0) ?? 0
+  const held = usePartyHeld(v.party_id, !!v.party_id)
+  // Peski only while nothing at all is unpaid to the party (any package or project).
+  const anyUnpaid = openItems.data?.some((i) => OWED.has(i.kind)) ?? true
   const owed = openDocs.reduce((s, d) => s + d.amount_paisa, 0)
   const docLabel = (d: (typeof openDocs)[number]) => (d.kind === 'bill' ? `Bill ${d.label}` : `${DOC_WORD[d.kind]}: ${d.label}`)
   const docKey = (d: (typeof openDocs)[number]) => `${d.doc_id}:${d.project_id}`
@@ -96,7 +100,7 @@ export function PaymentNewPage() {
   }
   const code = (id: string | null) => projects.data?.find((p) => p.id === id)?.code ?? ''
 
-  // Ticking bills sets the amount; the amount can still be raised to pay extra as advance.
+  // Ticking bills sets the amount; the amount can still be raised to pay extra (Overpayment).
   const setSettle = (next: Record<string, string>) => {
     setValue('settle', next)
     setValue('amount', paisaToInput(Object.values(next).reduce((s, a) => s + (parseNPR(a) ?? 0), 0)))
@@ -116,7 +120,7 @@ export function PaymentNewPage() {
   const amountPaisa = parseNPR(v.amount)
   const tickedSum = ticked(v).reduce((s, [, a]) => s + (parseNPR(a) ?? 0), 0)
   const extra = (amountPaisa ?? 0) - tickedSum
-  const billsMode = v.mode === 'bills' && openDocs.length > 0
+  const billsMode = openDocs.length > 0
   const allocated = v.allocations.reduce((s, a) => s + (parseNPR(a.amount) ?? 0), 0)
   const unallocated = (amountPaisa ?? 0) - allocated
   const extraProject = pkgProject || v.extra_project || (visible.length === 1 ? visible[0].id : '')
@@ -141,7 +145,7 @@ export function PaymentNewPage() {
         id: vals.id, [PARTY[vals.party_kind].column]: vals.party_id, work_package_id: vals.package_id || null,
         payment_date: vals.payment_date, amount_paisa: parseNPR(vals.amount),
         method: vals.method, reference: (WITH_REFERENCE.has(vals.method) && vals.reference.trim()) || null, notes: vals.notes || null,
-        allocations: splitOf(vals), settlements,
+        allocations: splitOf(vals), settlements, is_peski: !anyUnpaid && (!!vals.package_id || vals.is_peski),
       } })
       // The payment is saved; a photo that fails to upload can be added again on the payment page.
       return uploadPending(auth.companyId, { payment_id: vals.id }, vals.photos)
@@ -194,7 +198,7 @@ export function PaymentNewPage() {
           {pkg.data && (
             <p className="mb-3 text-sm text-subtle">
               For work package <span className="font-medium text-ink">{pkg.data.scope}</span> on {pkg.data.projects?.code}.
-              Before any work is approved, this is an advance (peski), not cost.
+              {anyUnpaid ? 'They have unpaid work, so this is a payment, not peski. It is never cost.' : 'Nothing is unpaid, so this is peski, not cost.'}
             </p>
           )}
           {v.package_id || fixedParty ? (
@@ -225,14 +229,14 @@ export function PaymentNewPage() {
           {v.party_id && openItems.data && (
             <p className="mt-2 text-sm text-subtle">
               {owed > 0 ? <>Unpaid: <span className="font-semibold text-ink">{formatNPR(owed)}</span></> : 'Nothing unpaid.'}
-              {advanceHeld > 0 && <> · Advance not yet matched: {formatNPR(advanceHeld)}</>}
+              {!!held.data?.peski_paisa && <> · Peski not yet used: {formatNPR(held.data.peski_paisa)}</>}
+              {!!held.data?.overpaid_paisa && <> · Overpaid: {formatNPR(held.data.overpaid_paisa)}</>}
             </p>
           )}
         </Card>
 
         {billsMode && (
-          <Card title={v.package_id ? 'Which approved work does it pay?' : 'Which bills does it pay?'}
-            actions={!v.package_id && <Button type="button" variant="ghost" onClick={() => { setValue('mode', 'advance'); setValue('settle', {}) }}>Pay as advance instead</Button>}>
+          <Card title={v.package_id ? 'Which approved work does it pay?' : 'Which bills does it pay?'}>
             <ul className="flex flex-col gap-2">
               {openDocs.map((b) => {
                 const key = docKey(b)
@@ -259,10 +263,18 @@ export function PaymentNewPage() {
         )}
 
         {v.party_id && !billsMode && !v.package_id && (
-          <Card title="Which project is it for?"
-            actions={openDocs.length > 0 && <Button type="button" variant="ghost" onClick={() => { setValue('mode', 'bills'); allocations.replace([]) }}>Pay bills instead</Button>}>
+          <Card title="Which project is it for?">
+            {!anyUnpaid && (
+              <div className="mb-2">
+                <Controller control={control} name="is_peski" render={({ field }) => (
+                  <Checkbox label="This is peski" checked={field.value} onChange={(e) => field.onChange(e.target.checked)}
+                    hint={field.value
+                      ? 'Agreed upfront before any bill. It is deducted from their bills as they come.'
+                      : 'Paid ahead on the khata. It counts as overpaid and is deducted from their next bill.'} />
+                )} />
+              </div>
+            )}
             <p className="mb-3 text-sm text-subtle">
-              {openDocs.length === 0 ? 'Nothing is unpaid, so this is an advance. ' : ''}
               {accounts
                 ? 'Splitting by project is optional. Anything not split stays "not assigned" until you assign it.'
                 : 'Split the whole payment across your projects.'}
@@ -297,7 +309,7 @@ export function PaymentNewPage() {
 
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Amount paid" htmlFor="p-amount" hint={billsMode ? 'Set from the ticked bills. Raise it to pay extra as advance.' : undefined}>
+            <Field label="Amount paid" htmlFor="p-amount" hint={billsMode ? 'Set from the ticked bills. Anything extra is overpaid and deducted from their next bill.' : undefined}>
               <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="p-amount" value={field.value} onChange={field.onChange} />} />
             </Field>
             <Field label="Paid on" htmlFor="p-date">
@@ -306,7 +318,7 @@ export function PaymentNewPage() {
               )} />
             </Field>
             {billsMode && !v.package_id && extra > 0 && (
-              <Field label={`Extra ${formatNPR(extra)} is advance for`} htmlFor="p-extra">
+              <Field label={`Extra ${formatNPR(extra)} is overpaid on`} htmlFor="p-extra">
                 <Select id="p-extra" value={extraProject} onChange={(e) => setValue('extra_project', e.target.value)}>
                   <option value="">{accounts ? 'Not assigned yet' : 'Choose project'}</option>
                   {visible.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}

@@ -1,4 +1,4 @@
-// One refund received: from whom, how much, which project's advance it came out of, and
+// One refund (Overpayment cleared) or peski returned: from whom, how much, which project's money it came out of, and
 // reversal (req §12.2, §20). A reversal is dated on its own date (§19.1).
 import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
@@ -47,10 +47,12 @@ export function RefundDetailPage() {
   const project = f.project_id ? projects.data?.find((p) => p.id === f.project_id) : null
   const reversal = f.reversals[0]
 
+  const what = f.kind === 'peski_returned' ? 'Peski returned' : 'Refund'
+  const held = f.kind === 'peski_returned' ? 'peski' : 'overpaid amount'
   return (
     <>
       <PageHeader
-        title={`Refund ${f.number}`}
+        title={`${what} ${f.number}`}
         crumbs={[{ to: PARTY[kind].path, label: PARTY[kind].many }, { to: `${PARTY[kind].path}/${f.party_id}`, label: party?.name ?? PARTY[kind].one }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
@@ -60,10 +62,10 @@ export function RefundDetailPage() {
         }
       />
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Card title="Refund">
+        <Card title={what}>
           <div className="mb-2 text-lg font-semibold text-ink tabular-nums">{formatNPR(f.amount_paisa)}</div>
           <Detail label="Received on"><DateText value={f.refund_date} display={auth.dateDisplay} dual /></Detail>
-          <Detail label="From the advance on">
+          <Detail label="From the money on">
             {project ? <Link className="text-brand" to={`/projects/${project.id}`}>{project.code} · {project.name}</Link> : 'Not for a project'}
           </Detail>
           <Detail label="How">{PAYMENT_METHODS[f.method]}</Detail>
@@ -76,14 +78,14 @@ export function RefundDetailPage() {
         </Card>
         <Card title="What it changes">
           <p className="text-sm text-subtle">
-            The advance with {party?.name} and the cash paid {project ? `on ${project.code}` : 'not for a project'} are
+            The {held} with {party?.name} and the cash paid {project ? `on ${project.code}` : 'not for a project'} are
             both lower by {formatNPR(f.amount_paisa)}. Recorded cost does not change.
           </p>
         </Card>
       </div>
       {f.status === 'posted' && canPost(auth) && (
         <div className="mt-6">
-          <ReasonButton variant="danger" title="Reverse this refund" hint="e.g. The cheque bounced. The advance comes back."
+          <ReasonButton variant="danger" title="Reverse this refund" hint={`e.g. The cheque bounced. The ${held} comes back.`}
             confirmLabel="Reverse refund" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
             withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
             onConfirm={(reason, date) => reverse.mutate({ reason, date })}>

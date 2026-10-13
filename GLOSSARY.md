@@ -1,0 +1,121 @@
+# Glossary
+
+Shared language for NirmanKhata. Terms are the ones we use in conversation, docs, code and UI.
+Trade terms and their English labels start from `docs/requirements-v1.1.md` §3.1; this file sharpens them.
+
+## Closed (project)
+A project whose books are final: work is done (see Completed) and its money has been reconciled. No new financial entries are allowed until an authorized user reopens it.
+
+- **Not:** Completed (work done, bills may still arrive). Not Hisab Milan (with a Party); a project can close while its parties' accounts stay open.
+- **States:** Planned → Active ⇄ On Hold → Completed → Closed (Cancelled from any open state).
+- **In code:** project status `closed`; rules in `docs/requirements-v1.1.md` §4.2, §20. The project details form warns before closing (`ProjectDetailPage.tsx`, `DetailsCard`).
+- **Notes:** Closing warns, but does not block, if the project still has Draft bills or Peski/Overpayment allocated to it. The owner decides when the books are final enough; anything left can still be Reallocated after reopening.
+
+## Completed (project)
+A project whose construction work is done. Final bills, payments and Reallocations can still be recorded. Final profit/loss is shown from this point.
+
+- **Not:** Closed (books final).
+- **In code:** project status `completed`.
+
+## Expense (Kharcha)
+Everyday word for any spending on a project: materials, labour, subcontract work and everything else. Not a record type in the app.
+
+- **Not:** Other Expense, the specific record. When someone asks "how much kharcha so far", answer with total project cost, not Other Expenses.
+
+## Farchhyaut
+Deducting Peski from what a party is owed: their bill, work charge or wages. The Peski is used up by that amount and only the rest is paid in cash.
+
+- **Not:** Settle (matching an ordinary payment to a bill) or Hisab Milan (closing out the whole account with a party).
+- **In code:** no separate step; done by the same bill-matching as Settle (`settlement_events`).
+- **Notes:** From the government term *peski farchhyaut*, the clearing of an advance.
+
+## Hisab Milan
+The final settlement with a Party: all bills, payments, Peski and Overpayment are agreed, and any remainder is paid or collected (a Refund if the party owes the company). It covers the party's whole account with the company, never one project.
+
+- **Not:** closing a project. Closing a project is an internal company decision and the party does not take part. Leftover Overpayment or Peski on a closed project just carries on in the party's account.
+- **Not:** Settle (matching one payment to one bill).
+- **In code:** nothing yet.
+
+## Khata
+The running account between the company and one Party: every bill, work charge, payment, Credit, Peski and Refund, with the balance. Positive balance is Baki (company owes the party); negative means the party holds the company's money (Peski, Overpayment or both).
+
+- **Relations:** exactly one per Party, company-wide; projects are an internal split of it.
+- **In code:** `ledger_entries`; "Ledger" in UI and `docs/requirements-v1.1.md` §3.1.
+- **Notes:** Regular suppliers simply run on the Khata: they bill, the company pays, and any difference carries forward. Peski belongs to new deals, not to this running account.
+
+## Other Expense
+A project cost recorded directly, without a supplier bill: equipment hire, transport, fuel, khaja, permits, small site purchases. It has one project, one Cost Heading, a date, an amount, a description and a Payee. It counts as project cost when entered, and may be unpaid or paid on the spot.
+
+- **Not:** a supplier Bill (goes through order slip, delivery and posting) or Labour Cost (wages for own crew).
+- **Not:** the "Site Expenses" cost heading. An Other Expense can be filed under any heading (e.g. JCB hire under Equipment), and a Bill line can be filed under Site Expenses.
+- **Relations:** belongs to one project and one heading; owed to one Payee; settled by that payee's payments.
+- **In code:** `expenses` table; `ExpenseNewPage.tsx`; "Enter other expense" in the menu and form. Requirements call it "Other Project Expense" (`docs/requirements-v1.1.md` §15).
+- **Aliases to avoid:** "Expense" on its own for this record; that word means all spending.
+- **Notes:** One of the four things that create project cost, with posted bills, approved work charges and labour costs (`docs/requirements-v1.1.md:525`). Corrected only by reversal. Guideline, not a hard rule: a regular, billed source (weekly sand transporter, monthly JCB owner) is usually a Supplier with Bills; one-off or casual spending is an Other Expense.
+
+## Overpayment
+Money paid to a party beyond what is due, without being agreed as Peski. The party owes it back to the company. It arises from a mistake (Rs. 1,05,000 paid against a Rs. 1,00,000 bill), when a paid bill or cost is reversed (a paid Rs. 50,000 cement bill is reversed, so the Rs. 50,000 becomes Overpayment), or when a regular supplier is paid ahead on the Khata (Rs. 50,000 paid against a Rs. 40,000 bill leaves Rs. 10,000 Overpayment).
+
+- **States:** open → deducted from the party's later bills, on any project → any remainder returned as a Refund at Hisab Milan.
+- **Relations:** belongs to one Party, company-wide. Which project it came from is internal bookkeeping only.
+- **Not:** Peski. Both leave money with the party, but Peski was agreed in advance for goods or work to come; Overpayment is money the party should return.
+- **In code:** derived, never stored: money a party holds beyond its Peski (`private.held_split`); `overpaid_paisa` on the dashboards, "Overpaid" on the payment form. Payments are not Peski unless marked, so paying ahead or beyond a bill is Overpayment.
+- **Notes:** Kept apart from Peski so reports of "peski given" show only agreed advances. Deducting it from later bills is normal practice while work continues. Only what is left at Hisab Milan must come back. Example: Rs. 15,000 Overpayment from finished Project A is deducted from Shree Hardware's next Project B bill.
+
+## Party
+A supplier, subcontractor, crew or worker the company pays. A party deals with the company as a whole: one account and one balance, never one per project.
+
+- **Relations:** has many bills, work charges, payments, Peski and Overpayment across any number of projects.
+- **In code:** "party" in SQL comments and functions; separate tables `suppliers`, `subcontractors`, `crews`, `payees`.
+- **Notes:** Splitting by project is how the company tracks its own costs. Parties never need to see it.
+
+## Payee
+A lightweight Party paid through Other Expenses: name, optional phone and a kind such as JCB owner, transporter or shop. Company-wide and reusable; can be promoted to a Supplier later.
+
+- **Not:** a Supplier, which has order slips, deliveries and bills.
+- **In code:** `payees` table (`promoted_supplier_id` for promotion).
+
+## Peski (Advance)
+A partial amount paid upfront to a supplier, subcontractor or worker when booking a service, ordering goods or agreeing a contract, before any bill, charge or wages for it exist. It stays with that party until Farchhyaut deducts it from what they are next owed, before any further cash is paid.
+
+- **Not:** a payment made while the party has unpaid bills. That is an ordinary payment and Settles those bills first, even if it was meant for future goods.
+- **Not:** Overpayment (unintended excess), and not a negative balance in general; a negative balance can come from Peski, Overpayment or both.
+- **States:** given → partly deducted → fully deducted.
+- **Relations:** belongs to one Party, company-wide; may be allocated internally to projects; used up by Farchhyaut against that party's later bills, work charges or wages.
+- **In code:** `payments.is_peski` (`supabase/migrations/20261022000100_peski.sql`). "This is peski" on the payment form, offered only when nothing is unpaid; `record_payment` refuses it otherwise (`peski_with_unpaid`). Peski held = `private.held_split`; `peski_paisa` on the dashboards; calendar tag `peski`. A reversed bill makes the money Peski again (product owner, 2026-10-13). Payments recorded before this are not Peski.
+- **Aliases to avoid:** "credit with supplier" (Credit is a separate document), "unused payment", "Baina" (earnest money to lock in a purchase, mostly of land or a house; not used for site supplies or work).
+- **Notes:** Peski is a commitment to the party, not just timing. It typically comes with a first deal or a new contract (e.g. a new subcontract work package), not with a regular supplier already on the Khata. Example: Rs. 500/day wage, Rs. 2,000 Peski, 20 days worked → Rs. 10,000 earned, Rs. 8,000 paid.
+
+## Peski Returned
+Unused Peski that a party gives back, for example when the work or order it was given for is cancelled.
+
+- **Not:** Refund. A Refund returns Overpayment; Peski Returned closes out an agreed advance.
+- **In code:** `refunds` row with `kind = 'peski_returned'`, capped at the Peski held (`peski_returned_exceeds_peski`).
+- **Notes:** Example: Rs. 50,000 Peski to Ram Bahadur for plaster, work cancelled before starting, he returns Rs. 50,000.
+
+## Reallocation
+Moving a Party's money from one project to another inside the company, e.g. Rs. 15,000 Overpayment on finished Project A is moved to Project B so it can be deducted from Project B's bills. The party's balance does not change; only the company's project split does.
+
+- **Not:** a Payment or Refund; no money moves between the company and the party.
+- **Relations:** one Party; from one project (or unallocated) to another.
+- **In code:** `allocate_payment`; "Change split → Move money" on the payment page moves A → B in one call (`PaymentDetailPage.tsx`, `AllocationForm`). One payment at a time.
+- **Notes:** Accounts staff describe it as "received on Project A, paid on Project B". It is how the company tidies a project before Closing it.
+
+## Refund
+Money a party pays back to the company to clear an Overpayment, in cash or another agreed way. Normally happens only at Hisab Milan. Before that, Overpayment is just deducted from later bills.
+
+- **Not:** Peski Returned (giving back an agreed advance).
+- **Relations:** clears an Overpayment with one party.
+- **In code:** `refunds` row with `kind = 'refund'`, capped at the Overpayment held, company-wide and in the bucket (`refund_exceeds_overpayment`).
+
+## Settle
+To match a payment (or Credit) to a specific bill or work charge, so that bill shows as paid. Routine Accounts work; says nothing about the party's whole account.
+
+- **Not:** Farchhyaut (using up Peski) or Hisab Milan (final settlement with a party).
+- **In code:** `settlement_events`; "bill settlement status" in `docs/requirements-v1.1.md` §12.
+- **Aliases to avoid:** "settled" for a party or project; say Hisab Milan done or project closed.
+
+---
+
+## Open questions
+- Other Expenses may be unpaid (`docs/requirements-v1.1.md` §15). Are unpaid Other Expenses common, or are they normally paid on the spot? Owner unsure; check with the pilot company. — raised 2026-10-13

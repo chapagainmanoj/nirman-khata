@@ -28,7 +28,8 @@ export type ProjectFigures = {
   cost_paisa: number | null
   cash_paid_paisa: number | null
   payable_paisa: number | null
-  advances_paisa: number | null
+  peski_paisa: number | null
+  overpaid_paisa: number | null
   by_heading: Array<{ heading_id: string; name: string; parent: string | null; budget_paisa: number | null; cost_paisa: number; over: boolean }> | null
   by_source: Record<'materials' | 'subcontract' | 'labour' | 'other', number> | null
   final_result_paisa: number | null

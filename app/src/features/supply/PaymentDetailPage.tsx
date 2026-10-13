@@ -104,7 +104,7 @@ export function PaymentDetailPage() {
         </Card>
 
         <Card title="What it paid">
-          {matched.length === 0 && <p className="text-sm text-subtle">Not matched to bills or charges yet. It counts as advance until it is.</p>}
+          {matched.length === 0 && <p className="text-sm text-subtle">Not matched to bills or charges yet. {p.is_peski ? 'It is peski until it is.' : 'It counts as overpaid until it is.'}</p>}
           <ul>
             {matched.map((m) => (
               <li key={`${m.doc_id}:${m.project_id}`} className="border-b border-line py-2 text-sm last:border-0">
@@ -116,7 +116,7 @@ export function PaymentDetailPage() {
                 </div>
                 {posted && canRecordPayments(auth) && (
                   <div className="mt-1">
-                    <ReasonButton variant="ghost" {...formProps(`unmatch:${m.doc_id}:${m.project_id}`)} title="Unmatch from this bill" hint="The money stays with the project as advance."
+                    <ReasonButton variant="ghost" {...formProps(`unmatch:${m.doc_id}:${m.project_id}`)} title="Unmatch from this bill" hint="The money stays with the project, ready to match to another bill."
                       confirmLabel="Unmatch" busy={unsettle.isPending} error={unsettle.error && friendlyError(unsettle.error)}
                       onConfirm={(reason) => unsettle.mutate({ bill: m.doc_id, project: m.project_id, amount: m.amount, reason })}>
                       Unmatch

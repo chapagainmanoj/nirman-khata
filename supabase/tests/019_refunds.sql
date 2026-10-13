@@ -1,5 +1,5 @@
 -- Refunds received (req §12.2, §12.3, §19): balance up, cash paid down, cost unchanged; never
--- more than the advance held with the party; reversal dated on its own date (§19.1); I-10 holds.
+-- more than the Overpayment held with the party; reversal dated on its own date (§19.1); I-10 holds.
 begin;
 \ir helpers/helpers.psql
 select plan(25);
@@ -45,10 +45,10 @@ values (:'co', :'site', '{site_staff}', true, true), (:'co', :'viewer', '{viewer
 select tests.assign(:'co', :'pa', :'site');
 select tests.login(:'owner');
 
--- Bill 1,20,000 and payment 1,50,000 on A: advance 30,000 (the §12.2 example).
+-- Bill 1,20,000 and payment 1,50,000 on A: overpayment 30,000 (the §12.2 example).
 select tests.posted_bill(:'co', :'sx', :'pa', 12000000, '2026-05-01');
 select tests.pay(:'sx', 15000000, :'pa');
-select is(public.refund_available(:'sx', :'pa'), 3000000::bigint, 'advance on A is 30,000');
+select is(public.refund_available(:'sx', :'pa'), 3000000::bigint, 'overpayment on A is 30,000');
 select is(public.refund_available(:'sx', null), 0::bigint, 'nothing unallocated to refund');
 select is((select array_agg(available_paisa) from public.refund_rooms(:'sx')), array[3000000::bigint],
   'refund_rooms lists only A, with 30,000');
@@ -65,23 +65,23 @@ select is(tests.refund(:'sx', 2000000, :'pa', '2026-05-10', '11111111-0000-0000-
   'a retried refund returns the first one');
 select is((select count(*) from public.refunds where company_id = :'co'), 1::bigint, '... and records it once');
 
--- More than the advance is refused.
+-- More than the Overpayment is refused.
 select throws_like($$ select tests.refund('$$ || :'sx' || $$', 2000000, '$$ || :'pa' || $$') $$,
-  '%refund_exceeds_advance%', 'a refund above the advance (10,000 left) is refused');
+  '%refund_exceeds_overpayment%', 'a refund above the overpayment (10,000 left) is refused');
 
 -- Unallocated: payment 50,000 not for a project, refund 40,000 from it.
 select tests.pay(:'sx', 5000000);
-select is(public.refund_available(:'sx', null), 5000000::bigint, 'unallocated advance is 50,000');
+select is(public.refund_available(:'sx', null), 5000000::bigint, 'unallocated overpayment is 50,000');
 select tests.refund(:'sx', 4000000, null, '2026-05-11') ->> 'refund_id' as rf2 \gset
 select is(tests.ledger(:'sx', null, 'balance_paisa'), -1000000::bigint, 'unallocated bucket goes to -10,000');
 select ok(tests.i10(:'sx'), 'I-10: company balance = projects + unallocated after refunds');
 
 -- B owes 70,000: the company now owes the supplier overall, so nothing can be refunded,
--- even though A and the unallocated bucket each still hold 10,000 (never turn advance into baki).
+-- even though A and the unallocated bucket each still hold 10,000 (never turn overpayment into baki).
 select tests.posted_bill(:'co', :'sx', :'pb', 7000000, '2026-05-12');
 select is(public.refund_available(:'sx', :'pa'), 0::bigint, 'no refund while the company owes the supplier overall');
 select throws_like($$ select tests.refund('$$ || :'sx' || $$', 100000, '$$ || :'pa' || $$') $$,
-  '%refund_exceeds_advance%', '... and recording one is refused');
+  '%refund_exceeds_overpayment%', '... and recording one is refused');
 
 -- Readers: khata, calendar and payment register.
 select is((select doc_kind from public.party_khata(:'sx') where doc_id = :'rf1'), 'refund', 'the khata lists the refund');

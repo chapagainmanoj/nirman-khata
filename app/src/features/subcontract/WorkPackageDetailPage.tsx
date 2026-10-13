@@ -1,6 +1,6 @@
-// One work package (req §13): agreed value, approved cost, paid, payable or advance, and
+// One work package (req §13): agreed value, approved cost, paid, payable or peski, and
 // remaining value; claims from the subcontractor and their approval. Approval creates cost;
-// advances are cash paid, never cost (acceptance #7).
+// peski is cash paid, never cost (acceptance #7).
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router'
@@ -55,7 +55,7 @@ export function WorkPackageDetailPage() {
           <div className="flex flex-wrap gap-2">
             {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/${w.id}/edit`}>Edit</ButtonLink>}
             {canRecordPayments(auth) && auth.canSeeFinance && (
-              <ButtonLink to={`/payments/new?subcontractor=${w.subcontractor_id}&package=${w.id}`}>Pay advance or bill</ButtonLink>
+              <ButtonLink to={`/payments/new?subcontractor=${w.subcontractor_id}&package=${w.id}`}>Pay peski or bill</ButtonLink>
             )}
           </div>
         }
@@ -220,7 +220,7 @@ function ChargeItem({ c, subcontractorId }: { c: Charge; subcontractorId: string
       )}
       {c.status === 'approved' && canPost(auth) && (
         <div className="mt-2">
-          <ReasonButton variant="ghost" title="Reverse this approved work" hint="Cost goes back down; money paid stays as advance."
+          <ReasonButton variant="ghost" title="Reverse this approved work" hint="Cost goes back down; money paid for it is peski again, or overpaid."
             confirmLabel="Reverse" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
             withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
             onConfirm={(reason, date) => reverse.mutate({ reason, date })}>

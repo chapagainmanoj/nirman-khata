@@ -58,7 +58,7 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   await page.getByLabel('Supplier').selectOption({ label: 'Pokhara Cement Traders' })
   await page.getByLabel('Why no slip?').fill('Urgent for the footing')
   await page.getByLabel('Material', { exact: true }).selectOption({ label: 'Cement' })
-  await page.getByLabel(/^Received/).fill('60')
+  await page.getByRole('textbox', { name: 'Received', exact: true }).fill('60')
   await page.getByRole('button', { name: 'Save delivery' }).click()
   await expect(page.getByRole('heading', { name: 'Delivery recorded' })).toBeVisible()
 
@@ -68,16 +68,18 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   await expect(page.getByLabel('Project', { exact: true })).toHaveValue(projectId)
   // The date calendar floats over the form instead of pushing it down; Escape closes it.
   const photos = page.getByRole('heading', { name: 'Photos' })
-  const before = await photos.boundingBox()
-  await page.getByRole('button', { name: 'Pick on calendar' }).click()
+  // Measured on the page, not the window: opening may scroll to show the calendar, which is fine.
+  const pageY = () => photos.evaluate((el) => el.getBoundingClientRect().top + window.scrollY)
+  const before = await pageY()
+  await page.locator('#dr-date').click()
   const picker = page.getByRole('dialog', { name: 'Choose date' })
   await expect(picker).toBeVisible()
-  await expect(picker.getByRole('button', { pressed: true })).toBeFocused()
-  expect((await photos.boundingBox())?.y).toBe(before?.y)
+  await expect(picker.getByRole('button', { pressed: true, name: / · / })).toBeFocused()
+  expect(await pageY()).toBe(before)
   await page.screenshot(shots('m4-00-date-popup'))
   await page.keyboard.press('Escape')
   await expect(picker).toHaveCount(0)
-  await expect(page.getByRole('button', { name: 'Pick on calendar' })).toBeFocused()
+  await expect(page.locator('#dr-date')).toBeFocused()
   // The delivery is already there; nothing to type again (acceptance #23).
   await expect(page.getByText('Already recorded, so there is no need to enter them again.')).toBeVisible()
   await expect(page.getByText(/Cement 60/)).toBeVisible()

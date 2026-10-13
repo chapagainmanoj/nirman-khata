@@ -30,6 +30,15 @@ export function usePartyOpenItems(partyId: string, enabled: boolean) {
   })
 }
 
+/** What the party holds of the company's money, whole khata: Peski not yet used and Overpayment. */
+export function usePartyHeld(partyId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['open-items', partyId, 'held'],
+    enabled,
+    queryFn: async () => (await rpc('party_held', { p_party: partyId }))[0] ?? { peski_paisa: 0, overpaid_paisa: 0 },
+  })
+}
+
 export function usePartyOpeningBalance(partyId: string, enabled: boolean) {
   return useQuery({
     queryKey: ['opening-balance', partyId],

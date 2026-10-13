@@ -3,7 +3,7 @@
 import type { CalendarEvent } from '../site/api'
 
 export const MONEY_TONE: Record<string, ['warn' | 'good' | 'info', string]> = {
-  cost: ['warn', 'Cost'], payment: ['good', 'Payment'], advance: ['info', 'Advance'], refund: ['info', 'Refund'],
+  cost: ['warn', 'Cost'], payment: ['good', 'Payment'], peski: ['info', 'Peski'], refund: ['info', 'Refund'],
   received: ['good', 'Received'],
 }
 

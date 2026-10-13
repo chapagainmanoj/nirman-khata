@@ -234,7 +234,7 @@ ledger_entries
 - Totals are sums:
   - recorded cost = Σ `cost_paisa`;
   - cash paid = Σ `cash_paisa`;
-  - party balance = Σ `balance_paisa` (positive = baki, negative = peski);
+  - party balance = Σ `balance_paisa` (positive = baki, negative = money the party holds: Peski and/or Overpayment, split as in §4.5);
   - unallocated = rows with `project_id` null.
 - "As of D" uses `business_date <= D`. "As known on D" also uses `posted_at <= D`.
 
@@ -256,6 +256,16 @@ ledger_entries
 - Fulfilment status.
 
 All are `security_invoker` views or RPC functions.
+
+
+### 4.5 Peski and Overpayment (`20261022000100_peski.sql`)
+- `payments.is_peski`: set when recording, only while the party has nothing unpaid; a Peski payment
+  cannot settle bills when recorded. Existing payments are not Peski.
+- `refunds.kind`: `refund` (clears Overpayment) or `peski_returned` (gives back Peski).
+- Peski held in a bucket = Σ Peski payments' (allocated − settled) − peski returned, capped at the
+  money held there (−balance). Overpaid = held − Peski. Ledger rows are unchanged; the split is derived
+  (`private.held_split`, `party_held`, `refund_rooms`, dashboards' `peski_paisa` / `overpaid_paisa`).
+- A reversed bill unsettles its payments: money from a Peski payment is Peski again.
 
 ---
 
@@ -296,7 +306,7 @@ Locking the party first serializes all settlement and correction work for that p
   - amount ≤ the payment's remaining project allocation;
   - amount ≤ the document's remaining **settleable amount** for that project.
 - Settleable amount = Σ line `payable_amount` in the project − active posted credits for that project.
-- `unsettle` writes a negative event. The money stays in the project allocation as advance.
+- `unsettle` writes a negative event. The money stays in the project allocation, unmatched (Peski again for a Peski payment, otherwise overpaid).
 
 ### 5.4 Corrections
 
@@ -459,7 +469,7 @@ bill number and lines are required before posting (`bill_checks` errors `no_bill
 constraint `supplier_bills_number_before_posting`). Accounts may record the paper bill total
 (`supplier_bill_charges.paper_total_paisa`); posting is blocked while the lines and charges do
 not add up to it (`paper_total_mismatch`). Payments are now entered from the bills they pay;
-the project split follows from the ticked bills, with "pay as advance" keeping the free split.
+the project split follows from the ticked bills, with a free split only when nothing is unpaid (then the payment can be marked Peski).
 
 Navigation (2026-10-10): sections, the phone bottom bar and the "+ Record" actions are chosen by
 role in `app/src/components/nav.ts` (groups Site work / Money / Setup). New records start on the
@@ -479,7 +489,7 @@ L2 same-key race in `concurrency.sh`, and `app/e2e/site.spec.ts`. Decisions made
   manager sets them up. Overall progress is its own entry, not an average of stages.
 - Progress is corrected only by a newer update. A lower figure needs a reason.
 - The calendar runs as security invoker, so ledger visibility decides who sees amounts. A
-  payment not matched to any bill shows as "advance".
+  Peski payment shows as "peski" (migration `20261022000100`).
 - A device-draft autosave that was still pending when a form was sent no longer brings the
   draft back (`lib/drafts.ts`).
 
@@ -506,9 +516,9 @@ Milestone 6 (requirement gaps found by the 2026-10-10 audit) built: migrations `
 (refunds) and `20261018000200` (list paging), pgTAP `019` and refunds in the H3 sequence, a refund
 race in `concurrency.sh`, and `app/e2e/gaps.spec.ts`. Decisions made while building it:
 - Refunds from any party (§12.2, §12.3): ledger row cost 0, balance +amount, cash -amount, on a
-  project or unallocated. A refund may not exceed the advance held with the party, company-wide
-  **and** in the chosen bucket, so it never turns an advance into money owed (product owner).
-  The party lock makes two refunds for the same advance take turns. Reversal only by Accounts/Admin.
+  project or unallocated. A refund may not exceed the Overpayment held with the party (Peski Returned: the Peski), company-wide
+  **and** in the chosen bucket, so it never turns money held into money owed (product owner).
+  The party lock makes two refunds for the same money take turns. Reversal only by Accounts/Admin.
   The payment register lists refunds as negative rows, so its total is cash paid net of refunds.
 - Password reset by email (§22): `/forgot` and `/reset`, shown only when the build sets
   `VITE_EMAIL_RESET=true`. Production needs an SMTP sender first, since Supabase's built-in mailer

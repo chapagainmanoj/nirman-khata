@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
 
 // Milestone 6: lists load 50 at a time, the bill form shows the last billed rate, a refund
-// from a supplier lowers the advance and cash paid, and an email login resets its own password.
+// from a supplier lowers the overpayment and cash paid, and an email login resets its own password.
 const run = Date.now().toString().slice(-7)
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 const email = `owner${run}@nirman.test`
@@ -107,9 +107,9 @@ test('paged lists, rate hint, refund and password reset', async ({ page }) => {
   await expect(page.getByLabel('Rate per unit')).toHaveValue('450')
   await page.screenshot(shots('m6-02-rate-hint'))
 
-  // Refund: 55 × 4,500 = 2,47,500 billed, 2,50,000 paid, so Rs. 2,500 is held in advance.
+  // Refund: 55 × 4,500 = 2,47,500 billed, 2,50,000 paid, so Rs. 2,500 is overpaid.
   await page.goto(`/suppliers/${supplierId}`)
-  const refundCard = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Refund received' }) })
+  const refundCard = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Money given back' }) })
   await expect(refundCard).toContainText('Rs. 2,500')
   await refundCard.getByRole('button', { name: 'Record refund' }).click()
   await expect(page.getByLabel('Amount received')).toHaveValue('2500')
