@@ -550,6 +550,16 @@ Client receipts (requirements open question #1, asked for by the pilot) built: m
 - Shown in the Contract and budget card (Received, To collect) and a Client tab; not in the
   top summary, which stays about spending (product owner).
 
+Simple forms (product owner: two ways of using the app, same data) built: migration
+`20261023000100` (`companies.simple_forms`, default off; admins change it through the existing
+update policy), pgTAP `022`, `app/e2e/simple.spec.ts`. `components/More.tsx` wraps a form's
+less-used fields: in Detailed it renders them as before; in Simple it is a closed `<details>` in
+the style of `MoreDetails`, kept mounted so react-hook-form still registers the fields. It opens
+when a field inside holds a value (inputs, selects, or `data-has-value` on the date field;
+`data-default` marks values the form filled in itself) or is `aria-invalid`. Payment and client
+receipt forms are not folded: their only optional field (reference) already shows just for
+non-cash methods.
+
 ---
 
 ## 10. Tests

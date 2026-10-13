@@ -8,6 +8,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { Button, ButtonLink, Card, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
+import { More } from '../../components/More'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -240,21 +241,25 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
                 <Field label={`Received${l.slip_line_id ? ` (${units.data?.find((u) => u.id === l.unit_id)?.code ?? ''})` : ''}`} htmlFor={`dl${i}-r`}>
                   <Input id={`dl${i}-r`} inputMode="decimal" value={l.received} onChange={(e) => setLine(i, { received: e.target.value })} />
                 </Field>
-                <Field label="Rejected" htmlFor={`dl${i}-x`}>
-                  <Input id={`dl${i}-x`} inputMode="decimal" value={l.rejected} onChange={(e) => setLine(i, { rejected: e.target.value })} />
-                </Field>
               </div>
-              <Field label="Problem" htmlFor={`dl${i}-i`}>
-                <Select id={`dl${i}-i`} value={l.issue} onChange={(e) => setLine(i, { issue: e.target.value })}>
-                  <option value="">No problem</option>
-                  {Object.entries(DELIVERY_ISSUES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </Select>
-              </Field>
-              {(l.issue || Number(l.rejected) > 0) && (
-                <Field label="What was wrong?" htmlFor={`dl${i}-n`}>
-                  <Input id={`dl${i}-n`} value={l.note} onChange={(e) => setLine(i, { note: e.target.value })} />
-                </Field>
-              )}
+              <More label="Problem with this item?" summary="none">
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Rejected" htmlFor={`dl${i}-x`}>
+                    <Input id={`dl${i}-x`} inputMode="decimal" value={l.rejected} onChange={(e) => setLine(i, { rejected: e.target.value })} />
+                  </Field>
+                  <Field label="Problem" htmlFor={`dl${i}-i`}>
+                    <Select id={`dl${i}-i`} value={l.issue} onChange={(e) => setLine(i, { issue: e.target.value })}>
+                      <option value="">No problem</option>
+                      {Object.entries(DELIVERY_ISSUES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </Select>
+                  </Field>
+                </div>
+                {(l.issue || Number(l.rejected) > 0) && (
+                  <Field label="What was wrong?" htmlFor={`dl${i}-n`}>
+                    <Input id={`dl${i}-n`} value={l.note} onChange={(e) => setLine(i, { note: e.target.value })} />
+                  </Field>
+                )}
+              </More>
             </div>
           </Card>
         ))}

@@ -368,6 +368,9 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
   useEffect(() => {
     if (!editing || !focusField) return
     const el = document.getElementById(focusField)
+    // In simple forms the date sits in a closed "More"; open it so the field can be seen.
+    const fold = el?.closest('details')
+    if (fold) fold.open = true
     el?.scrollIntoView({ block: 'center' })
     el?.focus({ preventScroll: true })
   }, [editing, focusField])

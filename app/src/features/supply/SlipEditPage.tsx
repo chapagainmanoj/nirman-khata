@@ -7,6 +7,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
+import { More } from '../../components/More'
 import { Button, Card, ErrorBanner, Field, FormActions, Input, MoreDetails, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
@@ -270,16 +271,18 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
         </div>
 
         <Card title="Delivery">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Site contact" htmlFor="slip-contact" hint="Who the driver should call">
-              <Input id="slip-contact" inputMode="tel" {...register('site_contact')} />
-            </Field>
-            <Field label="Delivery instructions" htmlFor="slip-instr" hint="Optional, e.g. unload at the back gate before 10 am">
-              <Input id="slip-instr" {...register('delivery_instructions')} />
-            </Field>
-            {/* Older slips may have a separate note; new ones use the instructions only. */}
-            {initial?.notes && <Field label="Notes" htmlFor="slip-notes"><Input id="slip-notes" {...register('notes')} /></Field>}
-          </div>
+          <More label="Site contact and instructions">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Site contact" htmlFor="slip-contact" hint="Who the driver should call">
+                <Input id="slip-contact" inputMode="tel" {...register('site_contact')} />
+              </Field>
+              <Field label="Delivery instructions" htmlFor="slip-instr" hint="Optional, e.g. unload at the back gate before 10 am">
+                <Input id="slip-instr" {...register('delivery_instructions')} />
+              </Field>
+              {/* Older slips may have a separate note; new ones use the instructions only. */}
+              {initial?.notes && <Field label="Notes" htmlFor="slip-notes"><Input id="slip-notes" {...register('notes')} /></Field>}
+            </div>
+          </More>
         </Card>
 
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>

@@ -69,7 +69,7 @@ function MyProfileCard() {
 
 type CompanyValues = Pick<Tables<'companies'>,
   'name' | 'pan_vat' | 'address' | 'phone' | 'default_date_display' | 'slip_approval_required' | 'tax_fields_enabled' |
-  'labour_module_enabled' | 'vat_treatment' | 'rate_variance_tolerance_pct'>
+  'labour_module_enabled' | 'vat_treatment' | 'rate_variance_tolerance_pct' | 'simple_forms'>
 
 function CompanySettingsForm({ company }: { company: Tables<'companies'> }) {
   const queryClient = useQueryClient()
@@ -78,6 +78,7 @@ function CompanySettingsForm({ company }: { company: Tables<'companies'> }) {
     default_date_display: company.default_date_display, slip_approval_required: company.slip_approval_required,
     tax_fields_enabled: company.tax_fields_enabled, labour_module_enabled: company.labour_module_enabled,
     vat_treatment: company.vat_treatment, rate_variance_tolerance_pct: company.rate_variance_tolerance_pct,
+    simple_forms: company.simple_forms,
   })
   const [saved, setSaved] = useState(false)
   const set = <K extends keyof CompanyValues>(k: K, value: CompanyValues[K]) => { setSaved(false); setV({ ...v, [k]: value }) }
@@ -105,6 +106,21 @@ function CompanySettingsForm({ company }: { company: Tables<'companies'> }) {
             <Field label="Phone" htmlFor="co-phone"><Input id="co-phone" value={v.phone ?? ''} onChange={(e) => set('phone', e.target.value)} inputMode="tel" /></Field>
           </div>
           <Field label="Address" htmlFor="co-address"><Input id="co-address" value={v.address ?? ''} onChange={(e) => set('address', e.target.value)} /></Field>
+        </Group>
+        <Group title="Forms">
+          <div className="flex gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="How forms look">
+            {([[false, 'Detailed'], [true, 'Simple']] as const).map(([k, label]) => (
+              <button key={label} type="button" role="radio" aria-checked={v.simple_forms === k} onClick={() => set('simple_forms', k)}
+                className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${v.simple_forms === k ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-subtle">
+            {v.simple_forms
+              ? 'Forms show the main fields. Less-used ones (VAT, discount, references, extra details) are under "More", one tap away. Records and rules stay the same.'
+              : 'Forms show every field. Good for a firm with an accountant.'}
+          </p>
         </Group>
         <Group title="Dates">
           <Field label="Default date display" htmlFor="co-dates" hint="Each person can change this for themselves.">
@@ -162,6 +178,7 @@ function CompanySettingsView({ company: c }: { company: Tables<'companies'> }) {
       <Detail label="PAN / VAT">{c.pan_vat}</Detail>
       <Detail label="Phone">{c.phone}</Detail>
       <Detail label="Address">{c.address}</Detail>
+      <Detail label="Forms">{c.simple_forms ? 'Simple' : 'Detailed'}</Detail>
       <Detail label="Order slip approval">{c.slip_approval_required ? 'Required' : 'Not required'}</Detail>
       <Detail label="Colour">{ACCENTS[isAccent(c.accent) ? c.accent : 'teal'].label}</Detail>
     </Card>

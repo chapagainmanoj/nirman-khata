@@ -87,7 +87,7 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
 
   return (
     <div ref={wrapper} className="relative max-w-md">
-      <FieldButton ref={field} id={id} aria-haspopup="dialog" aria-expanded={picking} aria-describedby={textId}
+      <FieldButton ref={field} id={id} data-has-value={iso ? 'true' : 'false'} aria-haspopup="dialog" aria-expanded={picking} aria-describedby={textId}
         onClick={() => (picking ? setPicking(false) : open())}>
         <span id={textId} className="flex min-w-0 flex-1 items-baseline gap-2">
           {iso ? (

@@ -11,6 +11,7 @@ import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../.
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
+import { More } from '../../components/More'
 import { addDays, formatDate, todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -171,6 +172,8 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
   const subtotal = values.lines.reduce((s, l) => s + (parseNPR(l.amount) ?? 0), 0)
   const total = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0) + (parseNPR(values.vat) ?? 0)
+  const chargesSummary = ([['Discount', values.discount], ['Transport', values.transport], ['VAT', values.vat]] as const)
+    .filter(([, a]) => parseNPR(a)).map(([k, a]) => `${k} ${formatNPR(parseNPR(a))}`).join(', ') || 'none'
   const lineProjects = [...new Set(values.lines.map((l) => l.project_id).filter(Boolean))]
   const paper = parseNPR(values.paper_total)
   const [showCostDate, setShowCostDate] = useState(!!initial?.cost_date)
@@ -455,68 +458,71 @@ function BillForm({ initial }: { initial?: BillValues }) {
         </div>
 
         <Card title="Bill totals">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Discount" htmlFor="b-disc">
-              <Controller control={control} name="discount" render={({ field }) => <MoneyInput id="b-disc" value={field.value} onChange={field.onChange} />} />
-            </Field>
-            <Field label="Transport (on the bill header)" htmlFor="b-trans">
-              <Controller control={control} name="transport" render={({ field }) => <MoneyInput id="b-trans" value={field.value} onChange={field.onChange} />} />
-            </Field>
-            <Field label="VAT" htmlFor="b-vat" hint={
-              <button type="button" className="text-slate underline" onClick={() => {
-                const base = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0)
-                setValue('vat', paisaToInput(Math.round((base * Number(values.vat_rate || 13)) / 100)))
-              }}>Work out {values.vat_rate || 13}% VAT</button>
-            }>
-              <Controller control={control} name="vat" render={({ field }) => <MoneyInput id="b-vat" value={field.value} onChange={field.onChange} />} />
-            </Field>
-          </div>
+          {/* Simple forms fold the charges; the total and any mismatch with the paper bill stay in view. */}
+          <More label="Discount, transport, VAT" summary={chargesSummary}>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Discount" htmlFor="b-disc">
+                <Controller control={control} name="discount" render={({ field }) => <MoneyInput id="b-disc" value={field.value} onChange={field.onChange} />} />
+              </Field>
+              <Field label="Transport (on the bill header)" htmlFor="b-trans">
+                <Controller control={control} name="transport" render={({ field }) => <MoneyInput id="b-trans" value={field.value} onChange={field.onChange} />} />
+              </Field>
+              <Field label="VAT" htmlFor="b-vat" hint={
+                <button type="button" className="text-slate underline" onClick={() => {
+                  const base = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0)
+                  setValue('vat', paisaToInput(Math.round((base * Number(values.vat_rate || 13)) / 100)))
+                }}>Work out {values.vat_rate || 13}% VAT</button>
+              }>
+                <Controller control={control} name="vat" render={({ field }) => <MoneyInput id="b-vat" value={field.value} onChange={field.onChange} />} />
+              </Field>
+            </div>
+            {auth.canSeeFinance && (
+              <div className="mt-3">
+                <Field label="Total on the paper bill" htmlFor="b-paper" hint="Optional. Posting waits until the lines add up to it.">
+                  <Controller control={control} name="paper_total" render={({ field }) => <MoneyInput id="b-paper" value={field.value} onChange={field.onChange} />} />
+                </Field>
+                {paper !== null && (
+                  <p role="status" className={`mt-1 text-sm font-medium ${paper === total ? 'text-good-ink' : 'text-danger'}`}>
+                    {paper === total ? 'Matches the paper bill.'
+                      : paper > total ? `${formatNPR(paper - total)} missing: the paper bill says ${formatNPR(paper)}.`
+                      : `${formatNPR(total - paper)} too much: the paper bill says ${formatNPR(paper)}.`}
+                  </p>
+                )}
+              </div>
+            )}
+
+            {lineProjects.length > 1 && (
+              <div className="mt-3">
+                <Controller control={control} name="split_charges" render={({ field }) => (
+                  <Checkbox label="Split header charges by project myself" hint="Otherwise discount, transport and VAT are shared by line amount."
+                    checked={field.value} onChange={(e) => {
+                      field.onChange(e.target.checked)
+                      if (e.target.checked && !getValues('overrides').length) {
+                        overrides.replace((['transport', 'discount', 'vat'] as const)
+                          .filter((c) => parseNPR(getValues(c)))
+                          .flatMap((c) => lineProjects.map((p) => ({ charge: c, project_id: p, amount: '' }))))
+                      }
+                      if (!e.target.checked) overrides.replace([])
+                    }} />
+                )} />
+                {values.split_charges && (
+                  <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                    {overrides.fields.map((o, k) => (
+                      <Field key={o.key} label={`${o.charge[0].toUpperCase()}${o.charge.slice(1)} for ${projectName(o.project_id)}`} htmlFor={`ov-${k}`}>
+                        <Controller control={control} name={`overrides.${k}.amount`} render={({ field }) => (
+                          <MoneyInput id={`ov-${k}`} value={field.value} onChange={field.onChange} />
+                        )} />
+                      </Field>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </More>
           <div className="mt-3 flex justify-between border-t border-line pt-3 text-sm">
             <span className="text-subtle">Lines {formatNPR(subtotal)}</span>
             <span className="font-semibold text-ink tabular-nums">Total {formatNPR(total)}</span>
           </div>
-          {auth.canSeeFinance && (
-            <div className="mt-3">
-              <Field label="Total on the paper bill" htmlFor="b-paper" hint="Optional. Posting waits until the lines add up to it.">
-                <Controller control={control} name="paper_total" render={({ field }) => <MoneyInput id="b-paper" value={field.value} onChange={field.onChange} />} />
-              </Field>
-              {paper !== null && (
-                <p role="status" className={`mt-1 text-sm font-medium ${paper === total ? 'text-good-ink' : 'text-danger'}`}>
-                  {paper === total ? 'Matches the paper bill.'
-                    : paper > total ? `${formatNPR(paper - total)} missing: the paper bill says ${formatNPR(paper)}.`
-                    : `${formatNPR(total - paper)} too much: the paper bill says ${formatNPR(paper)}.`}
-                </p>
-              )}
-            </div>
-          )}
-
-          {lineProjects.length > 1 && (
-            <div className="mt-3">
-              <Controller control={control} name="split_charges" render={({ field }) => (
-                <Checkbox label="Split header charges by project myself" hint="Otherwise discount, transport and VAT are shared by line amount."
-                  checked={field.value} onChange={(e) => {
-                    field.onChange(e.target.checked)
-                    if (e.target.checked && !getValues('overrides').length) {
-                      overrides.replace((['transport', 'discount', 'vat'] as const)
-                        .filter((c) => parseNPR(getValues(c)))
-                        .flatMap((c) => lineProjects.map((p) => ({ charge: c, project_id: p, amount: '' }))))
-                    }
-                    if (!e.target.checked) overrides.replace([])
-                  }} />
-              )} />
-              {values.split_charges && (
-                <div className="mt-2 grid gap-3 sm:grid-cols-2">
-                  {overrides.fields.map((o, k) => (
-                    <Field key={o.key} label={`${o.charge[0].toUpperCase()}${o.charge.slice(1)} for ${projectName(o.project_id)}`} htmlFor={`ov-${k}`}>
-                      <Controller control={control} name={`overrides.${k}.amount`} render={({ field }) => (
-                        <MoneyInput id={`ov-${k}`} value={field.value} onChange={field.onChange} />
-                      )} />
-                    </Field>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
         </Card>
 
         <Field label="Notes" htmlFor="b-notes" hint="Optional"><Input id="b-notes" {...register('notes')} /></Field>

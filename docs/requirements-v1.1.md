@@ -133,7 +133,7 @@ Platform
 
 ### 4.1 Company
 - Name, address, contact, optional logo, PAN/VAT number.
-- Settings: BS/AD default, approval on/off, tax fields on/off, labour module on/off, document number formats.
+- Settings: BS/AD default, approval on/off, tax fields on/off, labour module on/off, document number formats, forms Detailed/Simple.
 
 ### 4.2 Projects
 - Name and unique company-level code.
@@ -581,6 +581,8 @@ Field staff on mobile can:
 - Bill entry pre-fills lines from linked deliveries; only rates are added.
 - Daily report has a short mode (one note + photos); other fields are optional.
 - Labour entered in the daily report creates the labour cost record (one entry, not two).
+
+**Simple forms (company setting, default Detailed):** for small contractors who mainly log the day. Every record, step and rule stays the same; forms fold their less-used fields under an expandable heading: bill discount, transport and VAT (the total stays in view), a delivery item's rejected quantity and problem, an expense's cost heading, payee type and bill number, a slip's site contact and instructions, and a project's client phone, location, manager and dates. Notes always stay visible. Nothing folded is required; a fold opens by itself when a field in it has a value or an error.
 
 **Design rules:** large touch targets, minimal typing, recent/frequent materials, BS date picker, works on low-end Android, compressed photo uploads.
 

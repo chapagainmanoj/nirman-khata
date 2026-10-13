@@ -10,6 +10,7 @@ import { Attachments } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select } from '../../components/ui'
+import { More } from '../../components/More'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -70,6 +71,8 @@ export function ExpenseNewPage() {
     const parent = headings.data?.find((x) => x.id === h.parent_id)
     return parent ? `${parent.name} › ${h.name}` : h.name
   }
+  const chosenHeading = choices.find((h) => h.id === headingId)
+  const headingName = chosenHeading && name(chosenHeading)
 
   const save = useMutation({
     mutationFn: async (vals: Values) => {
@@ -139,12 +142,6 @@ export function ExpenseNewPage() {
             <Field label="What for" htmlFor="ex-desc" hint="e.g. JCB 4 hours, diesel 20 L, khaja for crew">
               <Input id="ex-desc" {...register('description')} />
             </Field>
-            <Field label="Cost heading" htmlFor="ex-heading">
-              <Select id="ex-heading" value={headingId} onChange={(e) => form.setValue('heading_id', e.target.value)}>
-                <option value="">Choose heading</option>
-                {choices.map((h) => <option key={h.id} value={h.id}>{name(h)}</option>)}
-              </Select>
-            </Field>
             <Field label="Date" htmlFor="ex-date">
               <Controller control={control} name="expense_date" render={({ field }) => (
                 <DateInput id="ex-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
@@ -156,12 +153,20 @@ export function ExpenseNewPage() {
                 {payees.data?.filter((p) => p.active).map((p) => <option key={p.id} value={p.name}>{p.kind ?? ''}</option>)}
               </datalist>
             </Field>
-            {v.payee_name.trim() && !known && (
-              <Field label="Payee type" htmlFor="ex-payee-kind" hint="Optional, e.g. JCB owner, transporter, shop">
-                <Input id="ex-payee-kind" {...register('payee_kind')} />
+            <More className="sm:col-span-2" summary={[headingName ?? 'choose heading', v.bill_no && `bill ${v.bill_no}`].filter(Boolean).join(', ')}>
+              <Field label="Cost heading" htmlFor="ex-heading">
+                <Select id="ex-heading" value={headingId} data-default={!v.heading_id} onChange={(e) => form.setValue('heading_id', e.target.value)}>
+                  <option value="">Choose heading</option>
+                  {choices.map((h) => <option key={h.id} value={h.id}>{name(h)}</option>)}
+                </Select>
               </Field>
-            )}
-            <Field label="Bill number" htmlFor="ex-bill" hint="Optional"><Input id="ex-bill" {...register('bill_no')} /></Field>
+              {v.payee_name.trim() && !known && (
+                <Field label="Payee type" htmlFor="ex-payee-kind" hint="Optional, e.g. JCB owner, transporter, shop">
+                  <Input id="ex-payee-kind" {...register('payee_kind')} />
+                </Field>
+              )}
+              <Field label="Bill number" htmlFor="ex-bill" hint="Optional"><Input id="ex-bill" {...register('bill_no')} /></Field>
+            </More>
           </div>
         </Card>
 
