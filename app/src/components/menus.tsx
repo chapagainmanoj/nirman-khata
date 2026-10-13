@@ -8,7 +8,7 @@ import { useCurrentProject } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import { ROLE_LABELS } from '../lib/labels'
 import {
-  BillIcon, ChevronDownIcon, DailyReportIcon, DeliveryIcon, ExpenseIcon, LabourIcon, PaymentIcon, PlusIcon, SlipIcon,
+  BillIcon, ChevronDownIcon, DailyReportIcon, DeliveryIcon, ExpenseIcon, LabourIcon, PaymentIcon, PlusIcon, ReceiptInIcon, SlipIcon,
 } from './icons'
 import { recordActionsFor, recordHref, sectionsFor, type NavRole, type RecordKey } from './nav'
 
@@ -73,7 +73,7 @@ const rowClass = 'flex min-h-11 w-full flex-col justify-center px-4 py-2 text-le
 
 // Same pictures as the sections the records land in, so the sheet scans like the nav.
 const RECORD_ICONS: Record<RecordKey, ComponentType<{ size?: number; className?: string }>> = {
-  report: DailyReportIcon, delivery: DeliveryIcon, bill: BillIcon, slip: SlipIcon, labour: LabourIcon, expense: ExpenseIcon, payment: PaymentIcon,
+  report: DailyReportIcon, delivery: DeliveryIcon, bill: BillIcon, slip: SlipIcon, labour: LabourIcon, expense: ExpenseIcon, payment: PaymentIcon, receipt: ReceiptInIcon,
 }
 
 function RecordList({ role, onPick }: { role: NavRole; onPick?: () => void }) {

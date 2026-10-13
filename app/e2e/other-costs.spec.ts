@@ -125,10 +125,10 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   // still owed 7,000 to the crew and 10,000 to the subcontractor.
   await page.goto(projectUrl)
   // Summary strip and the contract and budget card show the same figure.
-  await expect(row(page, 'Recorded cost').first()).toContainText('Rs. 47,500')
-  await expect(row(page, 'Recorded cost').last()).toContainText('Rs. 47,500')
-  await expect(row(page, 'Cash paid')).toContainText('Rs. 30,500')
-  await expect(row(page, 'Still owed')).toContainText('Rs. 17,000')
+  await expect(row(page, 'Spent').first()).toContainText('Rs. 47,500')
+  await expect(row(page, 'Spent').last()).toContainText('Rs. 47,500')
+  await expect(row(page, 'Paid').last()).toContainText('Rs. 30,500')
+  await expect(row(page, 'Due').last()).toContainText('Rs. 17,000')
   await expect(page.getByText('Shows labour you entered')).toBeHidden()
   await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Rs. 47,500')
   await page.screenshot(shots('m3-04-project'))

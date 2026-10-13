@@ -26,6 +26,8 @@ const BillEditPage = page(() => import('./features/supply/BillEditPage'), 'BillE
 const DeliveryNewPage = page(() => import('./features/supply/DeliveryNewPage'), 'DeliveryNewPage')
 const PaymentDetailPage = page(() => import('./features/supply/PaymentDetailPage'), 'PaymentDetailPage')
 const RefundDetailPage = page(() => import('./features/refunds/RefundDetailPage'), 'RefundDetailPage')
+const ClientReceiptNewPage = page(() => import('./features/clients/ClientReceiptNewPage'), 'ClientReceiptNewPage')
+const ClientReceiptDetailPage = page(() => import('./features/clients/ClientReceiptDetailPage'), 'ClientReceiptDetailPage')
 const PaymentNewPage = page(() => import('./features/supply/PaymentNewPage'), 'PaymentNewPage')
 const SlipDetailPage = page(() => import('./features/supply/SlipDetailPage'), 'SlipDetailPage')
 const SlipEditPage = page(() => import('./features/supply/SlipEditPage'), 'SlipEditPage')
@@ -83,6 +85,8 @@ export function App() {
           <Route path="/payments/new" element={<PaymentNewPage />} />
           <Route path="/payments/:paymentId" element={<PaymentDetailPage />} />
           <Route path="/refunds/:refundId" element={<RefundDetailPage />} />
+          <Route path="/receipts/new" element={<ClientReceiptNewPage />} />
+          <Route path="/receipts/:receiptId" element={<ClientReceiptDetailPage />} />
           <Route path="/subcontractors" element={<PartiesPage key="subcontractor" kind="subcontractor" />} />
           <Route path="/subcontractors/:partyId" element={<PartyDetailPage key="subcontractor" kind="subcontractor" />} />
           <Route path="/crews" element={<PartiesPage key="crew" kind="crew" />} />

@@ -52,6 +52,8 @@ const en = {
   'record.expense.hint': 'Site expense paid in cash',
   'record.payment': 'Record payment',
   'record.payment.hint': 'Money paid to a supplier or crew',
+  'record.receipt': 'Client payment received',
+  'record.receipt.hint': 'Money the client paid you for the work',
   'auth.login': 'Sign in',
   'auth.loginId': 'Mobile number or email',
   'auth.password': 'Password',

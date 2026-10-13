@@ -64,7 +64,7 @@ test('dashboard, reports and exports agree', async ({ page }) => {
 
   // Project page: recorded cost by heading and by source.
   await page.getByRole('link', { name: /P-1 · Karki house/ }).click()
-  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Recorded cost')
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Spent')
   await expect(page.getByRole('heading', { name: 'Cost by heading' })).toBeVisible()
   await expect(page.getByRole('listitem').filter({ hasText: 'Own labour' }).filter({ hasText: 'Rs. 6,000' }).first()).toBeVisible()
   await page.screenshot(shots('m5-02-project'))

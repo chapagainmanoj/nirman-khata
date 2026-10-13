@@ -34,6 +34,7 @@ type PaymentMethod = Database['public']['Enums']['payment_method']
 type DeliveryIssue = Database['public']['Enums']['delivery_issue']
 type PackageStatus = Database['public']['Enums']['package_status']
 type ChargeStatus = Database['public']['Enums']['charge_status']
+type ClientReceiptKind = Database['public']['Enums']['client_receipt_kind']
 
 export const SLIP_STATUS: Record<SlipStatus, [string, Tone]> = {
   draft: ['Draft', 'neutral'],
@@ -65,6 +66,14 @@ export const PAYMENT_METHODS: Record<PaymentMethod, string> = {
   bank_transfer: 'Bank transfer',
   cheque: 'Cheque',
   wallet: 'eSewa / Khalti / wallet',
+  other: 'Other',
+}
+
+/** What a client payment was for. Kept short: no running-bill documents yet, just the reason. */
+export const CLIENT_RECEIPT_KINDS: Record<ClientReceiptKind, string> = {
+  advance: 'Advance (mobilization)',
+  running_bill: 'Running bill',
+  final: 'Final payment',
   other: 'Other',
 }
 

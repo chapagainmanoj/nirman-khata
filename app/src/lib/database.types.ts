@@ -25,14 +25,14 @@ export type Database = {
           Tables: {
             "attachments": {
                   Row: {
-                    "bill_id": string | null,"budget_revision_id": string | null,"charge_id": string | null,"company_id": string,"content_type": string | null,"contract_revision_id": string | null,"created_at": string,"created_by": string | null,"daily_report_id": string | null,"delivery_id": string | null,"expense_id": string | null,"file_name": string | null,"id": string,"kind": string,"labour_cost_id": string | null,"payment_id": string | null,"progress_update_id": string | null,"removed_at": string | null,"size_bytes": number | null,"updated_at": string,"uploaded_at": string | null,"work_package_id": string | null
+                    "bill_id": string | null,"budget_revision_id": string | null,"charge_id": string | null,"client_receipt_id": string | null,"company_id": string,"content_type": string | null,"contract_revision_id": string | null,"created_at": string,"created_by": string | null,"daily_report_id": string | null,"delivery_id": string | null,"expense_id": string | null,"file_name": string | null,"id": string,"kind": string,"labour_cost_id": string | null,"payment_id": string | null,"progress_update_id": string | null,"removed_at": string | null,"size_bytes": number | null,"updated_at": string,"uploaded_at": string | null,"work_package_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"company_id": string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"daily_report_id"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"progress_update_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
+                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"client_receipt_id"?: string | null,"company_id": string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"daily_report_id"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"progress_update_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
                   }
                   Update: {
-                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"company_id"?: string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"daily_report_id"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"progress_update_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
+                    "bill_id"?: string | null,"budget_revision_id"?: string | null,"charge_id"?: string | null,"client_receipt_id"?: string | null,"company_id"?: string,"content_type"?: string | null,"contract_revision_id"?: string | null,"created_at"?: string,"created_by"?: string | null,"daily_report_id"?: string | null,"delivery_id"?: string | null,"expense_id"?: string | null,"file_name"?: string | null,"id"?: string,"kind"?: string,"labour_cost_id"?: string | null,"payment_id"?: string | null,"progress_update_id"?: string | null,"removed_at"?: string | null,"size_bytes"?: number | null,"updated_at"?: string,"uploaded_at"?: string | null,"work_package_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -64,6 +64,12 @@ isOneToOne: false
       columns: ["company_id","charge_id"]
 isOneToOne: false
       referencedRelation: "subcontract_charges"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attachments_company_id_client_receipt_id_fkey"
+      columns: ["company_id","client_receipt_id"]
+isOneToOne: false
+      referencedRelation: "client_receipts"
       referencedColumns: ["company_id","id"]
     },{
       foreignKeyName: "attachments_company_id_contract_revision_id_fkey"
@@ -349,6 +355,58 @@ isOneToOne: false
       referencedColumns: ["id"]
     },{
       foreignKeyName: "budget_revisions_company_id_project_id_fkey"
+      columns: ["company_id","project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"client_receipt_reversals": {
+                  Row: {
+                    "company_id": string,"created_at": string,"created_by": string | null,"id": string,"posted_at": string,"reason": string,"receipt_id": string,"reversal_date": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "company_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"posted_at"?: string,"reason": string,"receipt_id": string,"reversal_date": string
+                  }
+                  Update: {
+                    "company_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"posted_at"?: string,"reason"?: string,"receipt_id"?: string,"reversal_date"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "client_receipt_reversals_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "client_receipt_reversals_company_id_receipt_id_fkey"
+      columns: ["company_id","receipt_id"]
+isOneToOne: true
+      referencedRelation: "client_receipts"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"client_receipts": {
+                  Row: {
+                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"id": string,"kind": Database["public"]['Enums']["client_receipt_kind"],"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"posted_at": string,"project_id": string,"receipt_date": string,"reference": string | null,"status": Database["public"]['Enums']["doc_status"],"updated_at": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["client_receipt_kind"],"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"posted_at"?: string,"project_id": string,"receipt_date": string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string
+                  }
+                  Update: {
+                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"kind"?: Database["public"]['Enums']["client_receipt_kind"],"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"posted_at"?: string,"project_id"?: string,"receipt_date"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "client_receipts_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "client_receipts_company_id_project_id_fkey"
       columns: ["company_id","project_id"]
 isOneToOne: false
       referencedRelation: "projects"
@@ -2502,11 +2560,14 @@ isOneToOne: false
                            },
 "calendar_events":
 { Args: { "p_company": string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
-              "at": string,"cash_paisa": number,"cost_paisa": number,"created_by": string,"detail": string,"event_date": string,"kind": string,"label": string,"link_id": string,"link_kind": string,"money": string,"party_name": string,"project_id": string
+              "at": string,"cash_paisa": number,"cost_paisa": number,"created_by": string,"detail": string,"event_date": string,"kind": string,"label": string,"link_id": string,"link_kind": string,"money": string,"party_name": string,"project_id": string,"received_paisa": number
             }[]
                            },
 "cancel_slip":
 { Args: { "p_reason": string,"p_slip": string }; Returns: undefined
+                           },
+"client_received_as_of":
+{ Args: { "p_as_of": string,"p_project": string }; Returns: number
                            },
 "close_slip_short":
 { Args: { "p_reason": string,"p_slip": string }; Returns: undefined
@@ -2598,6 +2659,9 @@ isOneToOne: false
 "promote_payee":
 { Args: { "p_payee": string }; Returns: string
                            },
+"record_client_receipt":
+{ Args: { "p_op_key": string,"p_receipt": Json }; Returns: Json
+                           },
 "record_delivery":
 { Args: { "p_delivery": Json }; Returns: string
                            },
@@ -2666,6 +2730,9 @@ isOneToOne: false
                            },
 "reverse_bill":
 { Args: { "p_bill": string,"p_date": string,"p_op_key": string,"p_reason": string }; Returns: Json
+                           },
+"reverse_client_receipt":
+{ Args: { "p_date": string,"p_op_key": string,"p_reason": string,"p_receipt": string }; Returns: Json
                            },
 "reverse_cost_entry":
 { Args: { "p_date": string,"p_doc": string,"p_op_key": string,"p_reason": string }; Returns: Json
@@ -2746,7 +2813,7 @@ isOneToOne: false
                            }
           }
           Enums: {
-            "app_role": "admin"|"project_manager"|"site_staff"|"accounts"|"viewer","bill_charge": "discount"|"transport"|"vat","bill_line_type": "material"|"charge","bill_status": "draft"|"under_review"|"posted"|"reversed","charge_status": "draft"|"approved"|"rejected"|"reversed","date_display": "bs"|"ad","delivery_issue": "shortage"|"damage"|"rejected"|"spec_difference"|"other","doc_status": "posted"|"reversed","heading_kind": "materials"|"labour"|"subcontract"|"equipment"|"transport"|"site"|"other","package_status": "planned"|"in_progress"|"completed"|"cancelled","payment_method": "cash"|"bank_transfer"|"cheque"|"wallet"|"other","project_status": "planned"|"active"|"on_hold"|"completed"|"closed"|"cancelled","rate_basis": "lump_sum"|"rate","slip_status": "draft"|"pending"|"approved"|"rejected"|"cancelled","vat_treatment": "vat_as_cost"|"vat_recoverable"
+            "app_role": "admin"|"project_manager"|"site_staff"|"accounts"|"viewer","bill_charge": "discount"|"transport"|"vat","bill_line_type": "material"|"charge","bill_status": "draft"|"under_review"|"posted"|"reversed","charge_status": "draft"|"approved"|"rejected"|"reversed","client_receipt_kind": "advance"|"running_bill"|"final"|"other","date_display": "bs"|"ad","delivery_issue": "shortage"|"damage"|"rejected"|"spec_difference"|"other","doc_status": "posted"|"reversed","heading_kind": "materials"|"labour"|"subcontract"|"equipment"|"transport"|"site"|"other","package_status": "planned"|"in_progress"|"completed"|"cancelled","payment_method": "cash"|"bank_transfer"|"cheque"|"wallet"|"other","project_status": "planned"|"active"|"on_hold"|"completed"|"closed"|"cancelled","rate_basis": "lump_sum"|"rate","slip_status": "draft"|"pending"|"approved"|"rejected"|"cancelled","vat_treatment": "vat_as_cost"|"vat_recoverable"
           }
           CompositeTypes: {
             [_ in never]: never
@@ -2866,7 +2933,7 @@ export const Constants = {
           }
         },"public": {
           Enums: {
-            "app_role": ["admin", "project_manager", "site_staff", "accounts", "viewer"],"bill_charge": ["discount", "transport", "vat"],"bill_line_type": ["material", "charge"],"bill_status": ["draft", "under_review", "posted", "reversed"],"charge_status": ["draft", "approved", "rejected", "reversed"],"date_display": ["bs", "ad"],"delivery_issue": ["shortage", "damage", "rejected", "spec_difference", "other"],"doc_status": ["posted", "reversed"],"heading_kind": ["materials", "labour", "subcontract", "equipment", "transport", "site", "other"],"package_status": ["planned", "in_progress", "completed", "cancelled"],"payment_method": ["cash", "bank_transfer", "cheque", "wallet", "other"],"project_status": ["planned", "active", "on_hold", "completed", "closed", "cancelled"],"rate_basis": ["lump_sum", "rate"],"slip_status": ["draft", "pending", "approved", "rejected", "cancelled"],"vat_treatment": ["vat_as_cost", "vat_recoverable"]
+            "app_role": ["admin", "project_manager", "site_staff", "accounts", "viewer"],"bill_charge": ["discount", "transport", "vat"],"bill_line_type": ["material", "charge"],"bill_status": ["draft", "under_review", "posted", "reversed"],"charge_status": ["draft", "approved", "rejected", "reversed"],"client_receipt_kind": ["advance", "running_bill", "final", "other"],"date_display": ["bs", "ad"],"delivery_issue": ["shortage", "damage", "rejected", "spec_difference", "other"],"doc_status": ["posted", "reversed"],"heading_kind": ["materials", "labour", "subcontract", "equipment", "transport", "site", "other"],"package_status": ["planned", "in_progress", "completed", "cancelled"],"payment_method": ["cash", "bank_transfer", "cheque", "wallet", "other"],"project_status": ["planned", "active", "on_hold", "completed", "closed", "cancelled"],"rate_basis": ["lump_sum", "rate"],"slip_status": ["draft", "pending", "approved", "rejected", "cancelled"],"vat_treatment": ["vat_as_cost", "vat_recoverable"]
           }
         }
 } as const

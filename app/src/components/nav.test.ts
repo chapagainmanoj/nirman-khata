@@ -68,14 +68,14 @@ describe('recordActionsFor', () => {
   it('gives viewers nothing to record', () => {
     expect(recordActionsFor(viewer)).toEqual([])
   })
-  it('puts the daily report first for site staff, with a bill photo and no payment', () => {
+  it('puts the daily report first for site staff, with a bill photo and no payments in or out', () => {
     const a = recordActionsFor(site)
     expect(a.map((x) => x.key)).toEqual(['report', 'delivery', 'bill', 'slip', 'labour', 'expense'])
     expect(a.find((x) => x.key === 'bill')?.label).toBe('record.billPhoto')
   })
   it('puts bills and payments first for Accounts, who type the bill', () => {
     const a = recordActionsFor(accounts)
-    expect(a.slice(0, 2).map((x) => x.key)).toEqual(['bill', 'payment'])
+    expect(a.slice(0, 3).map((x) => x.key)).toEqual(['bill', 'payment', 'receipt'])
     expect(a[0].label).toBe('record.bill')
   })
   it('hides labour when the company does not track own labour', () => {

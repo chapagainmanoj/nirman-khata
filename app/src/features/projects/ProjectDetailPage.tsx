@@ -1,36 +1,46 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
-import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Field, Notice, PageHeader, Select, Spinner } from '../../components/ui'
-import { formatDate, todayKathmandu } from '../../lib/dates'
+import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Field, PageHeader, Select, Spinner } from '../../components/ui'
+import { addDays, formatDate, relativeDay, todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { focusFirstError } from '../../lib/forms'
 import { t } from '../../lib/i18n'
 import { FULFILMENT, ROLE_LABELS, STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
-import { formatNPR, percent } from '../../lib/money'
-import { supabase, type ProjectStatus, type Tables } from '../../lib/supabase'
+import { formatNPR } from '../../lib/money'
+import { supabase, type Tables } from '../../lib/supabase'
 import { ExpenseSection, LabourSection, SubcontractSection } from '../costs/CostLists'
 import { DeliveryList } from '../supply/DeliveryList'
 import { useDeliveries, useDeliveryLineStatus, useOpenSlips, useProjectCost } from '../supply/api'
+import { ClientTab } from '../clients/ClientTab'
+import { useClientReceived } from '../clients/api'
+import { useCalendarEvents } from '../site/api'
+import { eventHref } from '../calendar/events'
 import { BalanceText, Tabs } from '../parties/PartyParts'
-import { canEnter } from '../supply/permissions'
-import { memberName, useAmountsAsOf, useAssignments, useHeadings, useMembers, useProject, type Member } from './api'
+import { canEnter, canPost } from '../supply/permissions'
+import { memberName, useAmountsAsOf, useAssignments, useMembers, useProject, type Member } from './api'
 import { ProjectDetailsFields } from './ProjectDetailsFields'
 import { detailsSchema, detailsToRow, type DetailsValues } from './projectDetails'
 import { RevisionsCard } from './RevisionsCard'
 import { SiteSection } from '../site/SiteSection'
-import { useProgress } from '../site/api'
 import { useProjectDashboard } from '../dashboard/api'
-import { Completeness, HeadingTable, SourceList } from '../dashboard/parts'
+import { HeadingTable, SourceList, UsedBars, type ProjectFigures } from '../dashboard/parts'
 import { ChevronDownIcon } from '../../components/icons'
 
-type Tab = 'overview' | 'site' | 'deliveries' | 'subcontract' | 'labour' | 'history'
+const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
+/** Rows per Activity list on the overview before "N more". */
+const ACTIVITY_ROWS = 3
+/** How far back "Recent" looks. */
+const RECENT_DAYS = 30
 
-// Summary first, then today's work, then money detail, then setup (details, staff), then history.
+type Tab = 'overview' | 'site' | 'deliveries' | 'subcontract' | 'labour' | 'client' | 'history' | 'details'
+
+// Money first (spent, left of the budget), then contract and budget with where the money went,
+// then today's work. Setup (details, staff) is rarely needed once a project runs, so it has its own tab.
 // The long lists (site, deliveries, subcontract, labour) each get a tab so the page stays short.
 export function ProjectDetailPage() {
   const { projectId = '' } = useParams()
@@ -51,8 +61,10 @@ export function ProjectDetailPage() {
   const tabs: Array<[Tab, string]> = [
     ['overview', 'Overview'], ['site', 'Site'], ['deliveries', 'Deliveries'], ['subcontract', 'Subcontract'],
     ['labour', labourOn ? 'Labour & costs' : 'Other costs'],
-    ...(auth.canSeeFinance ? [['history', 'History'] as [Tab, string]] : []),
+    ...(auth.canSeeFinance ? [['client', 'Client'], ['history', 'History']] as [Tab, string][] : []),
+    ['details', 'Details'],
   ]
+  const showDeliveries = () => setParams({ tab: 'deliveries' }, { replace: true })
 
   return (
     <>
@@ -68,22 +80,18 @@ export function ProjectDetailPage() {
           </div>
         }
       />
-      <ScheduleWarnings project={p} />
       {auth.canSeeFinance && <SummaryStrip projectId={p.id} />}
-      <ProjectCompleteness projectId={p.id} status={p.status} />
       <Tabs tabs={tabs} value={tab} label="Project sections"
         onChange={(next) => setParams(next === 'overview' ? {} : { tab: next }, { replace: true })}>
         {tab === 'overview' && (
           <>
-            <Activity projectId={p.id} onShowDeliveries={() => setParams({ tab: 'deliveries' }, { replace: true })} />
-            {auth.canSeeFinance && <CostBreakdown projectId={p.id} />}
-            <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-              {auth.canSeeFinance && <AmountsCard projectId={p.id} status={p.status} />}
-              <div className="flex flex-col gap-4">
-                <DetailsCard project={p} members={members.data ?? []} canEdit={canEdit} />
-                <TeamCard projectId={p.id} members={members.data ?? []} />
+            <Activity project={p} canEdit={canEdit} onShowDeliveries={showDeliveries} />
+            {auth.canSeeFinance && (
+              <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+                <AmountsCard projectId={p.id} status={p.status} />
+                <CostBreakdown projectId={p.id} />
               </div>
-            </div>
+            )}
           </>
         )}
         {tab === 'site' && <SiteSection projectId={p.id} />}
@@ -103,17 +111,17 @@ export function ProjectDetailPage() {
             <ExpenseSection projectId={p.id} />
           </>
         )}
+        {tab === 'client' && auth.canSeeFinance && <ClientTab projectId={p.id} clientName={p.client_name} />}
         {tab === 'history' && auth.canSeeFinance && <RevisionsCard projectId={p.id} members={members.data ?? []} />}
+        {tab === 'details' && (
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <DetailsCard project={p} members={members.data ?? []} canEdit={canEdit} />
+            <TeamCard projectId={p.id} members={members.data ?? []} />
+          </div>
+        )}
       </Tabs>
     </>
   )
-}
-
-/** What recorded cost leaves out yet (req §18.2 completeness banner), next to the summary. */
-function ProjectCompleteness({ projectId, status }: { projectId: string; status: ProjectStatus }) {
-  const dash = useProjectDashboard(projectId)
-  if (!dash.data) return null
-  return <div className="mt-2"><Completeness figures={dash.data} status={status} compact /></div>
 }
 
 /** Cost by heading against the heading budget, and by source (req §18.2). */
@@ -123,9 +131,9 @@ function CostBreakdown({ projectId }: { projectId: string }) {
   const d = dash.data
   if (!d || !d.money_visible) return null
   return (
-    <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
+    <div className="flex flex-col gap-4">
       <Card title="Cost by heading"><HeadingTable figures={d} projectId={projectId} /></Card>
-      <Card title="Where the cost came from">
+      <Card title="Where the money went">
         <SourceList figures={d} />
         {!!d.advances_paisa && <p className="mt-2 text-sm text-subtle">Paid in advance, not yet used: <span className="font-semibold text-ink">{formatNPR(d.advances_paisa)}</span></p>}
         <p className="mt-2 text-sm text-subtle">
@@ -136,144 +144,212 @@ function CostBreakdown({ projectId }: { projectId: string }) {
   )
 }
 
-/** Overdue completion, or deliveries arriving while the actual start is still blank. */
-function ScheduleWarnings({ project: p }: { project: Tables<'projects'> }) {
-  const deliveries = useDeliveries({ projectId: p.id })
-  const today = todayKathmandu()
-  const open = p.status !== 'completed' && p.status !== 'closed'
-  const lateDays = open && p.planned_end && p.planned_end < today
-    ? Math.round((Date.parse(today) - Date.parse(p.planned_end)) / 86_400_000) : 0
-  const startedUnmarked = open && !p.actual_start && (deliveries.data?.length ?? 0) > 0
-  if (!lateDays && !startedUnmarked) return null
-  return (
-    <div className="mb-4 flex flex-col gap-2">
-      {lateDays > 0 && <Notice>Planned completion was {lateDays} {lateDays === 1 ? 'day' : 'days'} ago. Update the plan or mark it completed (Edit details).</Notice>}
-      {startedUnmarked && <Notice>Deliveries are arriving but the actual start date is blank. Set it under Details.</Notice>}
-    </div>
-  )
-}
-
-/** Headline figures: cost against budget, what is paid and owed, contract and margin. */
+/**
+ * The two numbers a contractor looks for: what is spent (paid and still due) and what is left of
+ * the spending budget. "Spent" counts entered bills and costs whether paid or not; what is not in
+ * it yet (delivered but not billed, bills not posted) is listed under it with an estimate, never
+ * added in, so the figure stays exact (req §19).
+ */
 function SummaryStrip({ projectId }: { projectId: string }) {
-  const today = todayKathmandu()
-  const amounts = useAmountsAsOf(projectId, today, true)
-  const cost = useProjectCost(projectId, today, true)
-  const progress = useProgress(projectId)
-  const done = progress.data?.find((r) => r.stage_id === null)?.pct ?? null
-  const a = amounts.data
-  const c = cost.data
-  if (!a || !c) return null
-  const budget = a.budget_paisa ?? null
-  const used = budget ? Math.min(100, (c.cost_paisa / budget) * 100) : 0
-  const over = budget !== null && c.cost_paisa > budget
+  const dash = useProjectDashboard(projectId)
+  const f = dash.data
+  if (!f || !f.money_visible) return null
+  const spent = Number(f.cost_paisa ?? 0)
+  const budget = f.budget_paisa || null
+  const left = budget === null ? null : budget - spent
   return (
-    <section aria-label="Summary" className="grid gap-3 rounded-xl border border-line bg-surface p-4 sm:grid-cols-2 lg:grid-cols-4">
-      <div className="sm:col-span-1">
-        <div className="text-xs font-medium text-subtle">Recorded cost</div>
-        <div className="text-2xl font-semibold text-ink tabular-nums">{formatNPR(c.cost_paisa)}</div>
-        {budget !== null && (
-          <>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Budget used"
-              aria-valuenow={Math.round(used)} aria-valuemin={0} aria-valuemax={100}>
-              <div className={`h-full rounded-full ${over ? 'bg-danger' : 'bg-bar'}`} style={{ width: `${used}%` }} />
-            </div>
-            <div className={`mt-1 text-xs ${over ? 'font-medium text-danger' : 'text-subtle'}`}>
-              {percent(c.cost_paisa, budget)} of {formatNPR(budget)} budget{over && ' (over budget)'}
-            </div>
-          </>
-        )}
+    <section aria-label="Summary" className="rounded-xl border border-line bg-surface p-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <div className="text-sm font-medium text-subtle">Spent</div>
+          <div className="text-3xl font-semibold text-ink tabular-nums">{formatNPR(spent)}</div>
+          <div className="mt-1 text-sm text-subtle">
+            Paid <span className="font-semibold text-ink tabular-nums">{formatNPR(f.cash_paid_paisa)}</span>
+            {' · '}Due <span className="font-semibold text-ink tabular-nums">{formatNPR(f.payable_paisa)}</span>
+          </div>
+        </div>
+        <div>
+          <div className={`text-sm font-medium ${left !== null && left < 0 ? 'text-danger' : 'text-subtle'}`}>
+            {left !== null && left < 0 ? 'Over budget by' : 'Left'}
+          </div>
+          <div className={`text-3xl font-semibold tabular-nums ${left !== null && left < 0 ? 'text-danger' : 'text-ink'}`}>
+            {left === null ? t('common.notAvailable') : formatNPR(Math.abs(left))}
+          </div>
+          <div className="mt-1 text-sm text-subtle">
+            {budget === null ? 'No spending budget set' : <>of <span className="font-semibold text-ink tabular-nums">{formatNPR(budget)}</span> budget</>}
+          </div>
+        </div>
       </div>
       {/* Work done is entered on site, not worked out from cost (acceptance #10). */}
-      <div>
-        <div className="text-xs font-medium text-subtle">Work done</div>
-        {done === null
-          ? <Link to="?tab=site" className="mt-1 inline-flex min-h-11 items-center font-medium text-brand hover:underline">Set progress <span aria-hidden>&nbsp;→</span></Link>
-          : <div className="text-2xl font-semibold text-ink tabular-nums">{`${Number(done)}%`}</div>}
-        {done !== null && (
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Work done"
-            aria-valuenow={Number(done)} aria-valuemin={0} aria-valuemax={100}>
-            <div className="h-full rounded-full bg-bar" style={{ width: `${Number(done)}%` }} />
-          </div>
-        )}
-        <div className="mt-1 text-xs text-subtle">Overall progress from site updates</div>
-      </div>
-      <div>
-        <div className="text-xs font-medium text-subtle">Paid</div>
-        <div className="text-2xl font-semibold text-ink tabular-nums">{formatNPR(c.cash_paid_paisa)}</div>
-        <div className="mt-1 text-xs text-subtle">Still owed <span className="font-semibold text-ink">{formatNPR(c.payable_paisa)}</span></div>
-      </div>
-      <div>
-        <div className="text-xs font-medium text-subtle">Contract</div>
-        <div className="text-2xl font-semibold text-ink tabular-nums">{formatNPR(a.contract_paisa)}</div>
-        <div className="mt-1 text-xs text-subtle">Planned margin <span className="font-semibold text-ink">{formatNPR(a.planned_margin_paisa)}</span></div>
-      </div>
+      <UsedBars figures={f} setProgress="?tab=site" />
+      <NotSpentYet figures={f} />
     </section>
   )
 }
 
-/** What needs doing: slips waiting for delivery, deliveries not billed, latest arrivals. */
-function Activity({ projectId, onShowDeliveries }: { projectId: string; onShowDeliveries: () => void }) {
-  const auth = useCompany()
-  const slips = useOpenSlips({ companyId: auth.companyId, projectId })
-  const deliveries = useDeliveries({ projectId })
-  const unbilled = useDeliveryLineStatus({ projectId, billableOnly: true })
-  const waiting = slips.data ?? []
-  const recent = deliveries.data?.slice(0, 3) ?? []
-  const unbilledCount = unbilled.data?.length ?? 0
-  if (slips.isPending || deliveries.isPending) return <Spinner />
-  if (!waiting.length && !recent.length && !unbilledCount) {
-    return <p className="text-sm text-subtle">No slips or deliveries yet. Start with a new slip for the materials this site needs.</p>
+/** Costs on their way that "Spent" does not count yet. What to do about them is in Activity. */
+function NotSpentYet({ figures: f }: { figures: ProjectFigures }) {
+  const items: string[] = []
+  if (f.unbilled_lines > 0) {
+    const what = `${f.unbilled_lines} delivered item${f.unbilled_lines === 1 ? '' : 's'} with no bill yet`
+    items.push(f.unbilled_estimate_paisa
+      ? `about ${formatNPR(f.unbilled_estimate_paisa)} for ${what}${f.unbilled_without_rate ? ' (some have no rate yet)' : ''}`
+      : what)
   }
+  if (f.draft_bills) {
+    items.push(`${f.draft_bills_paisa ? `${formatNPR(f.draft_bills_paisa)} in ` : ''}${f.draft_bills} bill${f.draft_bills === 1 ? '' : 's'} not posted`)
+  }
+  if (!items.length) return null
+  return <p className="mt-3 border-t border-line pt-2 text-sm text-subtle">Not in spent yet: {items.join(' · ')}</p>
+}
+
+/** A thing waiting on someone, with where to do it. */
+type ToDo = { key: string; title: string; detail?: string; to?: string; onClick?: () => void }
+
+/** How the Recent list names money: what it did to the project. */
+const RECENT_MONEY: Record<string, string> = { cost: 'Cost', payment: 'Paid', advance: 'Advance', refund: 'Refund', received: 'Received' }
+/** Routine steps that the calendar keeps but Recent leaves out. */
+const RECENT_SKIP = new Set(['slip_sent'])
+
+/**
+ * What needs doing on this project, each with a link to do it, next to what happened lately
+ * (the newest calendar events of any kind). People only see the to-dos they may act on.
+ */
+function Activity({ project: p, canEdit, onShowDeliveries }: { project: Tables<'projects'>; canEdit: boolean; onShowDeliveries: () => void }) {
+  const auth = useCompany()
+  const today = todayKathmandu()
+  const slips = useOpenSlips({ companyId: auth.companyId, projectId: p.id })
+  const deliveries = useDeliveries({ projectId: p.id })
+  const unbilled = useDeliveryLineStatus({ projectId: p.id, billableOnly: true })
+  const dash = useProjectDashboard(p.id)
+  const events = useCalendarEvents(auth.companyId, addDays(today, -RECENT_DAYS), today, p.id)
+  if (slips.isPending || events.isPending) return <Spinner />
+
+  const f = dash.data
+  const open = p.status !== 'completed' && p.status !== 'closed' && p.status !== 'cancelled'
+  const waiting = slips.data ?? []
+  const unbilledCount = unbilled.data?.length ?? 0
+  const lateDays = open && p.planned_end && p.planned_end < today
+    ? Math.round((Date.parse(today) - Date.parse(p.planned_end)) / 86_400_000) : 0
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+
+  const todo: ToDo[] = []
+  for (const s of waiting.slice(0, ACTIVITY_ROWS)) {
+    const what = `${s.number} · ${s.suppliers?.name ?? ''} · ${FULFILMENT[s.fulfilment][0]}`
+    todo.push(canEnter(auth)
+      ? { key: `slip-${s.id}`, title: 'Record delivery', detail: what, to: `/deliveries/new?slip=${s.id}&project=${p.id}` }
+      : { key: `slip-${s.id}`, title: 'Waiting for delivery', detail: what, to: `/slips/${s.id}` })
+  }
+  if (waiting.length > ACTIVITY_ROWS) {
+    todo.push({ key: 'more-slips', title: `${plural(waiting.length - ACTIVITY_ROWS, 'more slip')} waiting`, to: '/slips' })
+  }
+  if (unbilledCount > 0 && canEnter(auth)) {
+    const estimate = f?.money_visible && f.unbilled_estimate_paisa ? ` · about ${formatNPR(f.unbilled_estimate_paisa)}` : ''
+    todo.push({ key: 'unbilled', title: 'Enter bills', detail: `${plural(unbilledCount, 'delivered item')}${estimate}`, onClick: onShowDeliveries })
+  }
+  if (f?.draft_bills && canPost(auth)) {
+    todo.push({ key: 'drafts', title: 'Post bills', detail: `${plural(f.draft_bills, 'bill')} not posted${f.draft_bills_paisa ? ` · ${formatNPR(f.draft_bills_paisa)}` : ''}`, to: '/bills' })
+  }
+  if (canEdit && open && !p.actual_start && (deliveries.data?.length ?? 0) > 0) {
+    todo.push({ key: 'start', title: 'Set actual start date', detail: 'deliveries are arriving', to: '?tab=details&edit=actual_start' })
+  }
+  if (canEdit && lateDays > 0) {
+    todo.push({ key: 'late', title: 'Update planned completion', detail: `passed ${plural(lateDays, 'day')} ago`, to: '?tab=details&edit=planned_end' })
+  }
+  if (canEnter(auth) && p.status === 'active' && f && (f.days_since_report === null || f.days_since_report > 2)) {
+    todo.push({ key: 'report', title: 'Send daily report', detail: f.days_since_report === null ? 'none yet' : `last one ${plural(f.days_since_report, 'day')} ago`, to: `/daily/new?project=${p.id}` })
+  }
+
+  const recent = (events.data ?? [])
+    .filter((e) => !RECENT_SKIP.has(e.kind))
+    .sort((a, b) => b.event_date.localeCompare(a.event_date) || (b.at ?? '').localeCompare(a.at ?? ''))
+    .slice(0, ACTIVITY_ROWS + 2)
+  if (!todo.length && !recent.length) {
+    return <p className="text-sm text-subtle">Nothing waiting, and nothing recorded in the last {RECENT_DAYS} days.</p>
+  }
+  const row = 'flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm hover:bg-muted'
   return (
-    <Card title="Activity">
-      {waiting.length > 0 && (
-        <>
-          <h3 className="text-sm font-medium text-subtle">Waiting for delivery</h3>
-          <ul className="mb-3">
-            {waiting.map((s) => (
-              <li key={s.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-line py-2 last:border-0">
-                <Link to={`/slips/${s.id}`} className="min-w-0 text-sm hover:underline">
-                  <span className="font-medium text-ink">{s.number}</span> · {s.suppliers?.name}{' '}
-                  <Badge tone={FULFILMENT[s.fulfilment][1]}>{FULFILMENT[s.fulfilment][0]}</Badge>
-                </Link>
-                {canEnter(auth) && <ButtonLink variant="secondary" to={`/deliveries/new?slip=${s.id}&project=${projectId}`}>Record delivery</ButtonLink>}
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-      {unbilledCount > 0 && (
-        <div className="mb-3">
-          <Notice>
-            {unbilledCount} delivered item(s) are not billed yet, so cost is not complete.{' '}
-            <button type="button" className="font-semibold underline underline-offset-4" onClick={onShowDeliveries}>Enter their bills</button>
-          </Notice>
-        </div>
-      )}
-      {recent.length > 0 && (
-        <>
-          <h3 className="text-sm font-medium text-subtle">Latest deliveries</h3>
-          <ul>
-            {recent.map((d) => (
-              <li key={d.id} className="flex justify-between gap-2 border-b border-line py-2 text-sm last:border-0">
-                <span className="min-w-0 break-words">
-                  {d.suppliers?.name} · {d.delivery_lines.map((l) => l.materials?.name ?? l.material_text).join(', ')}
-                </span>
-                <span className="shrink-0 text-subtle"><DateText value={d.receipt_date} display={auth.dateDisplay} /></span>
-              </li>
-            ))}
-          </ul>
-          <Button variant="ghost" className="mt-1" onClick={onShowDeliveries}>All deliveries</Button>
-        </>
-      )}
+    <Card title="Activity" actions={<ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>See all</ButtonLink>}>
+      <div className={cx('grid grid-cols-1 gap-x-8 gap-y-3', todo.length > 0 && recent.length > 0 && 'lg:grid-cols-2')}>
+        {todo.length > 0 && (
+          <section className="min-w-0">
+            <h3 className="text-xs font-medium text-subtle">To do · {todo.length}</h3>
+            <ul>
+              {todo.map((d) => {
+                const body = (
+                  <>
+                    <span className="min-w-0 truncate">
+                      <span className="font-medium text-ink">{d.title}</span>
+                      {d.detail && <span className="text-subtle"> · {d.detail}</span>}
+                    </span>
+                    <span aria-hidden className="shrink-0 text-brand">→</span>
+                  </>
+                )
+                return (
+                  <li key={d.key} className="border-b border-line last:border-0">
+                    {d.to
+                      ? <Link to={d.to} title={d.detail} className={row}>{body}</Link>
+                      : <button type="button" title={d.detail} onClick={d.onClick} className={row}>{body}</button>}
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
+        {recent.length > 0 && (
+          <section className="min-w-0">
+            <h3 className="text-xs font-medium text-subtle">Recent</h3>
+            <ul>
+              {recent.map((e, i) => {
+                const to = eventHref(e)
+                // Amounts come back only for people who may see money.
+                const amount = e.cost_paisa || e.cash_paisa || e.received_paisa
+                const tag = e.money ? RECENT_MONEY[e.money] : null
+                // Who it was with and the full date go in the hover text, so the row never cuts them off.
+                const more = [e.party_name, e.detail, formatDate(e.event_date, auth.dateDisplay)].filter(Boolean).join(' · ')
+                const body = (
+                  <>
+                    <span className="min-w-0 truncate text-ink">{e.label}</span>
+                    <span className="shrink-0 text-subtle tabular-nums">
+                      {amount ? <>{tag && `${tag} `}<span className="font-medium text-ink">{formatNPR(Math.abs(amount))}</span> · </> : null}
+                      {relativeDay(e.event_date, today)}
+                    </span>
+                  </>
+                )
+                return (
+                  <li key={`${e.kind}-${e.link_id}-${i}`} className="border-b border-line last:border-0">
+                    {to ? <Link to={to} title={more} className={row}>{body}</Link> : <div title={more} className={row}>{body}</div>}
+                  </li>
+                )
+              })}
+            </ul>
+          </section>
+        )}
+      </div>
     </Card>
   )
 }
 
+/** Fields a to-do may open the details form at. */
+const EDIT_FIELDS = ['actual_start', 'planned_end'] as const
+
 function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projects'>; members: Member[]; canEdit: boolean }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
-  const [editing, setEditing] = useState(false)
+  const [params, setParams] = useSearchParams()
+  // A to-do opens the form at the field it is about: "?edit=actual_start".
+  const focusField = EDIT_FIELDS.find((f) => f === params.get('edit'))
+  const [editing, setEditingState] = useState(() => canEdit && !!focusField)
+  const setEditing = (on: boolean) => {
+    setEditingState(on)
+    if (!on && params.has('edit')) setParams({ tab: 'details' }, { replace: true })
+  }
+  useEffect(() => {
+    if (!editing || !focusField) return
+    const el = document.getElementById(focusField)
+    el?.scrollIntoView({ block: 'center' })
+    el?.focus({ preventScroll: true })
+  }, [editing, focusField])
   const form = useForm<DetailsValues>({
     resolver: zodResolver(detailsSchema),
     shouldFocusError: false,
@@ -340,16 +416,13 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
   const [picking, setPicking] = useState(false)
   const amounts = useAmountsAsOf(projectId, asOf, true)
   const cost = useProjectCost(projectId, asOf, true)
-  const headings = useHeadings(auth.companyId)
+  const received = useClientReceived(projectId, asOf, true)
   const a = amounts.data
   const c = cost.data
   const finished = status === 'completed' || status === 'closed'
-  const budget = a?.budget_paisa ?? null
-  const headingName = (id: string) => {
-    const h = headings.data?.find((x) => x.id === id)
-    const parent = headings.data?.find((x) => x.id === h?.parent_id)
-    return h ? (parent ? `${parent.name} › ${h.name}` : h.name) : 'Heading'
-  }
+  const budget = a?.budget_paisa || null
+  const left = budget === null || !c ? null : budget - c.cost_paisa
+  const changed = a && (a.contract_paisa !== a.original_contract_paisa || a.budget_paisa !== a.original_budget_paisa)
 
   return (
     <Card title={t('project.amounts')} actions={
@@ -370,31 +443,42 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
       </ErrorBanner>
       {amounts.data !== undefined && c && (
         <>
-          <Detail label="Current spending budget">{formatNPR(budget)}</Detail>
-          <Detail label="Recorded cost">{formatNPR(c.cost_paisa)}</Detail>
-          <Detail label="Budget used">{percent(c.cost_paisa, budget)}</Detail>
-          <Detail label="Budget remaining">{budget === null ? t('common.notAvailable') : formatNPR(budget - c.cost_paisa)}</Detail>
-          <Detail label="Cash paid">{formatNPR(c.cash_paid_paisa)}</Detail>
-          <Detail label="Still owed">{formatNPR(c.payable_paisa)}</Detail>
-          {/* Break it down only when more than one kind of party is owed; one kind would just repeat the total. */}
-          {OWED.filter(([k]) => c.payable_by_kind[k] !== 0).length > 1 && OWED.map(([k, label]) => c.payable_by_kind[k] !== 0 && (
-            <Detail key={k} label={`· ${label}`}><BalanceText paisa={c.payable_by_kind[k]} /></Detail>
-          ))}
-          <Detail label="Current contract">{formatNPR(a?.contract_paisa)}</Detail>
+          {/* The agreement first: what the client pays and what you plan to spend of it. */}
+          <Detail label="Contract">{formatNPR(a?.contract_paisa)}</Detail>
+          <Detail label="Spending budget">{budget === null ? t('common.notAvailable') : formatNPR(budget)}</Detail>
           <Detail label="Planned margin">{formatNPR(a?.planned_margin_paisa)}</Detail>
           {finished && a?.contract_paisa != null && (
             <Detail label={a.contract_paisa - c.cost_paisa >= 0 ? 'Final profit' : 'Final loss'}>
               {formatNPR(Math.abs(a.contract_paisa - c.cost_paisa))}
             </Detail>
           )}
-          {c.by_heading.length > 0 && (
-            <details className="mt-3 text-sm">
-              <summary className="min-h-11 cursor-pointer py-2 font-medium text-ink">Cost by heading</summary>
-              {c.by_heading.map((h) => <Detail key={h.heading_id} label={headingName(h.heading_id)}>{formatNPR(h.cost_paisa)}</Detail>)}
-            </details>
+          {received.data !== undefined && a?.contract_paisa != null && (
+            <>
+              <h3 className="mt-4 flex items-baseline justify-between gap-2 text-sm font-medium text-subtle">
+                From the client
+                <Link to="?tab=client" className="text-xs font-medium text-brand underline underline-offset-4">See receipts</Link>
+              </h3>
+              <Detail label="Received">{formatNPR(received.data)}</Detail>
+              <Detail label={a.contract_paisa - received.data < 0 ? 'Received more than contract by' : 'To collect'}>
+                {formatNPR(Math.abs(a.contract_paisa - received.data))}
+              </Detail>
+            </>
           )}
+          <h3 className="mt-4 text-sm font-medium text-subtle">Against the budget</h3>
+          <Detail label="Spent">{formatNPR(c.cost_paisa)}</Detail>
+          <Detail label={left !== null && left < 0 ? 'Over budget by' : 'Left'}>
+            {left === null ? t('common.notAvailable') : formatNPR(Math.abs(left))}
+          </Detail>
+          <Detail label="Paid">{formatNPR(c.cash_paid_paisa)}</Detail>
+          <Detail label="Due">{formatNPR(c.payable_paisa)}</Detail>
+          {/* Break it down only when more than one kind of party is owed; one kind would just repeat the total. */}
+          {OWED.filter(([k]) => c.payable_by_kind[k] !== 0).length > 1 && OWED.map(([k, label]) => c.payable_by_kind[k] !== 0 && (
+            <Detail key={k} label={`· ${label}`}><BalanceText paisa={c.payable_by_kind[k]} /></Detail>
+          ))}
           <p className="mt-3 text-xs text-subtle">
-            Original contract {formatNPR(a?.original_contract_paisa)}, original budget {formatNPR(a?.original_budget_paisa)}.
+            {changed
+              ? <>Started at contract {formatNPR(a?.original_contract_paisa)}, budget {formatNPR(a?.original_budget_paisa)}. <Link to="?tab=history" className="font-medium text-brand underline underline-offset-4">See changes</Link></>
+              : 'No changes to the contract or budget since the start.'}
             {!finished && ' Profit is shown only after the project is completed or closed.'}
           </p>
         </>

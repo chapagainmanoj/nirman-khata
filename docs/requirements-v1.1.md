@@ -483,7 +483,7 @@ Example day:
 - Physical progress vs budget used
 - Pending orders/deliveries, unbilled receipts
 - Recent activity, latest report date
-- **Data completeness banner** next to recorded cost: count and estimated value of unbilled deliveries, unposted draft bills, and days since the last daily report. Cost figures are labelled "recorded cost" never "total cost".
+- **Data completeness banner** next to recorded cost: count and estimated value of unbilled deliveries, unposted draft bills, and days since the last daily report. Cost figures are labelled "recorded cost" (on the project page, "Spent", with paid and due under it and "Left" of the spending budget beside it), never "total cost".
 
 ### 18.3 Reports
 1. Project cost summary
@@ -518,6 +518,8 @@ All reports: date filters, project/party filters, export to Excel and PDF/print,
 | Final result | Current contract amount - recorded cost, for Completed/Closed projects only |
 | Outstanding payable | Amount owed after payments and credits |
 | Advance | Payment or credit remaining against future charges |
+| Received from client | Client receipts dated on or before the as-of date, less those reversed by then. Never part of recorded cost or cash paid |
+| To collect | Current contract amount - received from client |
 
 **Controls**
 - Never add a bill and its payment together as cost.
@@ -712,7 +714,7 @@ All decisions below were confirmed by the product owner on 2026-10-09.
 | Notifications | In-app slip approval only in v1 | Confirmed |
 | Login and recovery | Password; admin creates staff and resets passwords; email self-reset where available; no SMS in v1 | Confirmed |
 | Site staff entering money without finance permission | Narrow own-entry access: own draft bill until submitted; own labour/expense entries for 7 days | Confirmed |
-| Client-receipt register | Not in v1; add if the pilot asks | Confirmed |
+| Client-receipt register | Yes: a receipt register (one amount per receipt); client billing stays Phase 3 | Confirmed (pilot asked) |
 | Staff salaries | Out of v1 (Phase 3) | Confirmed |
 | Supplier rate lists | Phase 2; v1 shows last billed rate as a hint | Confirmed |
 | Tenant pricing | Decide after the pilot; track usage per company | Confirmed |
@@ -761,7 +763,7 @@ The core loop: Project → Order slip → Delivery → Bill → Payment → Ledg
 
 No open questions. The original questions and their answers:
 
-1. Client-receipt register in v1? **No.** Add if pilot users need cash position; detailed client billing stays Phase 3.
+1. Client-receipt register in v1? **Yes, added for the pilot** as a receipt register: one amount per receipt (what the client settled, including any TDS or retention they kept), shown as Received and To collect on the project. Detailed client billing (IPC, TDS and retention split) stays Phase 3.
 2. Staff salaries: project cost or overhead? **Out of v1** (Phase 3).
 3. Default slip approver? **Project Manager or Admin.**
 4. PWA or native Android from day one? **Web app + light PWA, Capacitor later.**

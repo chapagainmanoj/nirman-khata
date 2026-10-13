@@ -109,7 +109,8 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   await expect(page.getByRole('progressbar', { name: 'Overall progress' })).toHaveAttribute('aria-valuenow', '40')
   const summary = page.getByRole('region', { name: 'Summary' })
   await expect(summary).toContainText('40%')
-  await expect(summary).toContainText('65% of Rs. 10,00,000 budget')
+  await expect(summary).toContainText('of Rs. 10,00,000 budget')
+  await expect(summary.getByRole('progressbar', { name: 'Budget used' })).toHaveAttribute('aria-valuenow', '65')
   await expect(page.getByRole('link', { name: /Footing concrete/ })).toBeVisible()
   await page.screenshot(shots('m4-03-site-tab'))
 

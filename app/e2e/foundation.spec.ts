@@ -53,8 +53,9 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
 
   await page.getByRole('button', { name: 'Create project' }).click()
   await expect(page.getByRole('heading', { name: 'Ward 5 school building' })).toBeVisible()
-  await expect(page.getByText('Current contract').locator('..')).toContainText('Rs. 50,00,000')
-  await expect(page.getByText('Current spending budget').locator('..')).toContainText('Rs. 40,00,000')
+  await expect(page.getByText('Contract', { exact: true }).locator('..')).toContainText('Rs. 50,00,000')
+  await expect(page.getByText('Spending budget', { exact: true }).locator('..')).toContainText('Rs. 40,00,000')
+  await page.getByRole('tab', { name: 'Details' }).click()
   await expect(page.getByText('Planned start').locator('..')).toContainText('1 Shrawan 2083')
   await page.screenshot(shots('03-project-detail'))
 

@@ -98,7 +98,7 @@ export function phoneBarFor(r: NavRole): NavKey[] {
   return ['projects', 'slips', 'deliveries']
 }
 
-export type RecordKey = 'report' | 'delivery' | 'bill' | 'slip' | 'labour' | 'expense' | 'payment'
+export type RecordKey = 'report' | 'delivery' | 'bill' | 'slip' | 'labour' | 'expense' | 'payment' | 'receipt'
 export type RecordAction = { key: RecordKey; path: string; label: MessageKey; hint: MessageKey }
 
 const RECORD: Record<RecordKey, RecordAction> = {
@@ -109,6 +109,7 @@ const RECORD: Record<RecordKey, RecordAction> = {
   labour: { key: 'labour', path: '/labour/new', label: 'record.labour', hint: 'record.labour.hint' },
   expense: { key: 'expense', path: '/expenses/new', label: 'record.expense', hint: 'record.expense.hint' },
   payment: { key: 'payment', path: '/payments/new', label: 'record.payment', hint: 'record.payment.hint' },
+  receipt: { key: 'receipt', path: '/receipts/new', label: 'record.receipt', hint: 'record.receipt.hint' },
 }
 
 /** "+ Record" actions in the order this person needs them. Viewers get none. */
@@ -116,10 +117,10 @@ export function recordActionsFor(r: NavRole): RecordAction[] {
   if (!canEnter(r)) return []
   // Site staff start the day's record with the daily report; the office with bills and payments.
   const order: RecordKey[] = r.seesAllProjects
-    ? ['bill', 'payment', 'delivery', 'report', 'slip', 'labour', 'expense']
-    : ['report', 'delivery', 'bill', 'slip', 'labour', 'expense', 'payment']
+    ? ['bill', 'payment', 'receipt', 'delivery', 'report', 'slip', 'labour', 'expense']
+    : ['report', 'delivery', 'bill', 'slip', 'labour', 'expense', 'payment', 'receipt']
   return order
-    .filter((k) => k !== 'payment' || r.canRecordPayments)
+    .filter((k) => (k !== 'payment' && k !== 'receipt') || r.canRecordPayments)
     .filter((k) => k !== 'labour' || r.labourEnabled)
     .map((k) => {
       const a = RECORD[k]

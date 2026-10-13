@@ -198,6 +198,7 @@ A trigger on every tenant table writes `audit_log`. Only admins can read it, thr
 | Subcontract | work_packages, work_package_terms, subcontract_charges |
 | Labour / expenses | labour_costs, labour_batches, expenses |
 | Payments | payments, payment_allocation_events, settlement_events, refunds |
+| Client money in | client_receipts, client_receipt_reversals (outside the ledger) |
 | Corrections | credits, credit_lines (with optional `supplier_return_line_id` + `credited_qty`), reversals |
 | Money core | **posting_events**, **ledger_entries**, **operations** |
 | Site | stages, progress_updates, daily_reports |
@@ -522,6 +523,22 @@ race in `concurrency.sh`, and `app/e2e/gaps.spec.ts`. Decisions made while build
 - The dev server ignores `app/e2e/` (Playwright traces made Vite reload pages mid-test).
 - Still open from the audit: backups and restore drill, change-history screen, typed-material
   cleanup, revision attachments, logo, renaming terms, super admin, agreed launch targets.
+
+Client receipts (requirements open question #1, asked for by the pilot) built: migration
+`20261021000100`, pgTAP `021`, and `app/e2e/client.spec.ts`. Decisions made while building it:
+- Money the client pays is kept **out of the ledger**. Every ledger row belongs to one party the
+  company pays, and its cash column means money out, so client money fits none of it. Receipts
+  never change cost, cash paid, party balances or the khata.
+- One amount per receipt: what the client settled, including any TDS or retention they kept back.
+  A split into deductions is left for companies with an accountant (product owner).
+- `record_client_receipt` (anyone with payment rights on the project; numbered CR-0001) and
+  `reverse_client_receipt` (Accounts/Admin, reason, own date, once). A posted receipt may change
+  only its status, so the reversal is its own row in `client_receipt_reversals`.
+- `client_received_as_of` runs with the caller's rights, so the "As of" card and the Client tab
+  follow the receipt read rule: everything for Admin/Accounts, otherwise finance on the project.
+- `calendar_events` gained a `received_paisa` column, so the calendar's Paid total is unchanged.
+- Shown in the Contract and budget card (Received, To collect) and a Client tab; not in the
+  top summary, which stays about spending (product owner).
 
 ---
 

@@ -3,7 +3,7 @@
 // Decorative by default (aria-hidden): the text next to an icon names the action.
 import {
   ArrowRight, Banknote, Bell, Building2, CalendarDays, Camera, ChartColumn, Check, ChevronDown, ChevronLeft, ChevronRight,
-  ClipboardList, Ellipsis, Handshake, HardHat, Info, LayoutDashboard, NotebookPen, Package, Plus, Receipt, Share2,
+  ClipboardList, Ellipsis, HandCoins, Handshake, HardHat, Info, LayoutDashboard, NotebookPen, Package, Plus, Receipt, Share2,
   SlidersHorizontal, Trash2, TriangleAlert, Truck, Users, Wallet, type LucideIcon, type LucideProps,
 } from 'lucide-react'
 
@@ -26,6 +26,7 @@ export const DeliveryIcon = icon(Truck, 'DeliveryIcon')
 export const ReportIcon = icon(ChartColumn, 'ReportIcon')
 export const BillIcon = icon(Receipt, 'BillIcon')
 export const PaymentIcon = icon(Banknote, 'PaymentIcon')
+export const ReceiptInIcon = icon(HandCoins, 'ReceiptInIcon')
 /** Suppliers, subcontractors, crews and payees: the people the company deals with. */
 export const PartiesIcon = icon(Handshake, 'PartiesIcon')
 export const StaffIcon = icon(Users, 'StaffIcon')

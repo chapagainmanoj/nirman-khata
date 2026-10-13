@@ -82,7 +82,9 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   // Bill from the delivery card on the project ("Enter bill for this"); only the rate is typed.
   await page.goto('/projects')
   await page.getByRole('link', { name: /Ward 5 school building/ }).click()
-  await page.getByRole('button', { name: 'Enter their bills' }).click()
+  // Delivered but not billed is listed under Spent, not added in.
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('1 delivered item with no bill yet')
+  await page.getByRole('button', { name: 'Enter bills' }).click()
   await page.getByRole('link', { name: 'Enter bill for this' }).click()
   await expect(page.getByLabel('Quantity')).toHaveValue('60')
   await page.getByLabel('Bill number').fill('1001')
@@ -138,11 +140,11 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.goto('/projects')
   await page.getByRole('link', { name: /Ward 5 school building/ }).click()
   // Summary strip and the contract and budget card show the same figure.
-  await expect(row(page, 'Recorded cost').first()).toContainText('Rs. 51,000')
-  await expect(row(page, 'Recorded cost').last()).toContainText('Rs. 51,000')
-  await expect(row(page, 'Cash paid')).toContainText('Rs. 51,000')
-  await expect(row(page, 'Still owed')).toContainText('Rs. 0')
-  await expect(row(page, 'Budget used')).toContainText('5.1%')
+  await expect(row(page, 'Spent').first()).toContainText('Rs. 51,000')
+  await expect(row(page, 'Spent').last()).toContainText('Rs. 51,000')
+  await expect(row(page, 'Paid').last()).toContainText('Rs. 51,000')
+  await expect(row(page, 'Due').last()).toContainText('Rs. 0')
+  await expect(page.getByRole('progressbar', { name: 'Budget used' })).toHaveAttribute('aria-valuenow', '5')
   await page.screenshot(shots('m2-08-project-cost'))
 
   // Supplier khata: bill then payment, settled
