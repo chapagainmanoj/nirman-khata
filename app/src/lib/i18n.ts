@@ -48,6 +48,8 @@ const en = {
   'record.slip.hint': 'Order materials from a supplier',
   'record.labour': 'Enter labour',
   'record.labour.hint': 'Daily wages or piece work',
+  'record.attendance': 'Attendance',
+  'record.attendance.hint': 'Each worker\'s in, out and hours',
   'record.expense': 'Enter other expense',
   'record.expense.hint': 'JCB hire, fuel, khaja, small purchases',
   'record.payment': 'Record payment',

@@ -102,10 +102,27 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByText('Unpaid', { exact: true })).toBeVisible()
   await page.screenshot(shots('m2-06-bill-posted'))
 
-  // Payment from the bill: the bill comes ticked and sets the amount. Peski is not offered while
-  // the bill is unpaid. Accounts unticks it and pays the 51,000 anyway: it is overpaid on the
+  // The supplier page answers what a contractor asks: what is unpaid (and pay it from there), what
+  // is still to come, and the supplier's latest rates. Nothing to match yet, so no Match card.
+  await page.getByRole('link', { name: 'Shrestha Suppliers' }).click()
+  await expect(page.getByRole('heading', { name: 'To pay' })).toBeVisible()
+  const unpaid = page.locator('section', { has: page.getByRole('heading', { name: 'Unpaid bills' }) })
+  await expect(unpaid).toContainText('Bill 1001')
+  await expect(unpaid).toContainText('Rs. 51,000')
+  const coming = page.locator('section', { has: page.getByRole('heading', { name: 'On the way and not billed' }) })
+  // 60 of the 100 bags came and are billed; the slip still waits for 40.
+  await expect(coming).toContainText('Ordered, still to come')
+  await expect(coming.getByRole('link', { name: /OS-0001/ })).toContainText('Part received')
+  const rates = page.locator('section', { has: page.getByRole('heading', { name: 'Their rates' }) })
+  await expect(rates).toContainText('Cement')
+  await expect(rates).toContainText('Rs. 850')
+  await expect(page.getByRole('heading', { name: 'Match payments to bills' })).toHaveCount(0)
+  await page.screenshot(shots('m2-06a-supplier'))
+
+  // Payment from the supplier page: the bill comes ticked and sets the amount. Peski is not offered
+  // while the bill is unpaid. Accounts unticks it and pays the 51,000 anyway: it is overpaid on the
   // project, to be matched to the bill afterwards.
-  await page.getByRole('link', { name: 'Pay this bill' }).click()
+  await unpaid.getByRole('link', { name: 'Pay bill 1001' }).click()
   await expect(page.getByLabel('Amount paid')).toHaveValue(/51,?000/)
   await expect(page.getByText('Which bills does it pay?')).toBeVisible()
   await expect(page.getByLabel('Bill 1001 · P-1')).toBeChecked()
@@ -121,13 +138,19 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByRole('heading', { name: /Payment PAY-0001/ })).toBeVisible()
   await expect(page.getByText('It counts as overpaid until it is.')).toBeVisible()
 
-  // Accounts matches it to the bill.
+  // Accounts matches it to the bill, in the Payments tab. Unpaid bills already counts the payment
+  // against the bill, so it agrees with "To pay".
   await page.getByRole('link', { name: 'Shrestha Suppliers' }).click()
+  await page.getByRole('tab', { name: 'Payments' }).click()
+  // The Match card reads the same open items; once it shows, Unpaid bills has had its data too.
+  await expect(page.getByRole('heading', { name: 'Match payments to bills' })).toBeVisible()
+  await expect(page.getByText(/^Bought/)).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Unpaid bills' })).toHaveCount(0)
   await page.getByLabel('Bill', { exact: true }).selectOption({ index: 1 }) // the only unpaid bill, 1001
   await page.getByLabel('Paid from').selectOption({ index: 1 })
   await page.getByRole('button', { name: 'Match', exact: true }).click()
   await expect(page.getByText('Matched.')).toBeVisible()
-  await page.getByRole('link', { name: 'Payment PAY-0001' }).first().click()
+  await page.getByRole('link', { name: /PAY-0001/ }).first().click()
   await expect(page.getByRole('link', { name: /Bill 1001/ })).toBeVisible()
   await page.screenshot(shots('m2-07-payment'))
 

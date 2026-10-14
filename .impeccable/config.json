@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "low-contrast",
+        "value": "*",
+        "files": [
+          "supabase/.temp/attendance-compare.html"
+        ],
+        "createdAt": "2026-10-13T17:56:33.625Z",
+        "reason": "Claude: static scan pairs dark-theme tokens with light surfaces (e.g. #b3a9a3 on #fff); each theme's real pairs pass"
+      },
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "supabase/.temp/attendance-compare.html"
+        ],
+        "createdAt": "2026-10-13T17:57:03.600Z",
+        "reason": "Claude: .table-wrap holds a table whose cells pad 10px 14px; text is inset, the table edge is flush by design"
+      }
+    ]
+  }
+}

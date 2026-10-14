@@ -3,6 +3,22 @@
 Shared language for NirmanKhata. Terms are the ones we use in conversation, docs, code and UI.
 Trade terms and their English labels start from `docs/requirements-v1.1.md` §3.1; this file sharpens them.
 
+## Attendance (Hajiri)
+One Crew Member's time on one project on one work date: in, out and minutes worked. Used only when the company setting "Labour by" is Attendance; the default, Day total, records one amount per crew per day instead.
+
+- **Not:** a labour cost. Attendance is priced and turned into a labour cost only when the day is closed (see Close day).
+- **States:** open (can be set, changed or unset) → closed (locked, priced) → open again if that labour cost is reversed.
+- **Relations:** belongs to one Crew Member, one project and the Crew owed for that project (which may not be the member's own crew).
+- **In code:** `attendance`; written only by `set_attendance` (minutes 0 unsets); `attendance_day`, `project_workers`.
+- **Notes:** A worker can split a day between projects by times that do not overlap, never more than 24 h in total.
+
+## Close day
+Turning a crew's open Attendance for a project and a date (or range of dates) into labour costs: one labour cost per work date, owed to that Crew, optionally paid now.
+
+- **Not:** Closed (project).
+- **In code:** `close_labour_day`, which prices each row (daily rate × minutes ÷ the standard day, or hourly rate × hours) and posts through the same labour writer as day totals.
+- **Notes:** The rate is copied onto each row at close, so a later rate change does not alter past days. Reverse the labour cost to reopen the day.
+
 ## Closed (project)
 A project whose books are final: work is done (see Completed) and its money has been reconciled. No new financial entries are allowed until an authorized user reopens it.
 
@@ -16,6 +32,19 @@ A project whose construction work is done. Final bills, payments and Reallocatio
 
 - **Not:** Closed (books final).
 - **In code:** project status `completed`.
+
+## Crew
+A lightweight Party for the company's own labour ("Ram's crew", "Site crew"). The crew, never a single worker, is the one owed and paid for labour.
+
+- **Relations:** usually tied to one project; has many labour costs and payments; with attendance, has many Crew Members.
+- **In code:** `crews`.
+
+## Crew Member
+A worker listed under a Crew so their Attendance can be marked: a name, the kind of work, and a rate by the day or by the hour.
+
+- **Not:** a Party. Members are never paid directly; their days are owed to a Crew.
+- **Relations:** belongs to one Crew at a time. A worker who works a day on another project is owed through that project's crew; a worker who moves for good is moved to the other crew, and earlier days stay with the old one.
+- **In code:** `crew_members` (no delete; set inactive to remove from the crew).
 
 ## Expense (Kharcha)
 Everyday word for any spending on a project: materials, labour, subcontract work and everything else. Not a record type in the app.

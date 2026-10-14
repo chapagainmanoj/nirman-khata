@@ -81,6 +81,12 @@ describe('recordActionsFor', () => {
   it('hides labour when the company does not track own labour', () => {
     expect(recordActionsFor({ ...site, labourEnabled: false }).map((x) => x.key)).not.toContain('labour')
   })
+  it('opens the attendance roster when labour is marked by attendance', () => {
+    const labour = recordActionsFor({ ...site, labourByAttendance: true }).find((x) => x.key === 'labour')!
+    expect(labour.path).toBe('/labour/attendance')
+    expect(labour.label).toBe('record.attendance')
+    expect(recordActionsFor(site).find((x) => x.key === 'labour')!.path).toBe('/labour/new')
+  })
   it('starts new records on the current project', () => {
     const [report] = recordActionsFor(site)
     expect(recordHref(report, null)).toBe('/daily/new')

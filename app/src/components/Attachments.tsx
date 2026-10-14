@@ -89,7 +89,7 @@ export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Pho
         <ul className={large ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
           {value.map((p, i) => (
             <li key={p.id} className="flex flex-col items-center gap-1">
-              {urls[p.id] && <img src={urls[p.id]} alt={`${what} ${i + 1} of ${value.length}`} className={large ? IMG_LARGE : IMG_SMALL} />}
+              {urls[p.id] && <img src={urls[p.id]} alt={`${what} ${i + 1} of ${value.length}`} className={large ? IMG_LARGE : IMG_SMALL} decoding="async" />}
               <Button type="button" variant="ghost" aria-label={`Remove ${what.toLowerCase()} ${i + 1}`}
                 onClick={() => onChange(value.filter((x) => x.id !== p.id))}><TrashIcon size={16} />Remove</Button>
             </li>
@@ -170,7 +170,7 @@ export function Attachments({
               {f.url && (
                 <a href={f.url} target="_blank" rel="noreferrer" className={large ? 'block w-full' : 'block'}>
                   {f.content_type?.startsWith('image/') && !unshowable.has(f.id) ? (
-                    <img src={f.url} alt={name} className={large ? IMG_LARGE : IMG_SMALL}
+                    <img src={f.url} alt={name} className={large ? IMG_LARGE : IMG_SMALL} loading="lazy" decoding="async"
                       onError={() => setUnshowable((s) => new Set(s).add(f.id))} />
                   ) : (
                     <span className="flex size-24 items-center justify-center break-all rounded-lg border border-line p-1 text-center text-xs text-subtle">

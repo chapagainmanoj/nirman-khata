@@ -14,6 +14,8 @@ import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permi
 import { PARTY, type PartyKind } from './kinds'
 import { PartyForm, subtitleOf, usePartyRows } from './PartiesPage'
 import { RefundCard } from '../refunds/RefundCard'
+import { labourPath } from '../labour/api'
+import { MembersCard } from '../labour/MembersCard'
 import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
 
 type Tab = 'khata' | 'payments'
@@ -47,7 +49,9 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
               <ButtonLink variant="secondary" to={`/work/new?subcontractor=${r.id}`}>New work package</ButtonLink>
             )}
             {kind === 'crew' && canEnter(auth) && (
-              <ButtonLink variant="secondary" to={`/labour/new?crew=${r.id}${r.project_id ? `&project=${r.project_id}` : ''}`}>Enter labour</ButtonLink>
+              <ButtonLink variant="secondary" to={labourPath(auth.company, { crew: r.id, project: r.project_id })}>
+                {auth.company.labour_mode === 'attendance' ? 'Attendance' : 'Enter labour'}
+              </ButtonLink>
             )}
             {canRecordPayments(auth) && <ButtonLink to={`/payments/new?${kind}=${r.id}`}>Record payment</ButtonLink>}
           </div>
@@ -67,6 +71,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
             {kind === 'payee' && <PromotePayee payeeId={r.id} supplierId={r.promoted_supplier_id ?? null} />}
           </Card>
         )}
+        {kind === 'crew' && auth.company.labour_mode === 'attendance' && canEnter(auth) && <MembersCard crewId={r.id} projectId={r.project_id ?? null} />}
         {auth.canSeeFinance && <BalanceCard kind={kind} partyId={r.id} />}
         {auth.canSeeFinance && canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
         <RefundCard kind={kind} partyId={r.id} />

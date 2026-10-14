@@ -31,6 +31,6 @@ export function useClientReceived(projectId: string, asOf: string, enabled: bool
 /** Refresh everything a receipt can change. */
 export function useRefreshClientMoney() {
   const queryClient = useQueryClient()
-  return () => Promise.all(['client-receipts', 'client-receipt', 'client-received', 'calendar']
+  return () => Promise.all(['client-receipts', 'client-receipt', 'client-received', 'calendar', 'dashboard', 'project-dashboard']
     .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
 }

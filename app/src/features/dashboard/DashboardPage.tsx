@@ -1,20 +1,22 @@
-// Company dashboard (req §18.1): cost and cash for the period and to date, what is owed and
-// paid ahead, what needs attention, and each project's work done against budget used, with
-// what is still missing from its recorded cost (completeness, §18.2). Every figure links on.
+// Company dashboard (req §18.1): what was spent, paid out and received in the chosen period; what is
+// to pay and to collect right now; each thing that needs attention, named, with the way to deal with
+// it; and each project's work done against budget used, with what is still missing from its cost
+// (completeness, §18.2). Every figure links on.
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { ArrowRightIcon } from '../../components/icons'
 import { Badge, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
-import { fiscalYear, fiscalYearRange, formatDate, todayKathmandu } from '../../lib/dates'
+import { fiscalYear, fiscalYearRange, formatDate, relativeDay, todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { monthDays, monthLabel, monthOf } from '../../lib/months'
 import type { ProjectStatus } from '../../lib/supabase'
+import { PARTY, type PartyKind } from '../parties/kinds'
 import { rpc } from '../supply/api'
-import { canEnter } from '../supply/permissions'
+import { canEnter, canPost, canRecordPayments } from '../supply/permissions'
 import { Completeness, type ProjectFigures, UsedBars } from './parts'
 
 type Period = 'month' | 'year' | 'all'
@@ -31,7 +33,15 @@ type Dashboard = {
   peski_paisa?: number
   overpaid_paisa?: number
   unallocated_paisa?: number
+  received_period_paisa?: number
+  received_to_date_paisa?: number
+  to_collect_paisa?: number
+  overpaid_parties?: Array<{ party_id: string; kind: PartyKind; name: string; overpaid_paisa: number }>
+  unbilled_by_supplier?: Array<{ supplier_id: string; name: string; lines: number; first_item: string; oldest_date: string }>
 }
+
+/** "1 slip", "2 slips". */
+const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
 
 const OWED_LABEL = { supplier: 'Suppliers', subcontractor: 'Subcontractors', crew: 'Labour crews', payee: 'Other payees' } as const
 
@@ -60,16 +70,56 @@ export function DashboardPage() {
   const over = d.projects.filter((p) => p.budget_paisa && Number(p.cost_paisa) > p.budget_paisa)
   const headingOver = d.projects.filter((p) => !over.includes(p) && p.by_heading?.some((h) => h.over))
 
-  // Count, what it is, where to deal with it. Items with nothing waiting are left out.
-  const attention: Array<{ n: number; text: string; to: string }> = [
-    { n: d.counts.slips_to_approve, text: 'slip(s) waiting for approval', to: '/slips' },
-    { n: d.counts.bills_to_post, text: 'bill(s) sent to Accounts to post', to: '/bills' },
-    { n: d.counts.unbilled_lines, text: 'received item(s) not billed yet, so cost is incomplete', to: '/reports/pending' },
-    { n: d.counts.slips_waiting, text: 'approved slip(s) waiting for delivery', to: '/reports/pending' },
-    { n: over.length, text: `project(s) over budget: ${over.map((p) => p.code).join(', ')}`, to: '/reports/budget-vs-cost' },
-    { n: headingOver.length, text: `project(s) over a heading budget: ${headingOver.map((p) => p.code).join(', ')}`, to: '/reports/budget-vs-cost' },
-  ].filter((a) => a.n > 0)
-  const unallocated = d.unallocated_paisa ?? 0
+  // One row per thing to deal with: what it is, and the action that deals with it. Work waiting
+  // on someone first, then money that is not right.
+  const unbilled = d.unbilled_by_supplier ?? []
+  const attention: Array<{ key: string; text: string; action: string; to: string }> = [
+    ...unbilled.map((u) => ({
+      key: `unbilled:${u.supplier_id}`,
+      text: `${u.first_item}${u.lines > 1 ? ` and ${u.lines - 1} more` : ''} from ${u.name}, came ${relativeDay(u.oldest_date, today)}; no bill yet, so cost is incomplete`,
+      action: canEnter(auth) ? 'Enter bill' : 'See supplier',
+      to: canEnter(auth) ? `/bills/new?supplier=${u.supplier_id}` : `/suppliers/${u.supplier_id}`,
+    })),
+    // The action word only for someone who may do it; the database checks again.
+    ...(d.counts.slips_to_approve ? [{
+      key: 'approve', text: `${count(d.counts.slips_to_approve, 'slip', 'slips')} waiting for approval`,
+      action: auth.isAdmin || auth.membership?.can_approve_slips ? 'Approve' : 'See slips', to: '/slips',
+    }] : []),
+    ...(d.counts.bills_to_post ? [{
+      key: 'post', text: `${count(d.counts.bills_to_post, 'bill', 'bills')} sent to Accounts to post`,
+      action: canPost(auth) ? 'Post' : 'See bills', to: '/bills',
+    }] : []),
+    ...(d.overpaid_parties ?? []).map((p) => ({
+      key: `overpaid:${p.party_id}`,
+      text: `${p.name} holds ${formatNPR(p.overpaid_paisa)} overpaid; it comes off their next bills`,
+      action: `See ${PARTY[p.kind].one.toLowerCase()}`,
+      to: `${PARTY[p.kind].path}/${p.party_id}`,
+    })),
+    ...over.map((p) => ({
+      key: `over:${p.id}`,
+      text: `${p.code} · ${p.name} is over budget by ${formatNPR(Number(p.cost_paisa) - p.budget_paisa!)} (spent ${formatNPR(Number(p.cost_paisa))} of ${formatNPR(p.budget_paisa!)})`,
+      action: 'See project',
+      to: `/projects/${p.id}`,
+    })),
+    ...headingOver.map((p) => {
+      const names = p.by_heading!.filter((h) => h.over).map((h) => h.name)
+      return {
+        key: `heading:${p.id}`,
+        text: `${p.code} · ${p.name}: ${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} over the heading budget`,
+        action: 'See report',
+        to: '/reports/budget-vs-cost',
+      }
+    }),
+    ...((d.unallocated_paisa ?? 0) > 0 ? [{
+      key: 'unallocated', text: `${formatNPR(d.unallocated_paisa!)} paid but not given to a project yet`,
+      action: canRecordPayments(auth) ? 'Assign' : 'See payments', to: '/payments',
+    }] : []),
+    ...(d.counts.slips_waiting ? [{ key: 'waiting', text: `${count(d.counts.slips_waiting, 'approved slip', 'approved slips')} still to be delivered`, action: 'See list', to: '/reports/pending' }] : []),
+  ]
+  // A dashboard from before the supplier list came with only the count.
+  if (!d.unbilled_by_supplier && d.counts.unbilled_lines) {
+    attention.unshift({ key: 'unbilled', text: `${count(d.counts.unbilled_lines, 'received item', 'received items')} not billed yet, so cost is incomplete`, action: 'See list', to: '/reports/pending' })
+  }
 
   return (
     <>
@@ -83,39 +133,40 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* A quiet row of figures, not boxed cards. "To date" only when it differs from the
-          period figure; peski or overpaid of nothing is left out. */}
+      {/* Two quiet groups of figures, not boxed cards: what the period tabs change, and where
+          things stand today. "To date" only when it differs from the period figure. */}
       {d.money_visible && (
-        <section aria-label="Totals" className="mb-6 grid gap-x-6 gap-y-4 border-b border-line pb-5 sm:grid-cols-2 lg:grid-cols-4">
-          <Figure label={`Recorded cost, ${range.label}`} value={d.cost_period_paisa} sub={toDate(d.cost_period_paisa, d.cost_to_date_paisa)} to="/reports/project-cost" />
-          <Figure label={`Cash paid, ${range.label}`} value={d.cash_period_paisa} sub={toDate(d.cash_period_paisa, d.cash_to_date_paisa)} to="/reports/payments" />
-          <Figure label="Still owed" value={owedTotal}
-            sub={Object.entries(owed).filter(([, n]) => n).map(([k, n]) => `${OWED_LABEL[k as keyof typeof OWED_LABEL]} ${formatNPR(n)}`).join(' · ') || 'Nothing owed'}
-            to="/parties" />
-          {!!d.peski_paisa && <Figure label="Peski not yet used" value={d.peski_paisa} sub="Deducted from their bills as they come" to="/parties" />}
-          {!!d.overpaid_paisa && <Figure label="Overpaid" value={d.overpaid_paisa} sub="Owed back; deducted from their next bills" to="/parties" />}
+        <section aria-label="Totals" className="mb-6 grid gap-x-10 gap-y-5 border-b border-line pb-5 lg:grid-cols-[3fr_2fr]">
+          <Group title={range.label}>
+            <Figure label="Spent" value={d.cost_period_paisa} sub={toDate(d.cost_period_paisa, d.cost_to_date_paisa)} to="/reports/project-cost" />
+            <Figure label="Paid out" value={d.cash_period_paisa} sub={toDate(d.cash_period_paisa, d.cash_to_date_paisa)} to="/reports/payments" />
+            <Figure label="Received" value={d.received_period_paisa}
+              sub={(d.received_period_paisa ?? 0) < 0 ? 'Less a receipt reversed in this period'
+                : toDate(d.received_period_paisa, d.received_to_date_paisa) ?? 'From clients'} to="/projects" />
+          </Group>
+          <Group title="Right now">
+            <Figure label="To pay" value={owedTotal}
+              sub={Object.entries(owed).filter(([, n]) => n).map(([k, n]) => `${OWED_LABEL[k as keyof typeof OWED_LABEL]} ${formatNPR(n)}`).join(' · ') || 'Nothing to pay'}
+              to="/parties" />
+            <Figure label="To collect" value={d.to_collect_paisa} sub="Left on client contracts" to="/projects" />
+            {!!d.peski_paisa && <Figure label="Peski not yet used" value={d.peski_paisa} sub="Deducted from their bills as they come" to="/parties" />}
+          </Group>
         </section>
       )}
 
-      {(attention.length > 0 || unallocated > 0) && (
+      {attention.length > 0 && (
         <Card title="Needs attention" className="mb-4">
           <ul>
             {attention.map((a) => (
-              <li key={a.text} className="border-b border-line last:border-0">
-                <Link to={a.to} className="group flex min-h-11 items-center gap-2 py-2 text-sm">
-                  <span className="font-semibold text-ink tabular-nums">{a.n}</span><span className="min-w-0 flex-1">{a.text}</span>
-                  <Review />
+              <li key={a.key} className="border-b border-line last:border-0">
+                <Link to={a.to} className="group flex min-h-11 items-center gap-3 py-2 text-sm">
+                  <span className="min-w-0 flex-1 text-ink">{a.text}</span>
+                  <span className="inline-flex shrink-0 items-center gap-1 font-medium text-brand group-hover:underline">
+                    {a.action}<ArrowRightIcon size={16} />
+                  </span>
                 </Link>
               </li>
             ))}
-            {unallocated > 0 && (
-              <li>
-                <Link to="/payments" className="group flex min-h-11 items-center gap-2 py-2 text-sm">
-                  <span className="font-semibold text-ink tabular-nums">{formatNPR(unallocated)}</span><span className="min-w-0 flex-1">paid but not given to a project yet</span>
-                  <Review />
-                </Link>
-              </li>
-            )}
           </ul>
         </Card>
       )}
@@ -133,8 +184,8 @@ export function DashboardPage() {
             <UsedBars figures={p} setProgress={canEnter(auth) ? `/projects/${p.id}?tab=site` : undefined} />
             {d.money_visible && (
               <span className="mt-2 block text-sm text-subtle">
-                Recorded cost <span className="font-semibold text-ink tabular-nums">{formatNPR(Number(p.cost_paisa ?? 0))}</span>
-                {p.budget_paisa ? <> of {formatNPR(p.budget_paisa)}</> : null}
+                Spent <span className="font-semibold text-ink tabular-nums">{formatNPR(Number(p.cost_paisa ?? 0))}</span>
+                {p.budget_paisa ? <> of {formatNPR(p.budget_paisa)} budget</> : null}
               </span>
             )}
             <Completeness figures={p} status={p.status} compact />
@@ -154,17 +205,18 @@ function Figure({ label, value, sub, to }: { label: string; value: number | unde
   return (
     <Link to={to} className="group block min-w-0">
       <span className="block text-xs font-medium text-subtle">{label}</span>
-      <span className="block text-2xl font-semibold text-ink tabular-nums group-hover:underline">{formatNPR(value ?? 0)}</span>
+      <span className="block text-xl font-semibold text-ink tabular-nums group-hover:underline sm:text-2xl">{formatNPR(value ?? 0)}</span>
       {sub && <span className="mt-0.5 block text-xs text-subtle">{sub}</span>}
     </Link>
   )
 }
 
-/** The visible way into an attention item: an alert you can act on. */
-function Review() {
+/** A labelled set of figures in the totals. */
+function Group({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <span className="inline-flex shrink-0 items-center gap-1 font-medium text-brand group-hover:underline">
-      Review<ArrowRightIcon size={16} />
-    </span>
+    <div className="min-w-0">
+      <h2 className="mb-2 text-xs font-semibold tracking-wide text-subtle uppercase">{title}</h2>
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">{children}</div>
+    </div>
   )
 }

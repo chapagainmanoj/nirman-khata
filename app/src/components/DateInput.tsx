@@ -110,16 +110,16 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
               {(['bs', 'ad'] as const).map((d) => (
                 <button key={d} type="button" aria-pressed={month.display === d}
                   onClick={() => setMonth(monthOf(iso && inBsRange(iso) ? iso : today, d))}
-                  className={`min-h-9 rounded-md px-2.5 ${month.display === d ? 'bg-brand text-white' : 'text-slate hover:bg-muted'}`}>
+                  className={`min-h-11 [@media(pointer:fine)]:min-h-9 rounded-md px-2.5 ${month.display === d ? 'bg-brand text-white' : 'text-slate hover:bg-muted'}`}>
                   {d.toUpperCase()}
                 </button>
               ))}
             </div>
-            <Select compact aria-label="Month" className="min-h-10" value={month.month}
+            <Select compact aria-label="Month" className="[@media(pointer:fine)]:min-h-10" value={month.month}
               onChange={(e) => jump({ ...month, month: Number(e.target.value) })}>
               {monthNames.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </Select>
-            <Select compact aria-label="Year" className="min-h-10" value={month.year}
+            <Select compact aria-label="Year" className="[@media(pointer:fine)]:min-h-10" value={month.year}
               onChange={(e) => jump({ ...month, year: Number(e.target.value) })}>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </Select>
@@ -130,9 +130,9 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
           </div>
           <div className="mt-2 flex items-center justify-between gap-2 text-sm">
             {allowEmpty && iso
-              ? <button type="button" onClick={() => choose('')} className="min-h-10 rounded-lg px-3 font-medium text-subtle hover:bg-muted">Clear</button>
+              ? <button type="button" onClick={() => choose('')} className="min-h-11 [@media(pointer:fine)]:min-h-10 rounded-lg px-3 font-medium text-subtle hover:bg-muted">Clear</button>
               : <span />}
-            <button type="button" onClick={() => choose(today)} className="min-h-10 rounded-lg px-3 font-medium text-brand hover:bg-muted">Today</button>
+            <button type="button" onClick={() => choose(today)} className="min-h-11 [@media(pointer:fine)]:min-h-10 rounded-lg px-3 font-medium text-brand hover:bg-muted">Today</button>
           </div>
         </div>
       )}
@@ -143,7 +143,7 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
             const target = addDays(today, days)
             return (
               <button key={label} type="button" aria-pressed={iso === target} onClick={() => onChange(target)}
-                className={`min-h-9 rounded-full border px-3 font-medium ${iso === target ? 'border-brand bg-brand-soft text-brand-dark' : 'border-line text-ink hover:bg-muted'}`}>
+                className={`min-h-11 [@media(pointer:fine)]:min-h-9 rounded-full border px-3 font-medium ${iso === target ? 'border-brand bg-brand-soft text-brand-dark' : 'border-line text-ink hover:bg-muted'}`}>
                 {label}
               </button>
             )

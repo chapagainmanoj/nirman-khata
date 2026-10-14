@@ -29,14 +29,15 @@ export function BalanceText({ paisa }: { paisa: number }) {
   )
 }
 
-export function BalanceCard({ kind, partyId }: { kind: PartyKind; partyId: string }) {
+/** What is owed either way. `children` adds detail under the totals (the supplier page's split by project). */
+export function BalanceCard({ kind, partyId, children }: { kind: PartyKind; partyId: string; children?: ReactNode }) {
   const auth = useCompany()
   const balances = usePartyBalances(auth.companyId, kind, true)
   const b = balances.data?.find((x) => x.party_id === partyId)
   const ob = usePartyOpeningBalance(partyId, true)
   const fresh = !!b && b.charged_paisa === 0 && b.paid_paisa === 0 && b.balance_paisa === 0 && !ob.isPending && !ob.data
   return (
-    <Card title="Balance">
+    <Card title={kind === 'supplier' ? 'To pay' : 'Balance'}>
       {balances.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void balances.refetch()}>{balances.error && friendlyError(balances.error)}</ErrorBanner>
       {fresh && (
@@ -48,9 +49,14 @@ export function BalanceCard({ kind, partyId }: { kind: PartyKind; partyId: strin
       {b && !fresh && (
         <>
           <div className="mb-2 text-lg"><BalanceText paisa={b.balance_paisa} /></div>
-          <Detail label={kind === 'supplier' ? 'Bills and charges' : `Charged (${PARTY[kind].charges})`}>{formatNPR(b.charged_paisa)}</Detail>
-          <Detail label="Paid">{formatNPR(b.paid_paisa)}</Detail>
-          {b.company_level && <Detail label="Not yet assigned to a project">{formatNPR(b.unallocated_paisa)}</Detail>}
+          <p className="text-sm text-subtle">
+            {kind === 'supplier' ? 'Bought' : `Charged (${PARTY[kind].charges})`} <span className="font-semibold text-ink tabular-nums">{formatNPR(b.charged_paisa)}</span>
+            {' · '}Paid <span className="font-semibold text-ink tabular-nums">{formatNPR(b.paid_paisa)}</span>
+          </p>
+          {children}
+          {/* The unallocated bucket holds payments not given to a project, and opening balances. */}
+          {b.company_level && b.unallocated_paisa < 0 && <Detail label="Paid, not yet given to a project">{formatNPR(-b.unallocated_paisa)}</Detail>}
+          {b.company_level && b.unallocated_paisa > 0 && <Detail label="Owed from before, on no project">{formatNPR(b.unallocated_paisa)}</Detail>}
           {!b.company_level && <p className="mt-2 text-xs text-subtle">Only your projects are included.</p>}
         </>
       )}
@@ -168,7 +174,10 @@ export function MatchCard({ kind, partyId }: { kind: PartyKind; partyId: string 
   }
 
   if (items.isPending) return <Card title="Match payments to bills"><Spinner /></Card>
-  if (!docs.length && !unallocated.length && !done) return null
+  // Only when there is something to match: unpaid items and payment money free for them, or a
+  // payment still to assign to a project. Otherwise the form would only say "record a payment first".
+  const freeMoney = items.data?.some((i) => i.kind === 'payment') ?? false
+  if (!(docs.length && freeMoney) && !unallocated.length && !done) return null
 
   return (
     <Card title="Match payments to bills">

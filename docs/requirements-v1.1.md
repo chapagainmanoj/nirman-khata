@@ -133,7 +133,7 @@ Platform
 
 ### 4.1 Company
 - Name, address, contact, optional logo, PAN/VAT number.
-- Settings: BS/AD default, approval on/off, tax fields on/off, labour module on/off, document number formats, forms Detailed/Simple.
+- Settings: BS/AD default, approval on/off, tax fields on/off, labour module on/off, labour by day total or attendance, document number formats, forms Detailed/Simple.
 
 ### 4.2 Projects
 - Name and unique company-level code.
@@ -404,6 +404,12 @@ Measurement books, retention and deductions are future scope.
 - Show unpaid labour cost and labour advances.
 - Confirm before saving a near-duplicate entry for the same project and day.
 
+**Attendance (company setting "Labour by: Attendance"; default Day total)**
+- Workers (crew members) are listed per crew, each with a daily or hourly rate. The crew stays the payee.
+- Attendance is marked per worker per project per day: in, out, hours worked. "Everyone in" marks the standard day (setting: day start/end, paid hours, default 8 h).
+- Closing the day prices it and creates one labour cost per work date for the crew: daily rate × hours ÷ paid hours, or hourly rate × hours. Closed days are locked; reversing the labour cost reopens them.
+- A worker brought to another project for a day is owed through that project's crew. A day can be split between projects by times that do not overlap.
+
 ---
 
 ## 15. Other Project Expenses
@@ -467,12 +473,10 @@ Example day:
 
 ### 18.1 Company dashboard
 - Active projects with status, progress % and budget used %
-- Recorded cost and cash paid out (period and to date), with completeness banner per project
-- Supplier and subcontractor payables; peski not yet used and overpaid amounts
-- Slips awaiting approval; pending deliveries
-- Received materials awaiting bills
-- Unallocated payments
-- Projects over budget (overall or by heading)
+- For the chosen period (this month, this fiscal year, all time), with the to-date figure under each: Spent (recorded cost), Paid out (cash), Received (from clients)
+- Right now, apart from the period figures: To pay (by kind of party), To collect (current contracts less received), peski not yet used
+- Completeness note per project; project cards say "Spent X of Y budget"
+- Needs attention, one row per thing, each named with its action: received materials awaiting bills per supplier (what, from whom, how long ago; Enter bill), slips awaiting approval, bills sent to Accounts, each party holding an overpayment (by name, with amount), each project over budget (by how much) or over a heading budget, unallocated payments, approved slips still to be delivered
 
 ### 18.2 Project dashboard
 - Original and current contract amount; original and current spending budget
@@ -647,6 +651,8 @@ Illustrative; to be reviewed during technical design.
 | Crew | name, project_id (optional), phone, active |
 | Payee | name, phone, type, active |
 | LabourCost | project_id, work_date, crew_id, headcount, person_days, rate, amount |
+| CrewMember | crew_id, name, work_type, rate_kind (daily/hourly), rate, phone, active |
+| Attendance | project_id, crew_id, member_id, work_date, time_in, time_out, minutes, rate snapshot, amount, labour_cost_id |
 | Expense | project_id, heading_id, date, amount, payee_id |
 | Stage | project_id, name, planned dates |
 | ProgressUpdate | project_id, stage_id (nullable = overall), date, pct, note |
@@ -755,7 +761,7 @@ The core loop: Project → Order slip → Delivery → Bill → Payment → Ledg
 - BOQ and detailed estimates; change orders
 - Site stock, consumption and inter-project transfers
 - Measurement books
-- Individual labour attendance and payroll; staff salaries
+- Labour payroll (attendance is in, see §14); staff salaries
 - Equipment ownership and maintenance
 - Accounting integrations, statutory tax reports
 - Tenant subscription billing

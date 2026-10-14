@@ -15,6 +15,7 @@ import { usePackageFigures, useWorkPackages } from '../subcontract/api'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { canEnter, canManageSuppliers, canPost } from '../supply/permissions'
 import { useExpenses, useLabourCosts } from './api'
+import { labourPath } from '../labour/api'
 
 function Section({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
@@ -56,7 +57,7 @@ export function LabourSection({ projectId }: { projectId: string }) {
   const auth = useCompany()
   const labour = useLabourCosts({ projectId })
   return (
-    <Section title="Labour" action={canEnter(auth) && <ButtonLink variant="secondary" to={`/labour/new?project=${projectId}`}>Enter labour</ButtonLink>}>
+    <Section title="Labour" action={canEnter(auth) && <ButtonLink variant="secondary" to={labourPath(auth.company, { project: projectId })}>{auth.company.labour_mode === 'attendance' ? 'Attendance' : 'Enter labour'}</ButtonLink>}>
       {!auth.canSeeFinance && <p className="mb-2 text-xs text-subtle">Shows labour you entered in the last 7 days.</p>}
       {labour.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void labour.refetch()}>{labour.error && friendlyError(labour.error)}</ErrorBanner>

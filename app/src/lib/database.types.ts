@@ -145,6 +145,56 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"attendance": {
+                  Row: {
+                    "amount_paisa": number | null,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"id": string,"labour_cost_id": string | null,"member_id": string,"minutes": number,"project_id": string,"rate_kind": string | null,"rate_paisa": number | null,"time_in": string | null,"time_out": string | null,"updated_at": string,"work_date": string
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "amount_paisa"?: number | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"id"?: string,"labour_cost_id"?: string | null,"member_id": string,"minutes": number,"project_id": string,"rate_kind"?: string | null,"rate_paisa"?: number | null,"time_in"?: string | null,"time_out"?: string | null,"updated_at"?: string,"work_date": string
+                  }
+                  Update: {
+                    "amount_paisa"?: number | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"id"?: string,"labour_cost_id"?: string | null,"member_id"?: string,"minutes"?: number,"project_id"?: string,"rate_kind"?: string | null,"rate_paisa"?: number | null,"time_in"?: string | null,"time_out"?: string | null,"updated_at"?: string,"work_date"?: string
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "attendance_company_id_crew_id_fkey"
+      columns: ["company_id","crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attendance_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    },{
+      foreignKeyName: "attendance_company_id_labour_cost_id_fkey"
+      columns: ["company_id","labour_cost_id"]
+isOneToOne: false
+      referencedRelation: "labour_cost_summaries"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attendance_company_id_labour_cost_id_fkey"
+      columns: ["company_id","labour_cost_id"]
+isOneToOne: false
+      referencedRelation: "labour_costs"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attendance_company_id_member_id_fkey"
+      columns: ["company_id","member_id"]
+isOneToOne: false
+      referencedRelation: "crew_members"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attendance_company_id_project_id_fkey"
+      columns: ["company_id","project_id"]
+isOneToOne: false
+      referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    }
+                  ]
                 },"audit_log": {
                   Row: {
                     "action": string,"after": Json | null,"at": string,"before": Json | null,"company_id": string,"entity": string,"entity_id": string | null,"id": number,"user_id": string | null
@@ -415,14 +465,14 @@ isOneToOne: false
                   ]
                 },"companies": {
                   Row: {
-                    "accent": string,"address": string | null,"created_at": string,"created_by": string | null,"default_date_display": Database["public"]['Enums']["date_display"],"id": string,"labour_module_enabled": boolean,"logo_path": string | null,"name": string,"pan_vat": string | null,"phone": string | null,"rate_variance_tolerance_pct": number,"simple_forms": boolean,"slip_approval_required": boolean,"tax_fields_enabled": boolean,"updated_at": string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
+                    "accent": string,"address": string | null,"created_at": string,"created_by": string | null,"day_end": string,"day_start": string,"default_date_display": Database["public"]['Enums']["date_display"],"id": string,"labour_mode": string,"labour_module_enabled": boolean,"logo_path": string | null,"name": string,"pan_vat": string | null,"phone": string | null,"rate_variance_tolerance_pct": number,"simple_forms": boolean,"slip_approval_required": boolean,"standard_day_minutes": number,"tax_fields_enabled": boolean,"updated_at": string,"vat_treatment": Database["public"]['Enums']["vat_treatment"]
                   }
                   ComputedFields: never
                   Insert: {
-                    "accent"?: string,"address"?: string | null,"created_at"?: string,"created_by"?: string | null,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name": string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"simple_forms"?: boolean,"slip_approval_required"?: boolean,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
+                    "accent"?: string,"address"?: string | null,"created_at"?: string,"created_by"?: string | null,"day_end"?: string,"day_start"?: string,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_mode"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name": string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"simple_forms"?: boolean,"slip_approval_required"?: boolean,"standard_day_minutes"?: number,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
                   }
                   Update: {
-                    "accent"?: string,"address"?: string | null,"created_at"?: string,"created_by"?: string | null,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name"?: string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"simple_forms"?: boolean,"slip_approval_required"?: boolean,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
+                    "accent"?: string,"address"?: string | null,"created_at"?: string,"created_by"?: string | null,"day_end"?: string,"day_start"?: string,"default_date_display"?: Database["public"]['Enums']["date_display"],"id"?: string,"labour_mode"?: string,"labour_module_enabled"?: boolean,"logo_path"?: string | null,"name"?: string,"pan_vat"?: string | null,"phone"?: string | null,"rate_variance_tolerance_pct"?: number,"simple_forms"?: boolean,"slip_approval_required"?: boolean,"standard_day_minutes"?: number,"tax_fields_enabled"?: boolean,"updated_at"?: string,"vat_treatment"?: Database["public"]['Enums']["vat_treatment"]
                   }
                   Relationships: [
                     
@@ -565,6 +615,32 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "suppliers"
       referencedColumns: ["company_id","id"]
+    }
+                  ]
+                },"crew_members": {
+                  Row: {
+                    "active": boolean,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"id": string,"name": string,"phone": string | null,"rate_kind": string,"rate_paisa": number,"updated_at": string,"work_type": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"id"?: string,"name": string,"phone"?: string | null,"rate_kind": string,"rate_paisa": number,"updated_at"?: string,"work_type"?: string | null
+                  }
+                  Update: {
+                    "active"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"id"?: string,"name"?: string,"phone"?: string | null,"rate_kind"?: string,"rate_paisa"?: number,"updated_at"?: string,"work_type"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "crew_members_company_id_crew_id_fkey"
+      columns: ["company_id","crew_id"]
+isOneToOne: false
+      referencedRelation: "crews"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "crew_members_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
     }
                   ]
                 },"crews": {
@@ -2547,6 +2623,11 @@ isOneToOne: false
               "company_id": string,"content_type": string,"size_bytes": number
             }[]
                            },
+"attendance_day":
+{ Args: { "p_date": string,"p_project": string }; Returns: {
+              "amount_paisa": number,"closed": boolean,"crew_id": string,"member_id": string,"minutes": number,"time_in": string,"time_out": string
+            }[]
+                           },
 "bill_preview":
 { Args: { "p_bill": string }; Returns: Json
                            },
@@ -2568,6 +2649,9 @@ isOneToOne: false
                            },
 "client_received_as_of":
 { Args: { "p_as_of": string,"p_project": string }; Returns: number
+                           },
+"close_labour_day":
+{ Args: { "p_close": Json,"p_op_key": string }; Returns: Json
                            },
 "close_slip_short":
 { Args: { "p_reason": string,"p_slip": string }; Returns: undefined
@@ -2660,6 +2744,11 @@ isOneToOne: false
                            },
 "project_dashboard":
 { Args: { "p_as_known"?: boolean,"p_as_of"?: string,"p_project": string }; Returns: Json
+                           },
+"project_workers":
+{ Args: { "p_project": string }; Returns: {
+              "crew_id": string,"crew_name": string,"crew_project_id": string,"id": string,"name": string,"rate_kind": string,"rate_paisa": number,"work_type": string
+            }[]
                            },
 "promote_payee":
 { Args: { "p_payee": string }; Returns: string
@@ -2774,6 +2863,9 @@ isOneToOne: false
                            },
 "save_work_package":
 { Args: { "p_package": Json }; Returns: string
+                           },
+"set_attendance":
+{ Args: { "p_row": Json }; Returns: Json
                            },
 "set_opening_balance":
 { Args: { "p_amount_paisa": number,"p_cutover_date": string,"p_note": string,"p_op_key": string,"p_party": string }; Returns: Json

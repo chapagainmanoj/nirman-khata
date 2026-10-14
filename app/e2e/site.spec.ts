@@ -62,6 +62,11 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Received', exact: true }).fill('60')
   await page.getByRole('button', { name: 'Save delivery' }).click()
   await expect(page.getByRole('heading', { name: 'Delivery recorded' })).toBeVisible()
+  // The dashboard names what came without a bill and offers to enter it.
+  await page.goto('/dashboard')
+  const unbilled = page.getByRole('link', { name: /^60 .*Cement from Pokhara Cement Traders, came today; no bill yet/ })
+  await expect(unbilled).toContainText('Enter bill')
+  await expect(unbilled).toHaveAttribute('href', /\/bills\/new\?supplier=/)
 
   // "+" -> Daily report starts on the current (only) project.
   await page.getByRole('button', { name: 'Record', exact: true }).click()
@@ -133,10 +138,9 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
 
   // Own labour off: no labour in "+", in the report form, or on the project.
   await page.goto('/settings')
-  const company = page.locator('form').filter({ has: page.getByLabel('Track own labour (jyala)') })
-  await company.getByLabel('Track own labour (jyala)').uncheck()
-  await company.getByRole('button', { name: 'Save' }).click()
-  await expect(company.getByText('Saved.')).toBeVisible()
+  const work = page.locator('section', { has: page.getByRole('heading', { name: 'How you work' }) })
+  await work.getByLabel('Track own labour (jyala)').uncheck()
+  await expect(work.getByText('Saved.')).toBeVisible()
   await page.reload()
   await page.getByRole('button', { name: 'Record', exact: true }).click()
   const sheet = page.getByRole('dialog', { name: 'Record' })

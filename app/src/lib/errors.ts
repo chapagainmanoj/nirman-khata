@@ -8,7 +8,17 @@ const BY_CONSTRAINT: Record<string, string> = {
   subcontractors_unique_name: 'A subcontractor with this name already exists.',
   payees_unique_name: 'A payee with this name already exists.',
   crews_unique_name: 'A crew with this name already exists for this project.',
+  crew_members_unique_name: 'A worker with this name is already on this crew.',
 }
+
+// Check constraints people can hit from a form.
+const BY_CHECK: Record<string, string> = {
+  attendance_times: 'The out time must be after the in time.',
+  attendance_minutes_fit: 'The hours cannot be more than the time from in to out.',
+}
+
+// Our own error codes: the readable part follows the colon.
+const PREFIXED = ['attendance_off', 'day_closed', 'attendance_overlap']
 
 const BY_CODE: Record<string, string> = {
   '23505': 'This already exists. Use a different value.',
@@ -33,6 +43,15 @@ export function friendlyError(error: unknown): string {
   }
   if (e.message?.startsWith('peski_with_unpaid')) {
     return 'This party has unpaid bills, so the payment pays them. Peski is only for money given before any bill.'
+  }
+  const prefixed = PREFIXED.find((p) => e.message?.startsWith(`${p}:`))
+  if (prefixed) {
+    const text = e.message!.slice(prefixed.length + 1).trim()
+    return text.charAt(0).toUpperCase() + text.slice(1) + '.'
+  }
+  if (e.code === '23514') {
+    const check = Object.keys(BY_CHECK).find((name) => e.message?.includes(name))
+    if (check) return BY_CHECK[check]
   }
   // Our own RPC errors (P0001, 22023, ...) already carry a readable message.
   if (e.code && BY_CODE[e.code]) {

@@ -13,5 +13,6 @@ export function useNavRole(): NavRole {
     canRecordPayments: canRecordPayments(auth),
     canApproveSlips: !!auth.membership?.can_approve_slips,
     labourEnabled: auth.company.labour_module_enabled,
+    labourByAttendance: auth.company.labour_mode === 'attendance',
   }
 }

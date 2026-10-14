@@ -17,6 +17,18 @@ const FILTERS: Array<[Filter, string]> = [['open', 'Open'], ['pending', 'To appr
 // Empty lists name the tab: "No slips to approve on P-2 yet."
 const WHAT: Record<Filter, string> = { open: 'open slips', pending: 'slips to approve', draft: 'draft slips', all: 'slips' }
 
+/** How slips get to each tab, for a tab that is empty. */
+function howSlipsGetHere(filter: Filter, approvalOn: boolean) {
+  if (filter === 'open') return 'Approved slips stay here until everything ordered has arrived; a part delivery keeps them open.'
+  if (filter === 'pending') {
+    return approvalOn
+      ? 'Slips sent with "Submit for approval" wait here until someone who may approve them approves or rejects them.'
+      : 'Approval is off in Settings, so a submitted slip is approved straight away.'
+  }
+  if (filter === 'draft') return 'A slip saved with "Save draft" waits here until it is submitted.'
+  return 'Create a slip to order material from a supplier for one or more projects.'
+}
+
 export function SlipsPage() {
   const auth = useCompany()
   const projects = useProjects(auth.companyId)
@@ -47,7 +59,7 @@ export function SlipsPage() {
       {slips.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void slips.refetch()}>{slips.error && friendlyError(slips.error)}</ErrorBanner>
       {list?.length === 0 && empty(WHAT[filter], (
-        <EmptyState title={`No ${WHAT[filter]}`}>Create a slip to order material from a supplier for one or more projects.</EmptyState>
+        <EmptyState title={`No ${WHAT[filter]}`}>{howSlipsGetHere(filter, auth.company.slip_approval_required)}</EmptyState>
       ))}
       <ul className="grid gap-3 sm:grid-cols-2">
         {list?.map((s) => {

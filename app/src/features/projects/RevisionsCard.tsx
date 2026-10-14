@@ -120,6 +120,8 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
     onSuccess: async (result) => {
       await queryClient.invalidateQueries({ queryKey: ['revisions', projectId] })
       await queryClient.invalidateQueries({ queryKey: ['amounts', projectId] })
+      // Contract and budget feed both dashboards (to collect, budget used, over budget).
+      await Promise.all(['dashboard', 'project-dashboard'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
       if (result && !result.lines_match_total) {
         setWarning('Saved. Note: the heading budgets do not add up to the total budget.')
         return

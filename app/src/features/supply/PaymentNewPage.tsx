@@ -106,12 +106,14 @@ export function PaymentNewPage() {
     setValue('amount', paisaToInput(Object.values(next).reduce((s, a) => s + (parseNPR(a) ?? 0), 0)))
   }
 
-  // Coming from a bill (or other document): tick it.
+  // Coming from a bill (or other document): tick it. The supplier page names the project and what
+  // is still to pay on it there, after unmatched payments, so the form does not suggest more.
   const fromDoc = params.get('bill') ?? params.get('doc')
+  const upTo = Number(params.get('amount')) || null
   useEffect(() => {
     if (!fromDoc || !openItems.data || Object.keys(getValues('settle')).length) return
-    const rows = openDocs.filter((b) => b.doc_id === fromDoc)
-    if (rows.length) setSettle(Object.fromEntries(rows.map((r) => [docKey(r), paisaToInput(r.amount_paisa)])))
+    const rows = openDocs.filter((b) => b.doc_id === fromDoc && (!projectParam || b.project_id === projectParam))
+    if (rows.length) setSettle(Object.fromEntries(rows.map((r) => [docKey(r), paisaToInput(upTo ? Math.min(upTo, r.amount_paisa) : r.amount_paisa)])))
   }, [fromDoc, openItems.data]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Only documents shown now count: ticks left behind by a party change are ignored.

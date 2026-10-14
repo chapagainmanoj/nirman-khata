@@ -267,6 +267,23 @@ All are `security_invoker` views or RPC functions.
   (`private.held_split`, `party_held`, `refund_rooms`, dashboards' `peski_paisa` / `overpaid_paisa`).
 - A reversed bill unsettles its payments: money from a Peski payment is Peski again.
 
+
+### 4.6 Attendance (`20261025000100_attendance.sql`)
+- `companies.labour_mode` (`day_total` | `attendance`), `standard_day_minutes` (default 480),
+  `day_start` / `day_end`. Company-wide.
+- `crew_members`: per crew, `rate_kind` daily | hourly, `rate_paisa`. Never a party; no delete.
+  Editable by party managers or anyone who works on the crew's project; readable by them and finance.
+- `attendance`: one row per (member, project, work_date) with times and minutes; `crew_id` is the
+  crew owed for that project, not necessarily the member's crew. Written only by `set_attendance`
+  (checks future dates, the crew fits the project, no overlapping times across projects, ≤ 24 h).
+  Readable by anyone who works on the project or sees its money. Rates and day amounts are shown on
+  the roster to those who mark it; the posted `labour_costs` keep the X2 rule (3.5).
+- `close_labour_day(op_key, {project_id, crew_id, from_date, to_date, pay_now, confirm_duplicate})`:
+  locks the crew, prices open rows (rate snapshot), and calls `private.post_labour` with one day per
+  work date, so ledger, pay now and near-duplicate checks are shared with day totals. Rows store
+  `labour_cost_id`; a trigger refuses edits while that cost is posted (`day_closed:`), so reversing
+  the cost reopens the day.
+
 ---
 
 ## 5. Posting contract, concurrency and corrections

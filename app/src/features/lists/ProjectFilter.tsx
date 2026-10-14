@@ -5,7 +5,7 @@ import { useState, type ReactNode } from 'react'
 import { useCurrentProject } from '../projects/current'
 
 const option = (on: boolean) =>
-  `min-h-10 min-w-0 rounded-md px-3 text-sm font-medium ${on ? 'bg-surface text-ink shadow-sm' : 'text-subtle hover:text-ink'}`
+  `min-h-11 [@media(pointer:fine)]:min-h-10 min-w-0 rounded-md px-3 text-sm font-medium ${on ? 'bg-surface text-ink shadow-sm' : 'text-subtle hover:text-ink'}`
 
 export function useProjectFilter() {
   const current = useCurrentProject()

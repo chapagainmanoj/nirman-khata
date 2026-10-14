@@ -96,7 +96,7 @@ export function CalendarPage() {
               {(['bs', 'ad'] as const).map((d) => (
                 <button key={d} type="button" role="radio" aria-checked={month.display === d}
                   onClick={() => setMonth(monthOf(selected, d))}
-                  className={`min-h-9 rounded-md px-3 text-xs font-semibold ${month.display === d ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
+                  className={`min-h-11 [@media(pointer:fine)]:min-h-9 rounded-md px-3 text-xs font-semibold ${month.display === d ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
                   {d.toUpperCase()}
                 </button>
               ))}

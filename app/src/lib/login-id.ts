@@ -22,3 +22,9 @@ export function parseLoginId(input: string): LoginId | null {
   if (!/^9\d{9}$/.test(digits)) return null
   return { kind: 'phone', phone: '+977' + digits, email: `977${digits}@${PHONE_LOGIN_DOMAIN}` }
 }
+
+/** "+9779843694037" as "+977 984-3694037"; anything else as given. */
+export function formatPhone(phone: string): string {
+  const m = /^\+977(\d{3})(\d{7})$/.exec(phone)
+  return m ? `+977 ${m[1]}-${m[2]}` : phone
+}

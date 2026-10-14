@@ -56,7 +56,8 @@ test('dashboard, reports and exports agree', async ({ page }) => {
   await page.goto('/')
   await expect(page).toHaveURL(/\/dashboard$/)
   const totals = page.getByRole('region', { name: 'Totals' })
-  await expect(totals).toContainText('Rs. 6,000')
+  await expect(totals.getByRole('link', { name: /^Spent/ })).toContainText('Rs. 6,000')
+  await expect(totals.getByRole('link', { name: /^Paid out/ })).toContainText('Rs. 6,000')
   await expect(page.getByRole('progressbar', { name: 'Budget used' })).toBeVisible()
   // Work done is kept apart from budget used; with no progress entered it offers a way to set it.
   await expect(page.getByRole('link', { name: /Set progress/ })).toHaveAttribute('href', `/projects/${projectId}?tab=site`)

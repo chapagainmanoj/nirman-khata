@@ -13,6 +13,8 @@ export type NavRole = {
   canApproveSlips: boolean
   /** Company setting "Track own labour (jyala)". */
   labourEnabled: boolean
+  /** Company setting "Labour by": a typed day total, or each worker's attendance. */
+  labourByAttendance?: boolean
 }
 
 export type NavKey =
@@ -125,7 +127,10 @@ export function recordActionsFor(r: NavRole): RecordAction[] {
     .map((k) => {
       const a = RECORD[k]
       // Accounts type the bill; everyone else photographs it and sends it on.
-      return k === 'bill' && r.seesAllProjects ? { ...a, label: 'record.bill', hint: 'record.bill.hint' } : a
+      if (k === 'bill' && r.seesAllProjects) return { ...a, label: 'record.bill', hint: 'record.bill.hint' }
+      // With attendance on, labour is marked per worker on the day roster.
+      if (k === 'labour' && r.labourByAttendance) return { ...a, path: '/labour/attendance', label: 'record.attendance', hint: 'record.attendance.hint' }
+      return a
     })
 }
 

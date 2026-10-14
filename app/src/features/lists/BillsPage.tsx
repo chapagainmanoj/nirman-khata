@@ -27,6 +27,15 @@ const EMPTY: Record<Tab, string> = {
   all: 'No bills yet.',
 }
 
+// How bills get to each tab, for a tab that is empty: an owner who posts their own bills may never
+// have seen To post or Drafts fill up.
+const HOW: Record<Tab, string> = {
+  to_post: 'Bills entered by site staff or a project manager and sent with "Send to Accounts" wait here to be checked and posted. Bills entered by Admin or Accounts are posted straight away.',
+  drafts: 'A bill saved with "Save draft" waits here until it is finished.',
+  posted: 'Posted bills count in cost and in what is owed to the supplier.',
+  all: 'Enter a bill when a supplier sends one.',
+}
+
 export function BillsPage() {
   const auth = useCompany()
   const posts = canPost(auth)
@@ -58,7 +67,7 @@ export function BillsPage() {
         <Card>
           {shown.isPending && <Spinner />}
           <ErrorBanner onRetry={() => void shown.refetch()}>{shown.error && friendlyError(shown.error)}</ErrorBanner>
-          {shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]} />)}
+          {shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]}>{HOW[tab]}</EmptyState>)}
           {owed > 0 && (tab === 'posted' || tab === 'all') && (
             <p className="mb-2 border-b border-line pb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
           )}

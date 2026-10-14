@@ -64,7 +64,9 @@ export function DailyReportPage() {
   const current = useCurrentProject()
   const projects = useProjects(auth.companyId)
   const units = useUnits(auth.companyId)
-  const labourOn = auth.company.labour_module_enabled
+  // With attendance on, the day's labour comes from the roster, so the report does not take an amount.
+  const byAttendance = auth.company.labour_module_enabled && auth.company.labour_mode === 'attendance'
+  const labourOn = auth.company.labour_module_enabled && !byAttendance
   const crews = useCrews(auth.companyId)
   const mayPay = canRecordPayments(auth)
   const refresh = useRefreshSite()
@@ -306,6 +308,13 @@ export function DailyReportPage() {
                 )}
               </div>
             )}
+          </Card>
+        )}
+
+        {byAttendance && v.project_id && (
+          <Card>
+            <p className="text-sm text-ink">Labour is marked worker by worker on the attendance roster.</p>
+            <p className="mt-1 text-sm"><Link className="text-slate" to={`/labour/attendance?project=${v.project_id}${v.work_date !== todayKathmandu() ? `&date=${v.work_date}` : ''}`}>Open attendance</Link></p>
           </Card>
         )}
 

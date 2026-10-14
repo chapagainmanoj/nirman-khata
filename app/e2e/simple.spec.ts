@@ -15,10 +15,12 @@ function trackErrors(page: Page) {
 
 async function chooseForms(page: Page, style: 'Simple' | 'Detailed') {
   await page.goto('/settings')
-  const form = page.locator('form', { has: page.getByRole('radiogroup', { name: 'How forms look' }) })
-  await form.getByRole('radio', { name: style }).click()
-  await form.getByRole('button', { name: 'Save' }).click()
-  await expect(form.getByText('Saved.')).toBeVisible()
+  // "How you work" saves each choice as soon as it is tapped.
+  const card = page.locator('section', { has: page.getByRole('heading', { name: 'How you work' }) })
+  const radio = card.getByRole('radio', { name: style })
+  if ((await radio.getAttribute('aria-checked')) === 'true') return
+  await radio.click()
+  await expect(card.getByText('Saved.')).toBeVisible()
 }
 
 test('simple forms fold the less-used fields; values and detailed mode keep them open', async ({ page }) => {
@@ -32,6 +34,12 @@ test('simple forms fold the less-used fields; values and detailed mode keep them
   await page.getByRole('button', { name: 'Create company' }).click()
   await expect(page.getByText('No projects yet')).toBeVisible()
   await chooseForms(page, 'Simple')
+
+  // An empty tab says how things get there.
+  await page.goto('/bills')
+  await expect(page.getByText(/sent with "Send to Accounts" wait here/)).toBeVisible()
+  await page.goto('/slips')
+  await expect(page.getByText(/until everything ordered has arrived/)).toBeVisible()
 
   // New project: code, name, client and amounts in view; location and dates folded.
   await page.goto('/projects/new')
