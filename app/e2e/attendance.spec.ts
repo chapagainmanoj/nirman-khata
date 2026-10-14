@@ -102,3 +102,58 @@ test('attendance: mark the day, close it, bring a worker to another project', as
 
   expect(errors).toEqual([])
 })
+
+// The worker's time card (step 2): a past month ticked day by day, one day split with another
+// project, then every open day closed at once, each for the crew owed on its project.
+test('time card: tick days, split one with another project, close open days', async ({ page }) => {
+  const errors = trackErrors(page)
+  await page.goto('/register')
+  await page.getByLabel('Company name').fill(`Time Card Nirman ${run}`)
+  await page.getByLabel('Your name').fill('Hari Owner')
+  await page.getByLabel('Mobile number or email').fill(`+977 985${run}`)
+  await page.getByLabel('Password').fill('owner-pass-1')
+  await page.getByRole('button', { name: 'Create company' }).click()
+  await expect(page.getByText('No projects yet')).toBeVisible()
+  const bhandari = await newProject(page, 'P-1', 'Bhandari house')
+  await newProject(page, 'P-2', 'Lakeside')
+  await page.goto('/settings')
+  const work = page.locator('section', { has: page.getByRole('heading', { name: 'How you work' }) })
+  await work.getByRole('radio', { name: 'Attendance' }).click()
+  await expect(work.getByText('Saved.')).toBeVisible()
+  await page.reload()
+
+  await page.goto(`/labour/attendance?project=${bhandari}`)
+  await addWorker(page, 'Ram Bahadur', 'Day', '1,200')
+  await page.getByRole('button', { name: /^Ram Bahadur/ }).click()
+  await page.getByRole('link', { name: 'Time card for the month' }).click()
+  await expect(page.getByRole('heading', { name: 'Ram Bahadur' })).toBeVisible()
+
+  // Last month, so every day is in the past: tick the first three.
+  await page.getByRole('button', { name: 'Previous month' }).click()
+  const ticks = page.getByRole('checkbox', { name: /^Here on/ })
+  for (const i of [0, 1, 2]) {
+    await ticks.nth(i).click()
+    await expect(ticks.nth(i)).toBeChecked()
+  }
+  await expect(page.getByText(/3 days · 24 h · Rs\. 3,600/)).toBeVisible()
+
+  // Day 2: the afternoon at Lakeside. Same hours and pay, two projects.
+  await page.getByRole('button', { name: /, 8 h$/ }).nth(1).click()
+  await page.getByRole('button', { name: 'Split with another project' }).click()
+  await page.getByLabel('Other project for the rest of the day').selectOption({ label: 'P-2 · Lakeside' })
+  await expect(page.getByRole('listitem').filter({ hasText: 'P-2 · Lakeside' }).first()).toContainText('13:00')
+  await expect(page.getByText(/3 days · 24 h · Rs\. 3,600/)).toBeVisible()
+  await page.screenshot(shots('att-03-timecard'))
+
+  // Close: three Bhandari days on its crew, the Lakeside afternoon on Lakeside's.
+  await page.getByRole('button', { name: 'Close open days' }).click()
+  const closeCard = page.locator('section', { has: page.getByRole('heading', { name: 'Close open days' }) })
+  await closeCard.getByLabel('Paid now').uncheck()
+  await closeCard.getByRole('button', { name: 'Close 3 days' }).click()
+  await expect(page.getByText(/Closed 4 days: Rs\. 3,600 labour cost for 2 crews\. Not paid yet/)).toBeVisible()
+  await expect(page.getByTitle('Closed')).toHaveCount(3)
+  await expect(page.getByRole('button', { name: 'All closed' })).toBeDisabled()
+  await page.screenshot(shots('att-04-timecard-closed'))
+
+  expect(errors).toEqual([])
+})

@@ -37,6 +37,7 @@ const SuppliersPage = page(() => import('./features/supply/SuppliersPage'), 'Sup
 const ExpenseNewPage = page(() => import('./features/costs/ExpenseNewPage'), 'ExpenseNewPage')
 const LabourNewPage = page(() => import('./features/costs/LabourNewPage'), 'LabourNewPage')
 const AttendancePage = page(() => import('./features/labour/AttendancePage'), 'AttendancePage')
+const TimeCardPage = page(() => import('./features/labour/TimeCardPage'), 'TimeCardPage')
 const PartiesPage = page(() => import('./features/parties/PartiesPage'), 'PartiesPage')
 const PartyDetailPage = page(() => import('./features/parties/PartyDetailPage'), 'PartyDetailPage')
 const WorkPackageDetailPage = page(() => import('./features/subcontract/WorkPackageDetailPage'), 'WorkPackageDetailPage')
@@ -99,6 +100,7 @@ export function App() {
           <Route path="/work/:packageId/edit" element={<WorkPackageEditPage />} />
           <Route path="/labour/new" element={<LabourNewPage />} />
           <Route path="/labour/attendance" element={<AttendancePage />} />
+          <Route path="/labour/worker/:id" element={<TimeCardPage />} />
           <Route path="/expenses/new" element={<ExpenseNewPage />} />
           <Route path="/daily/new" element={<DailyReportPage />} />
           <Route path="/daily/:reportId" element={<ReportDetailPage />} />

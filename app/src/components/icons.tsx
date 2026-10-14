@@ -3,7 +3,7 @@
 // Decorative by default (aria-hidden): the text next to an icon names the action.
 import {
   ArrowRight, Banknote, Bell, Building2, CalendarDays, Camera, ChartColumn, Check, ChevronDown, ChevronLeft, ChevronRight,
-  ClipboardList, Ellipsis, HandCoins, Handshake, HardHat, Info, LayoutDashboard, NotebookPen, Package, Plus, Receipt, Share2,
+  ClipboardList, Ellipsis, HandCoins, Handshake, HardHat, Info, LayoutDashboard, Lock, NotebookPen, Package, Plus, Receipt, Share2,
   SlidersHorizontal, Trash2, TriangleAlert, Truck, Users, Wallet, type LucideIcon, type LucideProps,
 } from 'lucide-react'
 
@@ -46,6 +46,7 @@ export const ChevronDownIcon = icon(ChevronDown, 'ChevronDownIcon')
 export const ChevronLeftIcon = icon(ChevronLeft, 'ChevronLeftIcon')
 export const ChevronRightIcon = icon(ChevronRight, 'ChevronRightIcon')
 export const CheckIcon = icon(Check, 'CheckIcon')
+export const LockIcon = icon(Lock, 'LockIcon')
 export const ArrowRightIcon = icon(ArrowRight, 'ArrowRightIcon')
 export const CameraIcon = icon(Camera, 'CameraIcon')
 export const ShareIcon = icon(Share2, 'ShareIcon')

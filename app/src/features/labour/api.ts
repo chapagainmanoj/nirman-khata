@@ -49,14 +49,19 @@ export function useSaveMember() {
       const { error } = await q
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['crew-members'] }),
+    // The time card shows the member's rate and whether they are still on a crew.
+    onSuccess: () => Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['crew-members'] }),
+      queryClient.invalidateQueries({ queryKey: ['attendance', 'worker'] }),
+    ]),
   })
 }
 
 // ---------------------------------------------------------------------------
 // Hours
 // ---------------------------------------------------------------------------
-const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+export const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+export const clock = (t: number) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
 export const hhmm = (t: string | null | undefined) => (t ? t.slice(0, 5) : '')
 
 /**
@@ -89,3 +94,30 @@ export function labourPath(company: { labour_mode: string }, opts: { project?: s
   const s = q.toString()
   return s ? `${base}?${s}` : base
 }
+
+// ---------------------------------------------------------------------------
+// A worker's time card
+// ---------------------------------------------------------------------------
+export type CardRow = {
+  work_date: string
+  /** Null when the day is on a project this user cannot see: the time is taken, nothing more. */
+  project_id: string | null
+  crew_id: string | null
+  time_in: string | null
+  time_out: string | null
+  minutes: number
+  amount_paisa: number | null
+  closed: boolean
+  editable: boolean
+}
+export type CardMember = Omit<Worker, 'crew_project_id'> & { crew_project_id: string | null; active: boolean }
+
+export function useWorkerMonth(memberId: string, from: string, to: string) {
+  return useQuery({
+    queryKey: ['attendance', 'worker', memberId, from, to],
+    enabled: !!memberId && !!from && !!to,
+    queryFn: async () => (await rpc('worker_month', { p_member: memberId, p_from: from, p_to: to })) as { member: CardMember; rows: CardRow[] },
+  })
+}
+
+export const timeCardPath = (memberId: string) => `/labour/worker/${memberId}`

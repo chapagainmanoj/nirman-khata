@@ -19,7 +19,7 @@ import { useCurrentProject } from '../projects/current'
 import { projectCrumbs } from '../projects/crumbs'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { canEnter, canRecordPayments } from '../supply/permissions'
-import { type DayRow, hhmm, hoursText, minutesBetween, payFor, rateText, useAttendanceDay, useProjectWorkers, type Worker } from './api'
+import { clock, type DayRow, hhmm, hoursText, minutesBetween, payFor, rateText, useAttendanceDay, timeCardPath, toMin, useProjectWorkers, type Worker } from './api'
 import { MemberForm } from './MemberForm'
 
 type Mark = { time_in: string | null; time_out: string | null; minutes: number }
@@ -80,9 +80,10 @@ export function AttendancePage() {
       await rpc('set_attendance', { p_row: { project_id: projectId, crew_id: crewId, member_id: w.id, work_date: date,
         time_in: m?.time_in ?? null, time_out: m?.time_out ?? null, minutes: m?.minutes ?? 0 } })
     } catch (e) {
-      setError(`${w.name}: ${friendlyError(e)}`)
+      const overlap = ((e as { message?: string }).message ?? '').startsWith('attendance_overlap')
+      setError(`${w.name}: ${friendlyError(e)}${overlap ? ' Split the day on their time card.' : ''}`)
     } finally {
-      await queryClient.invalidateQueries({ queryKey: ['attendance', projectId, date] })
+      await queryClient.invalidateQueries({ queryKey: ['attendance'] })
       setSaving(null)
     }
   }
@@ -98,7 +99,7 @@ export function AttendancePage() {
       setClosed(r)
       setClosing(false)
       setDuplicate('')
-      await queryClient.invalidateQueries({ queryKey: ['attendance', projectId, date] })
+      await queryClient.invalidateQueries({ queryKey: ['attendance'] })
       await refreshMoney()
     },
   })
@@ -282,8 +283,6 @@ type RowProps = {
   company: { day_start: string; day_end: string; standard_day_minutes: number }
 }
 
-const clock = (t: number) => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`
-const toMin = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
 
 function WorkerList({ list, ...p }: RowProps & { list: Worker[] }) {
   return (
@@ -361,8 +360,9 @@ function Sheet({ w, r, ...p }: RowProps & { w: Worker; r: DayRow | undefined }) 
           <Input id={`at-h-${w.id}`} inputMode="decimal" value={hours} disabled={busy} onChange={(e) => setHours(e.target.value)} onBlur={saveHours} />
         </Field>
       </div>
-      <p className="text-xs text-subtle">
-        {r ? `${hoursText(r.minutes)} · ${formatNPR(payFor(w, r.minutes, p.std))}` : 'Not marked'}{w.rate_kind === 'daily' ? ` · a full day is ${hoursText(p.std)}` : ''}
+      <p className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-xs text-subtle">
+        <span>{r ? `${hoursText(r.minutes)} · ${formatNPR(payFor(w, r.minutes, p.std))}` : 'Not marked'}{w.rate_kind === 'daily' ? ` · a full day is ${hoursText(p.std)}` : ''}</span>
+        <Link className="text-sm font-medium text-slate" to={timeCardPath(w.id)}>Time card for the month</Link>
       </p>
     </div>
   )

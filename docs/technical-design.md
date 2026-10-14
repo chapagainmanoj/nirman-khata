@@ -284,6 +284,18 @@ All are `security_invoker` views or RPC functions.
   `labour_cost_id`; a trigger refuses edits while that cost is posted (`day_closed:`), so reversing
   the cost reopens the day.
 
+### 4.7 Time card (`20261026000100_timecard.sql`)
+- `worker_month(member, from, to)` (≤ 32 days): the member and their rows on every project. Rows on a
+  project the user cannot see keep only date, times and minutes, so the card shows the time taken.
+  Open to anyone who enters labour on some project, or finance (as `project_workers`).
+- `close_worker_days(op_key, {member_id, from_date, to_date, pay_now, confirm_duplicate})`: for each
+  (crew, project) where the member has open rows on a project the user enters labour on, in crew
+  order, closes each of those dates for the whole crew via `private.close_crew_days` (shared with
+  `close_labour_day`), then one pay-now payment per crew and project. Other open days of the crew
+  stay open.
+- The client chooses the crew owed when marking: the crew already on that day, else the member's own
+  crew if it may work on the project, else the project's default crew.
+
 ---
 
 ## 5. Posting contract, concurrency and corrections

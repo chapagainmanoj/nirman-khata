@@ -409,6 +409,7 @@ Measurement books, retention and deductions are future scope.
 - Attendance is marked per worker per project per day: in, out, hours worked. "Everyone in" marks the standard day (setting: day start/end, paid hours, default 8 h).
 - Closing the day prices it and creates one labour cost per work date for the crew: daily rate × hours ÷ paid hours, or hourly rate × hours. Closed days are locked; reversing the labour cost reopens them.
 - A worker brought to another project for a day is owed through that project's crew. A day can be split between projects by times that do not overlap.
+- Each worker has a time card for the month (29–32 days): in, out, hours and a tick per day, the project for each day, Split to share a day with another project, and Close open days, which closes each of the worker's open days for the crew owed on that project.
 
 ---
 

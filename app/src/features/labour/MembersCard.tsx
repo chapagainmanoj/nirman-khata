@@ -2,10 +2,10 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { Badge, Button, Card, ErrorBanner, Spinner } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, ErrorBanner, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
-import { rateText, useCrewMembers, useSaveMember } from './api'
+import { rateText, timeCardPath, useCrewMembers, useSaveMember } from './api'
 import { MemberForm } from './MemberForm'
 
 export function MembersCard({ crewId, projectId }: { crewId: string; projectId: string | null }) {
@@ -33,6 +33,7 @@ export function MembersCard({ crewId, projectId }: { crewId: string; projectId: 
                   <span className="block font-medium text-ink">{m.name} {!m.active && <Badge>Inactive</Badge>}</span>
                   <span className="block text-xs text-subtle">{[m.work_type, rateText(m as { rate_kind: 'daily' | 'hourly'; rate_paisa: number }, formatNPR), m.phone].filter(Boolean).join(' · ')}</span>
                 </span>
+                <ButtonLink variant="ghost" to={timeCardPath(m.id)}>Time card</ButtonLink>
                 <Button variant="ghost" onClick={() => setEditing(m.id)}>Edit</Button>
                 <Button variant="ghost" disabled={save.isPending}
                   onClick={() => save.mutate({ id: m.id, companyId: auth.companyId, values: { active: !m.active } })}>

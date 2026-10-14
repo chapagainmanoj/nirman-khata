@@ -16,8 +16,8 @@ One Crew Member's time on one project on one work date: in, out and minutes work
 Turning a crew's open Attendance for a project and a date (or range of dates) into labour costs: one labour cost per work date, owed to that Crew, optionally paid now.
 
 - **Not:** Closed (project).
-- **In code:** `close_labour_day`, which prices each row (daily rate × minutes ÷ the standard day, or hourly rate × hours) and posts through the same labour writer as day totals.
-- **Notes:** The rate is copied onto each row at close, so a later rate change does not alter past days. Reverse the labour cost to reopen the day.
+- **In code:** `close_labour_day` (the day roster: one crew, one project) and `close_worker_days` (the Time Card: each open crew-day the worker is on, for the crew owed there), both through `private.close_crew_days`, which prices each row (daily rate × minutes ÷ the standard day, or hourly rate × hours) and posts through the same labour writer as day totals.
+- **Notes:** The rate is copied onto each row at close, so a later rate change does not alter past days. Reverse the labour cost to reopen the day. A day always closes for the whole crew, since the labour cost is the crew's: closing one worker's month also closes their crew-mates on those days.
 
 ## Closed (project)
 A project whose books are final: work is done (see Completed) and its money has been reconciled. No new financial entries are allowed until an authorized user reopens it.
@@ -143,6 +143,15 @@ To match a payment (or Credit) to a specific bill or work charge, so that bill s
 - **Not:** Farchhyaut (using up Peski) or Hisab Milan (final settlement with a party).
 - **In code:** `settlement_events`; "bill settlement status" in `docs/requirements-v1.1.md` §12.
 - **Aliases to avoid:** "settled" for a party or project; say Hisab Milan done or project closed.
+
+## Time Card
+One Crew Member's Attendance for a whole month (BS or AD, as the company shows dates), across every project: a line per day with in, out, hours and a tick.
+
+- **Not:** the day roster, which is one project's crew on one day. Both edit the same Attendance.
+- **Relations:** shows one Crew Member; a day may hold several projects (a split day). Days on projects the user cannot see show only as time taken.
+- **In code:** `TimeCardPage.tsx` at `/labour/worker/:id`; `worker_month`, `split_attendance`, `close_worker_days`.
+- **Notes:** The tick marks a full day on the worker's usual project, the one their Crew belongs to.
+  Splitting a day gives the other project the second half of its hours, inside the same in and out; both projects are saved together or not at all.
 
 ---
 

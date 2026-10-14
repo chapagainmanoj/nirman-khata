@@ -2656,6 +2656,9 @@ isOneToOne: false
 "close_slip_short":
 { Args: { "p_reason": string,"p_slip": string }; Returns: undefined
                            },
+"close_worker_days":
+{ Args: { "p_close": Json,"p_op_key": string }; Returns: Json
+                           },
 "company_dashboard":
 { Args: { "p_as_of"?: string,"p_company": string,"p_from": string,"p_to": string }; Returns: Json
                            },
@@ -2876,6 +2879,9 @@ isOneToOne: false
 "slip_permissions":
 { Args: { "p_slip": string }; Returns: Json
                            },
+"split_attendance":
+{ Args: { "p_split": Json }; Returns: Json
+                           },
 "submit_bill":
 { Args: { "p_bill": string }; Returns: undefined
                            },
@@ -2907,6 +2913,9 @@ isOneToOne: false
 { Args: { "p_project": string }; Returns: {
               "agreed_value_paisa": number,"approved_paisa": number,"balance_paisa": number,"paid_paisa": number,"pending_claims_paisa": number,"remaining_value_paisa": number,"work_package_id": string
             }[]
+                           },
+"worker_month":
+{ Args: { "p_from": string,"p_member": string,"p_to": string }; Returns: Json
                            }
           }
           Enums: {
