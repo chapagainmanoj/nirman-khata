@@ -17,7 +17,7 @@ import { paisaToInput, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useProjects } from '../projects/api'
-import { rpc, useSlip, useSuppliers } from './api'
+import { rpc, saveUnlessSent, useSlip, useSuppliers } from './api'
 import { TrashIcon } from '../../components/icons'
 
 export type LineValues = {
@@ -42,6 +42,7 @@ type SlipValues = {
   site_contact: string
   notes: string
   lines: LineValues[]
+  submit_key?: string // operation key for "Send", kept with the device draft until it succeeds
 }
 
 const OTHER = '__other__'
@@ -65,6 +66,7 @@ export function SlipEditPage() {
           spec: l.spec ?? '', qty: String(l.qty), unit_id: l.unit_id, unit_note: l.unit_note ?? '',
           est_rate: paisaToInput(l.est_rate_paisa), note: l.note ?? '',
         })),
+        submit_key: newId(),
       }
     : undefined
   return <SlipForm key={slipId ?? 'new'} initial={initial} number={data?.slip.number} />
@@ -94,7 +96,7 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
   const form = useForm<SlipValues>({
     defaultValues: initial ?? {
       id: newId(), supplier_id: params.get('supplier') ?? '', request_date: todayKathmandu(), required_date: '',
-      delivery_instructions: '', site_contact: auth.profile?.phone ?? '', notes: '', lines: [emptyLine()],
+      delivery_instructions: '', site_contact: auth.profile?.phone ?? '', notes: '', lines: [emptyLine()], submit_key: newId(),
     },
   })
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: initial ? `slip-${initial.id}` : 'slip-new' })
@@ -118,7 +120,8 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
 
   const save = useMutation({
     mutationFn: async ({ v, submit }: { v: SlipValues; submit: boolean }) => {
-      await rpc('save_slip_draft', {
+      const key = v.submit_key ?? newId()
+      const saveDraft = () => rpc('save_slip_draft', {
         p_slip: {
           id: v.id, supplier_id: v.supplier_id, request_date: v.request_date, required_date: v.required_date || null,
           delivery_instructions: v.delivery_instructions, site_contact: v.site_contact, notes: v.notes,
@@ -131,14 +134,30 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
           })),
         },
       })
-      if (submit) await rpc('submit_slip', { p_slip: v.id })
-      return v.id
+      if (!submit) {
+        await saveDraft()
+        return { id: v.id, alreadySent: false }
+      }
+      // Kept on the device first, so a reload after a lost answer retries with the same id and key.
+      await draft.save()
+      // A retry after a lost answer finds the slip already sent, unless it was rejected since.
+      const sent = await saveUnlessSent(key, saveDraft, async () => {
+        const { data } = await supabase.from('order_slips').select('status').eq('id', v.id).maybeSingle()
+        return data?.status === 'draft' || data?.status === 'rejected'
+      })
+      const alreadySent = sent.alreadySent
+      if (sent.key !== key) {
+        setValue('submit_key', sent.key)
+        await draft.save()
+      }
+      if (!alreadySent) await rpc('submit_slip', { p_slip: v.id, p_op_key: sent.key })
+      return { id: v.id, alreadySent }
     },
-    onSuccess: async (id) => {
+    onSuccess: async ({ id, alreadySent }) => {
       await draft.clear()
       await queryClient.invalidateQueries({ queryKey: ['slips'] })
       await queryClient.invalidateQueries({ queryKey: ['slip', id] })
-      navigate(`/slips/${id}`, { replace: true })
+      navigate(`/slips/${id}`, { replace: true, state: alreadySent ? { alreadySent } : undefined })
     },
   })
 

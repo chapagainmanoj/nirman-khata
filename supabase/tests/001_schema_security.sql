@@ -24,12 +24,13 @@ select is(
   (select array_agg(c.relname::text order by c.relname)
    from pg_class c join pg_namespace n on n.oid = c.relnamespace
    where n.nspname = 'public' and c.relkind = 'r'
-     and c.relname not in ('companies', 'profiles')
+     -- registration_allowlist is platform-wide (platform admins only), not tenant data.
+     and c.relname not in ('companies', 'profiles', 'registration_allowlist')
      and not exists (
        select 1 from pg_attribute a
        where a.attrelid = c.oid and a.attname = 'company_id' and not a.attisdropped)),
   null,
-  'every tenant table has company_id (only companies and profiles are exempt)'
+  'every tenant table has company_id (only companies, profiles and the allow list are exempt)'
 );
 
 select is(

@@ -11,7 +11,7 @@ import { Button, Card, ErrorBanner, Field, FormActions, Input, PageHeader, Selec
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { PACKAGE_STATUS } from '../../lib/labels'
-import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
+import { formatNPR, lineAmount, paisaToInput, parseNPR } from '../../lib/money'
 import { useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
 import { rpc } from '../supply/api'
@@ -61,7 +61,7 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
   const rate = parseNPR(v.rate)
   const qty = Number(v.quantity)
   const byRate = v.rate_basis === 'rate' && rate !== null && qty > 0
-  const agreedPaisa = byRate ? Math.round(rate * qty) : parseNPR(v.agreed)
+  const agreedPaisa = byRate ? lineAmount(rate, v.quantity) : parseNPR(v.agreed)
 
   const save = useMutation({
     mutationFn: () => rpc('save_work_package', { p_package: {
@@ -92,6 +92,11 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
       : !v.subcontractor_id ? 'Choose the subcontractor.'
       : !v.scope.trim() ? 'Describe the work, e.g. Plaster, ground floor.'
       : v.rate_basis === 'rate' && !v.unit_id ? 'Choose the unit the rate is per, e.g. sq.ft.'
+      // A rate and quantity that cannot be multiplied would save no agreed value, removing the old one.
+      : auth.canSeeFinance && v.rate_basis === 'rate' && v.rate.trim() && rate === null ? 'The rate is not a valid amount.'
+      : auth.canSeeFinance && v.rate_basis === 'rate' && v.quantity.trim() && lineAmount(0, v.quantity) === null
+        ? 'Expected quantity: a number with at most 3 decimals, e.g. 120.5.'
+      : byRate && agreedPaisa === null ? 'Rate times quantity is too large.'
       : Number.isNaN(progress) || progress < 0 || progress > 100 ? 'Progress is a number from 0 to 100.'
       : v.planned_start && v.planned_end && v.planned_end < v.planned_start ? 'The planned end is before the start.'
       : ''

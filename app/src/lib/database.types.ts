@@ -1711,6 +1711,26 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"registration_allowlist": {
+                  Row: {
+                    "added_by": string | null,"created_at": string,"id": string,"login_email": string,"note": string | null,"used_at": string | null,"used_by": string | null,"used_company": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "added_by"?: string | null,"created_at"?: string,"id"?: string,"login_email": string,"note"?: string | null,"used_at"?: string | null,"used_by"?: string | null,"used_company"?: string | null
+                  }
+                  Update: {
+                    "added_by"?: string | null,"created_at"?: string,"id"?: string,"login_email"?: string,"note"?: string | null,"used_at"?: string | null,"used_by"?: string | null,"used_company"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "registration_allowlist_used_company_fkey"
+      columns: ["used_company"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
                 },"reversals": {
                   Row: {
                     "bill_id": string | null,"charge_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"reason": string,"refund_id": string | null,"reversal_date": string,"subcontractor_id": string | null,"supplier_id": string | null,"target_id": string | null
@@ -2692,6 +2712,15 @@ isOneToOne: false
 "export_company_data":
 { Args: { "p_company": string }; Returns: Json
                            },
+"finished_submit":
+{ Args: { "p_op_key": string }; Returns: Json
+                           },
+"is_platform_admin":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"is_platform_admin_user":
+{ Args: { "p_user": string }; Returns: boolean
+                           },
 "last_billed_rate":
 { Args: { "p_material": string,"p_supplier": string }; Returns: {
               "bill_date": string,"bill_no": string,"qty": number,"rate_paisa": number
@@ -2724,6 +2753,21 @@ isOneToOne: false
 "party_open_items":
 { Args: { "p_party": string }; Returns: {
               "amount_paisa": number,"doc_date": string,"doc_id": string,"kind": string,"label": string,"project_id": string
+            }[]
+                           },
+"platform_company_usage":
+{ Args: { "p_search"?: string }; Returns: {
+              "active_users": number,"changes_30d": number,"changes_7d": number,"company_id": string,"created_at": string,"last_activity": string,"last_sign_in": string,"name": string,"owner_login": string,"owner_name": string,"project_count": number
+            }[]
+                           },
+"platform_company_users":
+{ Args: { "p_company": string }; Returns: {
+              "active": boolean,"changes_30d": number,"full_name": string,"last_activity": string,"last_sign_in": string,"login": string,"roles": (Database["public"]['Enums']["app_role"])[],"user_id": string
+            }[]
+                           },
+"platform_used_approvals":
+{ Args: Record<PropertyKey, never>; Returns: {
+              "company_name": string,"id": string,"login_email": string,"note": string,"used_at": string
             }[]
                            },
 "post_bill":
@@ -2778,6 +2822,12 @@ isOneToOne: false
 { Args: { "p_party": string }; Returns: {
               "available_paisa": number,"peski_paisa": number,"project_id": string
             }[]
+                           },
+"registration_approval_required":
+{ Args: Record<PropertyKey, never>; Returns: boolean
+                           },
+"registration_precheck":
+{ Args: { "p_login_email": string }; Returns: boolean
                            },
 "reject_charge":
 { Args: { "p_charge": string,"p_reason": string }; Returns: undefined
@@ -2884,12 +2934,16 @@ isOneToOne: false
                            },
 "submit_bill":
 { Args: { "p_bill": string }; Returns: undefined
+                           } |
+{ Args: { "p_bill": string,"p_op_key": string }; Returns: undefined
                            },
 "submit_daily_report":
 { Args: { "p_op_key": string,"p_report": Json }; Returns: Json
                            },
 "submit_slip":
 { Args: { "p_slip": string }; Returns: Database["public"]['Enums']["slip_status"]
+                           } |
+{ Args: { "p_op_key": string,"p_slip": string }; Returns: Database["public"]['Enums']["slip_status"]
                            },
 "supplier_balances":
 { Args: { "p_as_of"?: string,"p_company": string }; Returns: {

@@ -33,7 +33,8 @@ export function RegisterPage() {
     }
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: id.email, password: form.password })
     setBusy(false)
-    if (signInError) return navigate('/login')
+    // The company exists now; only the automatic sign-in failed, so say so on the login page.
+    if (signInError) return navigate('/login', { state: { registered: true } })
     await queryClient.invalidateQueries({ queryKey: ['me'] })
     navigate('/projects', { replace: true })
   }
@@ -41,6 +42,7 @@ export function RegisterPage() {
   return (
     <AuthShell title={t('auth.register')}>
       <form onSubmit={submit} className="flex flex-col gap-4">
+        <p className="text-sm text-subtle">{t('auth.byInvitation')}</p>
         <Field label="Company name" htmlFor="company">
           <Input id="company" value={form.company_name} onChange={set('company_name')} required />
         </Field>

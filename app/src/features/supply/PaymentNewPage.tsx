@@ -143,6 +143,7 @@ export function PaymentNewPage() {
       const settlements = billsMode || vals.package_id
         ? ticked(vals).map(([key, a]) => { const [doc_id, project_id] = key.split(':'); return { doc_id, project_id, amount_paisa: parseNPR(a) } })
         : []
+      await draft.save()
       await rpc('record_payment', { p_op_key: vals.op_key, p_payment: {
         id: vals.id, [PARTY[vals.party_kind].column]: vals.party_id, work_package_id: vals.package_id || null,
         payment_date: vals.payment_date, amount_paisa: parseNPR(vals.amount),
@@ -150,7 +151,7 @@ export function PaymentNewPage() {
         allocations: splitOf(vals), settlements, is_peski: !anyUnpaid && (!!vals.package_id || vals.is_peski),
       } })
       // The payment is saved; a photo that fails to upload can be added again on the payment page.
-      return uploadPending(auth.companyId, { payment_id: vals.id }, vals.photos)
+      return uploadPending({ userId: auth.userId, companyId: auth.companyId }, { payment_id: vals.id }, vals.photos)
     },
     onSuccess: async (failedPhotos, vals) => {
       await draft.clear()

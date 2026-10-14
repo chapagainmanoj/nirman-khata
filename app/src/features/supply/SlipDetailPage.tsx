@@ -1,7 +1,7 @@
 // One order slip: lines by project with received vs remaining (req §9.2 step 7), approval,
 // sharing with the supplier, deliveries against it.
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
 import { ReasonButton } from '../../components/ReasonButton'
@@ -9,7 +9,7 @@ import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, Err
 import { formatDate, formatDateTime, formatDual, relativeDay } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
-import { formatNPR } from '../../lib/money'
+import { formatNPR, lineAmount } from '../../lib/money'
 import { platform } from '../../platform'
 import { memberName, useMembers, useProjects } from '../projects/api'
 import { rpc, useSlip } from './api'
@@ -24,6 +24,8 @@ export function SlipDetailPage() {
   const auth = useCompany()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  // Sent again after a lost answer: the first send had gone through.
+  const alreadySent = !!(useLocation().state as { alreadySent?: boolean } | null)?.alreadySent
   const slip = useSlip(slipId)
   const projects = useProjects(auth.companyId)
   const members = useMembers(auth.companyId)
@@ -57,7 +59,7 @@ export function SlipDetailPage() {
   const err = act.error && friendlyError(act.error)
   // What an approver weighs: when it is needed and roughly what it costs.
   const priced = lines.filter((l) => l.est_rate_paisa !== null)
-  const estimate = priced.reduce((t, l) => t + Math.round(Number(l.est_rate_paisa) * Number(l.qty)), 0)
+  const estimate = priced.reduce((t, l) => t + (lineAmount(Number(l.est_rate_paisa), l.qty) ?? 0), 0)
   const facts = [
     s.required_date && s.status !== 'cancelled' && !['fully_received', 'closed_short'].includes(perms?.fulfilment ?? '') &&
       `Needed by ${formatDate(s.required_date, auth.dateDisplay)} (${relativeDay(s.required_date)})`,
@@ -108,6 +110,7 @@ export function SlipDetailPage() {
         }
         after={facts && <p className="mt-1 text-sm font-medium text-ink">{facts}</p>}
       />
+      {alreadySent && <div className="mb-4"><Notice>This slip had already been sent; it was not sent twice.</Notice></div>}
       {s.status === 'rejected' && s.rejected_reason && <div className="mb-4"><Notice>Rejected: {s.rejected_reason}</Notice></div>}
       {s.closed_short_reason && <div className="mb-4"><Notice>Closed short: {s.closed_short_reason}</Notice></div>}
 

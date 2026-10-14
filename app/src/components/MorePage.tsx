@@ -6,6 +6,7 @@ import { useCompany } from '../auth/AuthProvider'
 import { t } from '../lib/i18n'
 import { ROLE_LABELS } from '../lib/labels'
 import { PARTY, PARTY_KINDS } from '../features/parties/kinds'
+import { useIsPlatformAdmin } from '../features/platform/api'
 import { useNavRole } from './useNavRole'
 import { phoneBarFor, sectionsFor } from './nav'
 import { PageHeader } from './ui'
@@ -29,6 +30,7 @@ export function MorePage() {
   const groups = sectionsFor(role)
     .map((g) => ({ ...g, items: g.items.filter((i) => !bar.includes(i.key) && i.key !== 'parties') }))
   const roles = auth.membership?.roles.map((r) => ROLE_LABELS[r]).join(', ')
+  const { isPlatformAdmin } = useIsPlatformAdmin()
 
   return (
     <>
@@ -47,6 +49,7 @@ export function MorePage() {
       </Group>
       <Group title={t('nav.account')}>
         <li className="border-b border-line"><Link to="/notifications" className={rowClass}>{t('nav.notifications')}</Link></li>
+        {isPlatformAdmin && <li className="border-b border-line"><Link to="/platform" className={rowClass}>{t('nav.platform')}</Link></li>}
         <li className="border-b border-line px-4 py-3 text-sm">
           <div className="font-medium text-ink">{auth.profile?.full_name}</div>
           <div className="text-xs text-subtle">{auth.company.name} · {roles}</div>

@@ -136,20 +136,20 @@ export function DashboardPage() {
       {/* Two quiet groups of figures, not boxed cards: what the period tabs change, and where
           things stand today. "To date" only when it differs from the period figure. */}
       {d.money_visible && (
-        <section aria-label="Totals" className="mb-6 grid gap-x-10 gap-y-5 border-b border-line pb-5 lg:grid-cols-[3fr_2fr]">
+        <section aria-label="Totals" className="mb-6 grid gap-x-10 gap-y-5 border-b border-line pb-5 lg:grid-cols-[minmax(0,1fr)_auto]">
           <Group title={range.label}>
             <Figure label="Spent" value={d.cost_period_paisa} sub={toDate(d.cost_period_paisa, d.cost_to_date_paisa)} to="/reports/project-cost" />
             <Figure label="Paid out" value={d.cash_period_paisa} sub={toDate(d.cash_period_paisa, d.cash_to_date_paisa)} to="/reports/payments" />
-            <Figure label="Received" value={d.received_period_paisa}
+            <Figure label="Received" tone={(d.received_period_paisa ?? 0) > 0 ? 'good' : undefined} value={d.received_period_paisa}
               sub={(d.received_period_paisa ?? 0) < 0 ? 'Less a receipt reversed in this period'
                 : toDate(d.received_period_paisa, d.received_to_date_paisa) ?? 'From clients'} to="/projects" />
           </Group>
-          <Group title="Right now">
-            <Figure label="To pay" value={owedTotal}
+          <Group title="Right now" tiles>
+            <Figure tile tone="warn" label="To pay" value={owedTotal}
               sub={Object.entries(owed).filter(([, n]) => n).map(([k, n]) => `${OWED_LABEL[k as keyof typeof OWED_LABEL]} ${formatNPR(n)}`).join(' · ') || 'Nothing to pay'}
               to="/parties" />
-            <Figure label="To collect" value={d.to_collect_paisa} sub="Left on client contracts" to="/projects" />
-            {!!d.peski_paisa && <Figure label="Peski not yet used" value={d.peski_paisa} sub="Deducted from their bills as they come" to="/parties" />}
+            <Figure tile tone="brand" label="To collect" value={d.to_collect_paisa} sub="Left on client contracts" to="/projects" />
+            {!!d.peski_paisa && <Figure tile tone="neutral" label="Peski not yet used" value={d.peski_paisa} sub="Deducted from their bills as they come" to="/parties" />}
           </Group>
         </section>
       )}
@@ -201,22 +201,48 @@ function toDate(period: number | undefined, total: number | undefined) {
   return (period ?? 0) === (total ?? 0) ? undefined : `To date ${formatNPR(total ?? 0)}`
 }
 
-function Figure({ label, value, sub, to }: { label: string; value: number | undefined; sub?: string; to: string }) {
+type Tone = 'warn' | 'brand' | 'good' | 'neutral'
+
+// Colour by meaning, and only where someone can act (PRODUCT.md: calm by default). A tile is
+// the "Right now" treatment; a period figure only tints its amount.
+const TILE: Record<Tone, string> = {
+  warn: 'bg-warn-soft text-warn-ink',
+  brand: 'bg-brand-soft text-brand-dark',
+  good: 'bg-good-soft text-good-ink',
+  neutral: 'bg-info-soft text-info-ink',
+}
+const AMOUNT: Record<Tone, string> = { warn: 'text-warn-ink', brand: 'text-brand-dark', good: 'text-good-ink', neutral: 'text-ink' }
+
+/** One figure. `tone` applies only when the amount is not zero, so an all-clear screen stays plain. */
+function Figure({ label, value, sub, to, tone, tile }: {
+  label: string; value: number | undefined; sub?: string; to: string; tone?: Tone; tile?: boolean
+}) {
+  const t = value ? tone : undefined
+  if (tile) {
+    return (
+      <Link to={to} className={`group block flex-1 basis-40 rounded-lg px-3 py-2.5 ${t ? TILE[t] : 'bg-muted text-ink'}`}>
+        <span className="block text-xs font-medium opacity-85">{label}</span>
+        <span className="block text-xl font-semibold whitespace-nowrap tabular-nums group-hover:underline sm:text-2xl">{formatNPR(value ?? 0)}</span>
+        {sub && <span className="mt-0.5 block text-xs opacity-85">{sub}</span>}
+      </Link>
+    )
+  }
   return (
     <Link to={to} className="group block min-w-0">
       <span className="block text-xs font-medium text-subtle">{label}</span>
-      <span className="block text-xl font-semibold text-ink tabular-nums group-hover:underline sm:text-2xl">{formatNPR(value ?? 0)}</span>
+      <span className={`block text-xl font-semibold tabular-nums group-hover:underline sm:text-2xl ${t ? AMOUNT[t] : 'text-ink'}`}>{formatNPR(value ?? 0)}</span>
       {sub && <span className="mt-0.5 block text-xs text-subtle">{sub}</span>}
     </Link>
   )
 }
 
 /** A labelled set of figures in the totals. */
-function Group({ title, children }: { title: string; children: ReactNode }) {
+function Group({ title, tiles, children }: { title: string; tiles?: boolean; children: ReactNode }) {
   return (
     <div className="min-w-0">
       <h2 className="mb-2 text-xs font-semibold tracking-wide text-subtle uppercase">{title}</h2>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]">{children}</div>
+      {/* Tiles size to their amount (never wrapped mid-number) and share a row evenly. */}
+      <div className={tiles ? 'flex flex-wrap gap-3 lg:flex-nowrap' : 'grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-3 lg:grid-cols-[repeat(auto-fit,minmax(9rem,1fr))]'}>{children}</div>
     </div>
   )
 }

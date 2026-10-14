@@ -48,6 +48,7 @@ export function AttendancePage() {
   const [saving, setSaving] = useState<string | null>(null)
   const [error, setError] = useState('')
   const [closing, setClosing] = useState(false)
+  const [marking, setMarking] = useState(false)
   const [payNow, setPayNow] = useState(canRecordPayments(auth))
   const [method, setMethod] = useState<keyof typeof PAYMENT_METHODS>('cash')
   const [duplicate, setDuplicate] = useState('')
@@ -73,23 +74,37 @@ export function AttendancePage() {
   const minutes = marked.reduce((s, w) => s + rowOf(w.id)!.minutes, 0)
   const amount = marked.reduce((s, w) => s + (rowOf(w.id)!.amount_paisa ?? payFor(w, rowOf(w.id)!.minutes, std)), 0)
 
-  async function mark(w: Worker, m: Mark | null) {
+  /** Save one worker's day. Returns what went wrong, or '' when it saved. */
+  async function save(w: Worker, m: Mark | null) {
     setSaving(w.id)
-    setError('')
     try {
       await rpc('set_attendance', { p_row: { project_id: projectId, crew_id: crewId, member_id: w.id, work_date: date,
         time_in: m?.time_in ?? null, time_out: m?.time_out ?? null, minutes: m?.minutes ?? 0 } })
+      return ''
     } catch (e) {
       const overlap = ((e as { message?: string }).message ?? '').startsWith('attendance_overlap')
-      setError(`${w.name}: ${friendlyError(e)}${overlap ? ' Split the day on their time card.' : ''}`)
+      return `${w.name}: ${friendlyError(e)}${overlap ? ' Split the day on their time card.' : ''}`
     } finally {
       await queryClient.invalidateQueries({ queryKey: ['attendance'] })
       setSaving(null)
     }
   }
+  async function mark(w: Worker, m: Mark | null) {
+    setError('')
+    setError(await save(w, m))
+  }
   const fullDay: Mark = { time_in: dayStart, time_out: dayEnd, minutes: std }
+  // Everyone in, one worker at a time; every worker it could not mark is listed at the end.
   async function everyoneIn() {
-    for (const w of crew.filter((x) => !rowOf(x.id))) await mark(w, fullDay)
+    setMarking(true)
+    setError('')
+    const failed: string[] = []
+    for (const w of crew.filter((x) => !rowOf(x.id))) {
+      const problem = await save(w, fullDay)
+      if (problem) failed.push(problem)
+    }
+    setError(failed.join(' '))
+    setMarking(false)
   }
 
   const close = usePosting((key, confirm: boolean) => rpc('close_labour_day', { p_op_key: key, p_close: {
@@ -174,8 +189,8 @@ export function AttendancePage() {
               </Notice>
             )}
             {!isClosed && crew.length > 0 && (
-              <Button variant="tonal" className="w-full border border-dashed border-brand" busy={saving !== null && !open}
-                disabled={crew.every((w) => rowOf(w.id))} onClick={() => void everyoneIn()}>
+              <Button variant="tonal" className="w-full border border-dashed border-brand" busy={marking || (saving !== null && !open)}
+                disabled={marking || crew.every((w) => rowOf(w.id))} onClick={() => void everyoneIn()}>
                 Everyone in · {dayStart}–{dayEnd}
               </Button>
             )}

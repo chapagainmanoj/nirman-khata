@@ -114,7 +114,7 @@ export function DailyReportPage() {
         })),
         labour,
       } }) as unknown as { id: string; labour: Saved['labour'] }
-      const photoFailed = await uploadPending(auth.companyId, { daily_report_id: vals.id }, vals.photos)
+      const photoFailed = await uploadPending({ userId: auth.userId, companyId: auth.companyId }, { daily_report_id: vals.id }, vals.photos)
       return { ...r, photoFailed }
     },
     onSuccess: async (r) => {
@@ -155,7 +155,7 @@ export function DailyReportPage() {
             </p>
           )}
           {saved.photoFailed > 0 && (
-            <div className="mt-3"><Notice>{saved.photoFailed} photo(s) did not upload. Open the report and add them again.</Notice></div>
+            <div className="mt-3"><Notice>{saved.photoFailed} photo(s) did not upload. They are kept on this phone; open the report to upload them again.</Notice></div>
           )}
         </Card>
         <div className="mt-4 flex flex-wrap gap-2">

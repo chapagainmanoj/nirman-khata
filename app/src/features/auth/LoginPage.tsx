@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
-import { Button, ErrorBanner, Field, Input } from '../../components/ui'
+import { Button, ErrorBanner, Field, Input, Notice } from '../../components/ui'
 import { t } from '../../lib/i18n'
 import { parseLoginId } from '../../lib/login-id'
 import { supabase } from '../../lib/supabase'
@@ -34,6 +34,9 @@ export function LoginPage() {
   return (
     <AuthShell title={t('auth.login')}>
       <form onSubmit={submit} className="flex flex-col gap-4">
+        {(location.state as { registered?: boolean } | null)?.registered && (
+          <Notice>Your company was created. Sign in with the mobile number or email and password you just chose.</Notice>
+        )}
         <Field label={t('auth.loginId')} htmlFor="login">
           <Input id="login" value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="username" inputMode="email" placeholder="98XXXXXXXX" required />
         </Field>

@@ -3,7 +3,7 @@
 // turns an allowed action into a 5-minute presigned URL, or deletes or checks an object.
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
 import { corsHeaders, fail, json } from '../_shared/http.ts'
-import { deleteFile, fileKey, readUrl, storedSize, uploadUrl } from '../_shared/files.ts'
+import { copyIfUnchanged, deleteFile, fileKey, readUrl, stagingKey, stored, uploadUrl } from '../_shared/files.ts'
 
 const url = Deno.env.get('SUPABASE_URL')!
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -54,17 +54,25 @@ Deno.serve(async (req) => {
       const { data, error } = await caller.rpc('attachment_upload_target', { p_attachment: id }).single()
       if (error) return fail(error.message, error.code === '42501' ? 403 : 400)
       const t = data as { company_id: string; content_type: string; size_bytes: number }
-      return json({ url: await uploadUrl(fileKey(t.company_id, id), t.content_type, Number(t.size_bytes)) })
+      return json({ url: await uploadUrl(stagingKey(t.company_id, id), t.content_type, Number(t.size_bytes)) })
     }
 
     if (body.action === 'confirm') {
-      const { data: a } = await admin.from('attachments').select('company_id').eq('id', id).maybeSingle()
+      const { data: a } = await admin.from('attachments').select('company_id, created_by, uploaded_at').eq('id', id).maybeSingle()
       if (!a) return fail('Attachment not found', 404)
-      const key = fileKey(a.company_id, id)
-      const size = await storedSize(key)
-      if (size === null) return fail('The file did not arrive. Try again.', 409)
-      const { error } = await admin.rpc('mark_attachment_uploaded', { p_attachment: id, p_user: user.id, p_size: size })
+      if (a.created_by !== user.id) return fail('Attachment not found or already uploaded', 409)
+      // A retry after a lost answer: the upload already finished, so say so instead of failing.
+      if (a.uploaded_at) return json({ ok: true, already: true })
+      // The upload went to staging; the confirmed file is a copy of exactly what was checked.
+      const staged = stagingKey(a.company_id, id)
+      const file = await stored(staged)
+      if (!file) return fail('The file did not arrive. Try again.', 409)
+      if (!(await copyIfUnchanged(staged, fileKey(a.company_id, id), file.etag))) {
+        return fail('The file changed while it was being checked. Try again.', 409)
+      }
+      const { error } = await admin.rpc('mark_attachment_uploaded', { p_attachment: id, p_user: user.id, p_size: file.size })
       if (error) return fail(error.code === 'P0002' ? 'Attachment not found or already uploaded' : error.message, 409)
+      await deleteFile(staged)
       return json({ ok: true })
     }
 
@@ -73,7 +81,10 @@ Deno.serve(async (req) => {
       // The database decides: delete (drafts, unfinished uploads), hide, or refuse.
       const { data: deleted, error } = await caller.rpc('remove_attachment', { p_attachment: id })
       if (error) return fail(error.message, error.code === '42501' ? 403 : 400)
-      if (deleted && a) await deleteFile(fileKey(a.company_id, id))
+      if (deleted && a) {
+        await deleteFile(fileKey(a.company_id, id))
+        await deleteFile(stagingKey(a.company_id, id))
+      }
       return json({ ok: true })
     }
 

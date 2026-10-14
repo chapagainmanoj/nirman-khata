@@ -7,6 +7,7 @@ import { parseLoginId } from '../_shared/login-id.ts'
 const url = Deno.env.get('SUPABASE_URL')!
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
 const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+const NOT_APPROVED = 'This phone or email is not approved to register. Contact us to get access.'
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
@@ -29,6 +30,12 @@ Deno.serve(async (req) => {
   if (password.length < MIN_PASSWORD_LENGTH) return fail(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } })
+  // On the hosted project only approved logins may register (the allow list).
+  // create_company() checks again; this only avoids creating a login we would delete.
+  const { data: approved, error: precheckError } = await admin.rpc('registration_precheck', { p_login_email: login.email })
+  if (precheckError) return fail('Could not create the account', 500)
+  if (!approved) return fail(NOT_APPROVED, 403)
+
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: login.email,
     password,
@@ -52,7 +59,9 @@ Deno.serve(async (req) => {
       })
 
   if (companyError) {
-    await admin.auth.admin.deleteUser(created.user.id)
+    const { error: deleteError } = await admin.auth.admin.deleteUser(created.user.id)
+    if (deleteError) console.error('register: could not delete the half-created login', created.user.id, deleteError.message)
+    if ('code' in companyError && companyError.code === '42501') return fail(NOT_APPROVED, 403)
     return fail('Could not create the company', 500)
   }
   return json({ company_id: companyId, login_email: login.email })

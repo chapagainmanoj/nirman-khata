@@ -17,12 +17,12 @@ import { addDays, formatDate, todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
-import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
+import { formatNPR, lineAmount, paisaToInput, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
 import { billTitle } from '../../lib/labels'
-import { rpc, useBill, useDeliveryLineStatus, useSuppliers } from './api'
+import { rpc, saveUnlessSent, useBill, useDeliveryLineStatus, useRefreshMoney, useSuppliers } from './api'
 import { canEnter, canPost } from './permissions'
 import { TrashIcon } from '../../components/icons'
 
@@ -63,6 +63,8 @@ export type BillValues = {
   paper_total: string
   photos: PendingPhoto[] // taken before the first save
   post_key: string // operation key for "Save and post", kept until it succeeds
+  submit_key?: string // operation key for "Send to Accounts", kept until it succeeds
+  saved?: boolean // a new bill already saved once: its photos are on the bill now, not in `photos`
 }
 
 const rupees = (paisa: number | null | undefined) => paisaToInput(paisa ?? null)
@@ -81,7 +83,7 @@ export function BillEditPage() {
     cost_date: d.bill.cost_date === d.bill.bill_date ? '' : d.bill.cost_date, due_date: d.bill.due_date ?? '', notes: d.bill.notes ?? '',
     discount: rupees(d.charges?.discount_paisa), transport: rupees(d.charges?.transport_paisa), vat: rupees(d.charges?.vat_paisa),
     vat_rate: String(d.charges?.vat_rate_pct ?? 13), split_charges: d.overrides.length > 0,
-    paper_total: rupees(d.charges?.paper_total_paisa), photos: [], post_key: newId(),
+    paper_total: rupees(d.charges?.paper_total_paisa), photos: [], post_key: newId(), submit_key: newId(),
     overrides: d.overrides.map((o) => ({ charge: o.charge, project_id: o.project_id, amount: rupees(o.amount_paisa) })),
     lines: d.lines.map((l) => ({
       id: l.id, line_type: l.line_type, project_id: l.project_id, heading_id: l.heading_id, material_id: l.material_id ?? '',
@@ -98,6 +100,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
   const auth = useCompany()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const refreshMoney = useRefreshMoney()
   const [params] = useSearchParams()
   const suppliers = useSuppliers(auth.companyId)
   const projects = useProjects(auth.companyId)
@@ -112,7 +115,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
     defaultValues: initial ?? {
       id: newId(), supplier_id: params.get('supplier') ?? '', bill_no: '', bill_date: todayKathmandu(), cost_date: '',
       due_date: '', notes: '', discount: '', transport: '', vat: '', vat_rate: '13', split_charges: false, overrides: [], lines: [],
-      paper_total: '', photos: [], post_key: newId(),
+      paper_total: '', photos: [], post_key: newId(), submit_key: newId(),
     },
   })
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: initial ? `bill-${initial.id}` : 'bill-new' })
@@ -167,8 +170,8 @@ function BillForm({ initial }: { initial?: BillValues }) {
   function recalc(i: number) {
     const l = getValues(`lines.${i}`)
     const rate = parseNPR(l.rate)
-    const q = Number(l.qty)
-    if (!l.amount_edited && rate !== null && q > 0) setValue(`lines.${i}.amount`, paisaToInput(Math.round(rate * q)))
+    const amount = rate === null ? null : lineAmount(rate, l.qty)
+    if (!l.amount_edited && amount !== null && Number(l.qty) > 0) setValue(`lines.${i}.amount`, paisaToInput(amount))
   }
 
   const subtotal = values.lines.reduce((s, l) => s + (parseNPR(l.amount) ?? 0), 0)
@@ -183,12 +186,21 @@ function BillForm({ initial }: { initial?: BillValues }) {
   type Then = 'draft' | 'submit' | 'post'
   const save = useMutation({
     mutationFn: async ({ v, then }: { v: BillValues; then: Then }) => {
-      await rpc('save_bill_draft', { p_bill: toPayload(v) })
+      const key = v.submit_key ?? newId()
+      // Kept on the device first, so a reload after a lost answer retries with the same id and key.
+      if (then === 'submit') await draft.save()
+      const saveDraft = () => rpc('save_bill_draft', { p_bill: toPayload(v) })
+      // A retry after a lost answer finds the bill already sent instead of failing on the save.
+      let alreadySent = false
+      if (then === 'submit') alreadySent = (await saveUnlessSent(key, saveDraft)).alreadySent
+      else await saveDraft()
       // The bill exists now; photos taken before saving go up before it is sent on.
-      const failedPhotos = await uploadPending(auth.companyId, { bill_id: v.id }, v.photos)
+      const failedPhotos = await uploadPending({ userId: auth.userId, companyId: auth.companyId }, { bill_id: v.id }, v.photos)
       if (failedPhotos && then === 'submit' && !v.lines.length) throw new Error('The bill photo did not upload. Check the connection and try again.')
       setValue('photos', [])
-      if (then === 'submit') await rpc('submit_bill', { p_bill: v.id })
+      if (!initial) setValue('saved', true)
+      if (then === 'submit') await draft.save()
+      if (then === 'submit' && !alreadySent) await rpc('submit_bill', { p_bill: v.id, p_op_key: key })
       // Posting can still be refused by a check; the saved draft then shows what to fix.
       let postError = ''
       if (then === 'post') {
@@ -198,15 +210,17 @@ function BillForm({ initial }: { initial?: BillValues }) {
           postError = friendlyError(e)
         }
       }
-      return { failedPhotos, postError }
+      return { failedPhotos, postError, alreadySent }
     },
-    onSuccess: async ({ failedPhotos, postError }, { v }) => {
+    onSuccess: async ({ failedPhotos, postError, alreadySent }, { v, then }) => {
       await draft.clear()
       await queryClient.invalidateQueries({ queryKey: ['bill', v.id] })
       await queryClient.invalidateQueries({ queryKey: ['bill-preview', v.id] })
       await queryClient.invalidateQueries({ queryKey: ['bills'] })
       await queryClient.invalidateQueries({ queryKey: ['attachments', 'bill_id', v.id] })
-      navigate(`/bills/${v.id}`, { replace: true, state: { postError, failedPhotos } })
+      // A posted bill changes cost and balances everywhere: dashboards, khata, reports, calendar.
+      if (then === 'post' && !postError) await refreshMoney()
+      navigate(`/bills/${v.id}`, { replace: true, state: { postError, failedPhotos, alreadySent, sent: then === 'submit' } })
     },
   })
 
@@ -223,7 +237,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
     if (!v.supplier_id) return 'Choose the supplier.'
     // Paper first: a draft needs only the supplier, and the photo alone can go to Accounts.
     if (then === 'draft' && !v.lines.length) return ''
-    if (then === 'submit' && !v.lines.length && (v.photos.length || initial)) return ''
+    if (then === 'submit' && !v.lines.length && (v.photos.length || initial || v.saved)) return ''
     if (!v.bill_no.trim()) return then === 'submit' ? 'Take the bill photo, or enter the bill number.' : 'Enter the bill number.'
     if (!v.lines.length) return 'Add at least one line.'
     for (const [i, l] of v.lines.entries()) {
@@ -234,6 +248,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
       if (l.line_type === 'material') {
         if (!l.material_id && !l.description.trim()) return `${n}: choose or type the material.`
         if (!(Number(l.qty) > 0) || !l.unit_id) return `${n}: enter quantity and unit.`
+        if (lineAmount(0, l.qty) === null) return `${n}: use at most 3 decimals in the quantity.`
       }
     }
     for (const c of ['discount', 'transport', 'vat'] as const) {
@@ -247,6 +262,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
   }
 
   function run(then: Then) {
+    if (save.isPending) return // one save at a time, also from Enter in a field
     const v = getValues()
     const problem = validate(v, then)
     setError(problem)
@@ -267,8 +283,8 @@ function BillForm({ initial }: { initial?: BillValues }) {
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved bill.</Notice></div>}
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start lg:gap-6">
       <Card title="Bill photo" className="lg:sticky lg:top-4">
-        {initial ? (
-          <Attachments owner={{ bill_id: initial.id }} canAdd={canEnter(auth)} canRemove label="Take bill photo" large />
+        {initial || values.saved ? (
+          <Attachments owner={{ bill_id: values.id }} canAdd={canEnter(auth)} canRemove label="Take bill photo" large />
         ) : (
           <Controller control={control} name="photos" render={({ field }) => (
             <PhotoPicker value={field.value} onChange={field.onChange} label="Take bill photo" what="Bill photo" large />
@@ -533,11 +549,11 @@ function BillForm({ initial }: { initial?: BillValues }) {
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
           {accounts ? (
-            <Button type="button" busy={save.isPending && save.variables?.then === 'post'} onClick={() => run('post')}>Save and post</Button>
+            <Button type="button" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'post'} onClick={() => run('post')}>Save and post</Button>
           ) : (
-            <Button type="button" busy={save.isPending && save.variables?.then === 'submit'} onClick={() => run('submit')}>Send to Accounts</Button>
+            <Button type="button" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'submit'} onClick={() => run('submit')}>Send to Accounts</Button>
           )}
-          <Button type="submit" variant="secondary" busy={save.isPending && save.variables?.then === 'draft'}>Save draft</Button>
+          <Button type="submit" variant="secondary" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'draft'}>Save draft</Button>
           <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
         </FormActions>
       </form>

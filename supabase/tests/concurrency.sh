@@ -9,12 +9,16 @@ DB_URL="${DB_URL:-postgresql://postgres:postgres@127.0.0.1:55322/postgres}"
 q() { psql "$DB_URL" -X -qAt -v ON_ERROR_STOP=1 "$@"; }
 
 USER_ID=$(uuidgen | tr 'A-Z' 'a-z')
+ADMIN2=$(uuidgen | tr 'A-Z' 'a-z')
 COMPANY=""
 failures=0
 
 as_user() { # SQL run as the test user, in one transaction
+  as_who "$USER_ID" "$1"
+}
+as_who() { # user id, SQL: run as that user, in one transaction
   printf "set role authenticated; select set_config('request.jwt.claims', '{\"sub\":\"%s\",\"role\":\"authenticated\"}', true); %s" \
-    "$USER_ID" "$1"
+    "$1" "$2"
 }
 
 cleanup() {
@@ -31,8 +35,8 @@ begin
   end loop;
 end \$\$;
 delete from public.companies where id = '$COMPANY';
-delete from public.profiles where id = '$USER_ID';
-delete from auth.users where id = '$USER_ID';
+delete from public.profiles where id in ('$USER_ID', '$ADMIN2');
+delete from auth.users where id in ('$USER_ID', '$ADMIN2');
 SQL
 }
 trap cleanup EXIT
@@ -49,6 +53,18 @@ race() {
   local pid=$!
   sleep 0.3
   (q -c "$(as_user "$2")" >"$b_out" 2>&1; echo "exit=$?" >>"$b_out") || true
+  wait $pid || true
+  RACE_A=$(cat "$a_out"); RACE_B=$(cat "$b_out")
+  rm -f "$a_out" "$b_out"
+}
+# The same, with session B run as another user: A_sql, B_user, B_sql.
+race_as() {
+  local a_out b_out
+  a_out=$(mktemp); b_out=$(mktemp)
+  (q -c "$(as_user "$1 select pg_sleep(1.5);")" >"$a_out" 2>&1; echo "exit=$?" >>"$a_out") &
+  local pid=$!
+  sleep 0.3
+  (q -c "$(as_who "$2" "$3")" >"$b_out" 2>&1; echo "exit=$?" >>"$b_out") || true
   wait $pid || true
   RACE_A=$(cat "$a_out"); RACE_B=$(cat "$b_out")
   rm -f "$a_out" "$b_out"
@@ -188,6 +204,94 @@ check "Refund: concurrent second refund is refused" no "$(succeeded "$RACE_B")"
 check "Refund: refused as more than the overpayment" yes "$(mentions "$RACE_B" refund_exceeds_overpayment)"
 check "Refund: overpayment left is 20,000" -2000000 \
   "$(q -c "select sum(balance_paisa) from public.ledger_entries where party_id = '$SUPPLIER2'")"
+
+# Two admins removing each other at the same moment -> one stays admin.
+q -c "insert into auth.users (id, instance_id, aud, role, email, raw_user_meta_data, raw_app_meta_data, created_at, updated_at)
+      values ('$ADMIN2', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated',
+              'race2-$ADMIN2@test.local', '{\"full_name\":\"Race Admin\"}', '{}', now(), now());
+      insert into public.memberships (company_id, user_id, roles) values ('$COMPANY', '$ADMIN2', array['admin']::public.app_role[])" >/dev/null
+race_as "update public.memberships set active = false where company_id = '$COMPANY' and user_id = '$ADMIN2';" \
+  "$ADMIN2" "update public.memberships set active = false where company_id = '$COMPANY' and user_id = '$USER_ID';"
+check "Admins: the first removal succeeds" yes "$(succeeded "$RACE_A")"
+check "Admins: the concurrent second removal is refused" no "$(succeeded "$RACE_B")"
+check "Admins: one active admin is left" 1 \
+  "$(q -c "select count(*) from public.memberships where company_id = '$COMPANY' and active and 'admin' = any (roles)")"
+
+# One worker marked on two projects (two crews) at the same moment -> the second is an overlap.
+q -c "update public.companies set labour_mode = 'attendance' where id = '$COMPANY'" >/dev/null
+PROJECT2=$(q -c "$(as_user "select public.create_project('$COMPANY', 'R2', 'Race project 2', 100000000);")" | tail -1)
+CREW1=$(q -c "select id from public.crews where project_id = '$PROJECT' and is_default")
+CREW2=$(q -c "select id from public.crews where project_id = '$PROJECT2' and is_default")
+WORKER=$(q -c "$(as_user "insert into public.crew_members (company_id, crew_id, name, rate_kind, rate_paisa)
+  values ('$COMPANY', '$CREW1', 'Race Worker', 'daily', 120000) returning id;")" | tail -1)
+mark() { # project, crew
+  echo "select public.set_attendance(jsonb_build_object('project_id', '$1', 'crew_id', '$2', 'member_id', '$WORKER',
+    'work_date', '2026-05-04', 'time_in', '08:00', 'time_out', '17:00', 'minutes', 480));"
+}
+race "$(mark "$PROJECT" "$CREW1")" "$(mark "$PROJECT2" "$CREW2")"
+check "Attendance: the first mark succeeds" yes "$(succeeded "$RACE_A")"
+check "Attendance: the concurrent mark on another project is refused" no "$(succeeded "$RACE_B")"
+check "Attendance: refused as an overlap" yes "$(mentions "$RACE_B" attendance_overlap)"
+check "Attendance: the worker has one day, not two" 1 \
+  "$(q -c "select count(*) from public.attendance where member_id = '$WORKER' and work_date = '2026-05-04'")"
+
+# A split and a change to the same worker's day at the same moment -> the change waits, then sees the split.
+split() { # worker, date, from project, to project, to crew
+  echo "select public.split_attendance(jsonb_build_object('member_id', '$1', 'work_date', '$2',
+    'from_project', '$3', 'to_project', '$4', 'to_crew', '$5'));"
+}
+mark_day() { # worker, date, project, crew, in, out, minutes
+  local times="null, 'time_out', null"
+  [ -n "$5" ] && times="'$5', 'time_out', '$6'"
+  echo "select public.set_attendance(jsonb_build_object('project_id', '$3', 'crew_id', '$4', 'member_id', '$1',
+    'work_date', '$2', 'time_in', $times, 'minutes', $7));"
+}
+q -c "$(as_user "$(mark_day "$WORKER" 2026-05-06 "$PROJECT" "$CREW1" 08:00 17:00 480)")" >/dev/null
+race "$(split "$WORKER" 2026-05-06 "$PROJECT" "$PROJECT2" "$CREW2")" "$(mark_day "$WORKER" 2026-05-06 "$PROJECT" "$CREW1" 08:00 17:00 480)"
+check "Split: the split succeeds" yes "$(succeeded "$RACE_A")"
+check "Split: a full day marked again at the same moment is refused" no "$(succeeded "$RACE_B")"
+check "Split: refused as an overlap with the afternoon" yes "$(mentions "$RACE_B" attendance_overlap)"
+check "Split: the day still adds up to 8 hours" 480 \
+  "$(q -c "select sum(minutes) from public.attendance where member_id = '$WORKER' and work_date = '2026-05-06'")"
+
+# Two splits between the same two crews in opposite directions at the same moment -> both succeed, no deadlock.
+WORKER2=$(q -c "$(as_user "insert into public.crew_members (company_id, crew_id, name, rate_kind, rate_paisa)
+  values ('$COMPANY', '$CREW2', 'Race Worker 2', 'daily', 120000) returning id;")" | tail -1)
+q -c "$(as_user "$(mark_day "$WORKER" 2026-05-07 "$PROJECT" "$CREW1" 08:00 17:00 480)
+  $(mark_day "$WORKER2" 2026-05-07 "$PROJECT2" "$CREW2" 08:00 17:00 480)")" >/dev/null
+race "$(split "$WORKER" 2026-05-07 "$PROJECT" "$PROJECT2" "$CREW2")" "$(split "$WORKER2" 2026-05-07 "$PROJECT2" "$PROJECT" "$CREW1")"
+check "Split: opposite splits both succeed" "yes yes" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+check "Split: neither hit a deadlock" no "$(mentions "$RACE_A$RACE_B" deadlock)"
+check "Split: each worker has two parts" "2 2" \
+  "$(q -c "select count(*) from public.attendance where member_id = '$WORKER' and work_date = '2026-05-07'") $(q -c "select count(*) from public.attendance where member_id = '$WORKER2' and work_date = '2026-05-07'")"
+
+# Hours without times on two projects at the same moment -> never more than 24 hours in a day.
+race "$(mark_day "$WORKER" 2026-05-08 "$PROJECT" "$CREW1" "" "" 800)" "$(mark_day "$WORKER" 2026-05-08 "$PROJECT2" "$CREW2" "" "" 800)"
+check "24 h: the first succeeds" yes "$(succeeded "$RACE_A")"
+check "24 h: the concurrent second is refused" no "$(succeeded "$RACE_B")"
+check "24 h: refused as more than 24 hours" yes "$(mentions "$RACE_B" "more than 24 hours")"
+
+# Closing a project while a bill posts or a client receipt is recorded -> the posting waits and is refused.
+BILL3=$(new_bill)
+race "update public.projects set status = 'closed' where id = '$PROJECT';" "select public.post_bill(gen_random_uuid(), '$BILL3');"
+check "Close: the project closes" yes "$(succeeded "$RACE_A")"
+check "Close: a bill posted at the same moment is refused" no "$(succeeded "$RACE_B")"
+check "Close: refused as closed" yes "$(mentions "$RACE_B" closed)"
+q -c "update public.projects set status = 'active' where id = '$PROJECT'" >/dev/null
+race "update public.projects set status = 'closed' where id = '$PROJECT';" \
+  "select public.record_client_receipt(gen_random_uuid(), jsonb_build_object('id', gen_random_uuid(), 'project_id', '$PROJECT',
+    'receipt_date', '2026-05-05', 'amount_paisa', 100000));"
+check "Close: a client receipt at the same moment is refused" no "$(succeeded "$RACE_B")"
+check "Close: no receipt recorded" 0 "$(q -c "select count(*) from public.client_receipts where project_id = '$PROJECT'")"
+q -c "update public.projects set status = 'active' where id = '$PROJECT'" >/dev/null
+race "select public.post_bill(gen_random_uuid(), '$BILL3');" "update public.projects set status = 'closed' where id = '$PROJECT';"
+check "Close: a bill posting first, then the close, both succeed" "yes yes" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+q -c "update public.projects set status = 'active' where id = '$PROJECT'" >/dev/null
+race "select public.record_client_receipt(gen_random_uuid(), jsonb_build_object('id', gen_random_uuid(), 'project_id', '$PROJECT',
+    'receipt_date', '2026-05-05', 'amount_paisa', 100000));" "update public.projects set status = 'closed' where id = '$PROJECT';"
+check "Close: a receipt first, then the close, both succeed" "yes yes" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+check "Close: the receipt is recorded and the project closed" "1 closed" \
+  "$(q -c "select count(*) from public.client_receipts where project_id = '$PROJECT'") $(q -c "select status from public.projects where id = '$PROJECT'")"
 
 if [ "$failures" -gt 0 ]; then echo "$failures concurrency test(s) failed"; exit 1; fi
 echo "All concurrency tests passed"

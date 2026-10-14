@@ -78,7 +78,7 @@ export function PaymentDetailPage() {
         }
       />
       {photoFailed > 0 && (
-        <div className="mb-4"><Notice>The payment is saved, but {photoFailed === 1 ? 'a photo' : `${photoFailed} photos`} did not upload. Add {photoFailed === 1 ? 'it' : 'them'} again below.</Notice></div>
+        <div className="mb-4"><Notice>The payment is saved, but {photoFailed === 1 ? 'a photo' : `${photoFailed} photos`} did not upload. {photoFailed === 1 ? 'It is' : 'They are'} kept on this phone; upload {photoFailed === 1 ? 'it' : 'them'} again below.</Notice></div>
       )}
       <div className="grid items-start gap-4 lg:grid-cols-2">
         <Card title="Payment">

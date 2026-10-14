@@ -13,7 +13,6 @@ import { rpc } from '../supply/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permissions'
 import { PARTY, type PartyKind } from './kinds'
 import { PartyForm, subtitleOf, usePartyRows } from './PartiesPage'
-import { RefundCard } from '../refunds/RefundCard'
 import { labourPath } from '../labour/api'
 import { MembersCard } from '../labour/MembersCard'
 import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
@@ -36,6 +35,9 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   }
   const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
   const sub = subtitleOf(kind, r, code)
+  // A subcontractor with nothing filled in gets a link under the name, not an empty card.
+  const noDetails = kind === 'subcontractor' && [r.contact_person, r.phone, r.address, r.pan_vat, r.notes].every((f) => !f)
+  const showMembers = kind === 'crew' && auth.company.labour_mode === 'attendance' && canEnter(auth)
 
   return (
     <>
@@ -43,6 +45,12 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
         title={r.name}
         crumbs={[{ to: '/parties', label: 'Parties' }, { to: PARTY[kind].path, label: PARTY[kind].many }]}
         subtitle={<span className="flex flex-wrap items-center gap-2">{sub}{!r.active && <Badge>Inactive</Badge>}</span>}
+        after={noDetails && !editing && canManageSuppliers(auth) && (
+          <button type="button" onClick={() => setEditing(true)}
+            className="flex min-h-11 items-center text-sm font-medium text-slate underline underline-offset-2">
+            Add phone, contact person, PAN
+          </button>
+        )}
         actions={
           <div className="flex flex-wrap gap-2">
             {kind === 'subcontractor' && canManageSuppliers(auth) && (
@@ -57,27 +65,23 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
           </div>
         }
       />
-      <div className="grid items-start gap-4 lg:grid-cols-2">
-        {editing ? (
-          <div className="lg:col-span-2"><PartyForm kind={kind} party={r} onDone={() => setEditing(false)} /></div>
-        ) : (
-          <Card title="Details" actions={canManageSuppliers(auth) && <Button variant="ghost" onClick={() => setEditing(true)}>Edit</Button>}>
-            {kind === 'subcontractor' && <Detail label="Contact">{r.contact_person}</Detail>}
-            <Detail label="Phone">{r.phone && <a className="text-slate" href={`tel:${r.phone}`}>{r.phone}</a>}</Detail>
-            {kind === 'subcontractor' && <Detail label="Address">{r.address}</Detail>}
-            {kind === 'subcontractor' && <Detail label="PAN">{r.pan_vat}</Detail>}
-            {kind === 'crew' && <Detail label="Project">{r.project_id ? code(r.project_id) : 'Any project'}</Detail>}
-            <Detail label="Notes">{r.notes}</Detail>
-            {kind === 'payee' && <PromotePayee payeeId={r.id} supplierId={r.promoted_supplier_id ?? null} />}
-          </Card>
+      {editing && <div className="mb-4"><PartyForm kind={kind} party={r} onDone={() => setEditing(false)} /></div>}
+      {/* Money on the left (it decides what to do next), who they are on the right. Each column
+          stacks on its own, so a short card never leaves a hole beside a tall one. */}
+      <div className={`grid items-start gap-4 ${auth.canSeeFinance ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''}`}>
+        {auth.canSeeFinance && (
+          <div className="grid min-w-0 gap-4">
+            <BalanceCard kind={kind} partyId={r.id} />
+            {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
+          </div>
         )}
-        {kind === 'crew' && auth.company.labour_mode === 'attendance' && canEnter(auth) && <MembersCard crewId={r.id} projectId={r.project_id ?? null} />}
-        {auth.canSeeFinance && <BalanceCard kind={kind} partyId={r.id} />}
-        {auth.canSeeFinance && canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
-        <RefundCard kind={kind} partyId={r.id} />
+        {((!editing && !noDetails) || showMembers) && (
+          <div className="grid min-w-0 gap-4">
+            {!editing && !noDetails && <PartyDetails kind={kind} party={r} code={code} onEdit={canManageSuppliers(auth) ? () => setEditing(true) : undefined} />}
+            {showMembers && <MembersCard crewId={r.id} projectId={r.project_id ?? null} />}
+          </div>
+        )}
       </div>
-
-      {kind === 'subcontractor' && <PackageList subcontractorId={r.id} />}
 
       {auth.canSeeFinance && (
         <Tabs tabs={[['khata', 'Khata'], ['payments', 'Payments']]} value={tab} onChange={setTab} label={`${PARTY[kind].one} records`}>
@@ -85,7 +89,29 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
           {tab === 'payments' && <PaymentList kind={kind} partyId={r.id} />}
         </Tabs>
       )}
+
+      {/* After the khata: the money record is what people open this page to check. */}
+      {kind === 'subcontractor' && <PackageList subcontractorId={r.id} />}
     </>
+  )
+}
+
+type PartyRow = NonNullable<ReturnType<typeof usePartyRows>['data']>[number]
+
+/** Contact details. An empty subcontractor shows a link under its name instead (see above). */
+function PartyDetails({ kind, party: r, code, onEdit }: {
+  kind: PartyKind; party: PartyRow; code: (id: string | null | undefined) => string | undefined; onEdit?: () => void
+}) {
+  return (
+    <Card title="Details" actions={onEdit && <Button variant="ghost" onClick={onEdit}>Edit</Button>}>
+      {kind === 'subcontractor' && <Detail label="Contact">{r.contact_person}</Detail>}
+      <Detail label="Phone">{r.phone && <a className="text-slate" href={`tel:${r.phone}`}>{r.phone}</a>}</Detail>
+      {kind === 'subcontractor' && <Detail label="Address">{r.address}</Detail>}
+      {kind === 'subcontractor' && <Detail label="PAN">{r.pan_vat}</Detail>}
+      {kind === 'crew' && <Detail label="Project">{r.project_id ? code(r.project_id) : 'Any project'}</Detail>}
+      <Detail label="Notes">{r.notes}</Detail>
+      {kind === 'payee' && <PromotePayee payeeId={r.id} supplierId={r.promoted_supplier_id ?? null} />}
+    </Card>
   )
 }
 
@@ -97,22 +123,32 @@ function PackageList({ subcontractorId }: { subcontractorId: string }) {
       {packages.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void packages.refetch()}>{packages.error && friendlyError(packages.error)}</ErrorBanner>
       {packages.data?.length === 0 && <p className="text-sm text-subtle">No work packages on your projects.</p>}
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {packages.data?.map((w) => {
-          const [label, tone] = PACKAGE_STATUS[w.status]
-          return (
-            <li key={w.id}>
-              <Link to={`/work/${w.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0 font-semibold break-words text-ink">{w.scope}</div>
+      {!!packages.data?.length && (
+        <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
+          {packages.data.map((w) => {
+            const [label, tone] = PACKAGE_STATUS[w.status]
+            const pct = Math.min(100, Math.max(0, Number(w.progress_pct)))
+            return (
+              <li key={w.id}>
+                <Link to={`/work/${w.id}`} className="flex min-h-14 items-center gap-3 px-4 py-2 hover:bg-muted">
+                  <div className="min-w-0 flex-1">
+                    <div className="font-medium break-words text-ink">{w.scope}</div>
+                    <div className="text-xs text-subtle">{w.projects?.code}</div>
+                  </div>
+                  {/* Progress: neutral bar, the number beside it (PRODUCT.md: bars are not colour-coded). */}
+                  <div className="hidden w-32 items-center gap-2 sm:flex" aria-hidden>
+                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-bar" style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                  <span className="w-16 shrink-0 text-right text-sm text-ink tabular-nums">{pct}% done</span>
                   <Badge tone={tone}>{label}</Badge>
-                </div>
-                <div className="mt-1 text-sm text-subtle">{w.projects?.code} · {Number(w.progress_pct)}% done</div>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </section>
   )
 }

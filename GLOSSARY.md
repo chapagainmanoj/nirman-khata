@@ -66,7 +66,7 @@ The final settlement with a Party: all bills, payments, Peski and Overpayment ar
 - **In code:** nothing yet.
 
 ## Khata
-The running account between the company and one Party: every bill, work charge, payment, Credit, Peski and Refund, with the balance. Positive balance is Baki (company owes the party); negative means the party holds the company's money (Peski, Overpayment or both).
+The running account between the company and one Party: every bill, work charge, payment, Credit, Peski and Refund, with the balance (see Tirnu parne / Tireko / Baki). Positive balance is Baki (company owes the party); negative means the party holds the company's money (Peski, Overpayment or both).
 
 - **Relations:** exactly one per Party, company-wide; projects are an internal split of it.
 - **In code:** `ledger_entries`; "Ledger" in UI and `docs/requirements-v1.1.md` §3.1.
@@ -152,6 +152,15 @@ One Crew Member's Attendance for a whole month (BS or AD, as the company shows d
 - **In code:** `TimeCardPage.tsx` at `/labour/worker/:id`; `worker_month`, `split_attendance`, `close_worker_days`.
 - **Notes:** The tick marks a full day on the worker's usual project, the one their Crew belongs to.
   Splitting a day gives the other project the second half of its hours, inside the same in and out; both projects are saved together or not at all.
+
+## Tirnu parne / Tireko / Baki
+The three figures in a Party's Khata. **Tirnu parne** (to be paid) is everything that raised what the company owes the party: bills, approved work charges, labour costs, expenses and the opening balance, less Credits and reversals. **Tireko** (paid) is the money paid to them. **Baki** (remaining) is Tirnu parne minus Tireko.
+
+- **Not:** a single bill's outstanding amount. That is shown by Settle, per bill. These are totals for the whole Khata, or for one project's part of it.
+- **Relations:** one set per Khata; a project filter shows the same three figures for that project only.
+- **In code:** `charged_paisa`, `paid_paisa`, `balance_paisa` (`party_balances`); the Khata report columns `charged`, `paid`, `balance`. UI labels are the Nepali words: the balance card ("Tirnu parne (bills)", "Tireko") and the Khata report columns.
+- **Aliases to avoid:** "Charged" (reads as if the company charged the party), "Bought" (does not fit crews, payees, an opening balance or a reversal), "Jamma/Naam" (the formal bookkeeping words; *jamma* reads as "deposit" in everyday use).
+- **Notes:** Chosen 2026-10-14 because it is how contractors say it out loud ("kati tirnu parne, kati tireko, kati baki"), it never reads backwards, and it matches "Baki / Tirna Baki" in `docs/requirements-v1.1.md` §3.1.
 
 ---
 

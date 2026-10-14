@@ -51,6 +51,24 @@ export function parseNPR(input: string): number | null {
   return Number.isSafeInteger(value) ? value : null
 }
 
+/**
+ * Rate × quantity in paisa, rounded half up, without float error: quantity is read from its text
+ * as whole thousandths (the database keeps 3 decimals), so 1.005 × Rs. 201 = Rs. 202.01, not 202.00.
+ * Returns null for a quantity that is not a plain number with at most 3 decimals.
+ */
+export function lineAmount(ratePaisa: number, qty: string | number): number | null {
+  assertPaisa(ratePaisa)
+  const text = String(qty).trim()
+  // "12", "12.5" or ".5"; at most 3 decimals, like numeric(14,3).
+  if (!/^(\d+(\.\d{1,3})?|\.\d{1,3})$/.test(text)) return null
+  const [whole, frac = ''] = text.split('.')
+  const milli = BigInt(whole || '0') * 1000n + BigInt(frac.padEnd(3, '0'))
+  const product = BigInt(Math.abs(ratePaisa)) * milli
+  const rounded = (product + 500n) / 1000n
+  const value = Number(ratePaisa < 0 ? -rounded : rounded)
+  return Number.isSafeInteger(value) ? value : null
+}
+
 /** Plain editable text for an input field: "1234567.5" style without grouping. */
 export function paisaToInput(paisa: number | null | undefined): string {
   if (paisa === null || paisa === undefined) return ''

@@ -51,8 +51,8 @@ const khata = (kind: PartyKind): ReportDef['load'] => async (f, ctx) => {
 }
 const KHATA_COLS: Col[] = [
   { key: 'date', label: 'Date', kind: 'date' }, { key: 'entry', label: 'Entry', kind: 'text' }, PROJECT,
-  { key: 'charged', label: 'Charged', kind: 'money', total: true }, { key: 'paid', label: 'Paid', kind: 'money', total: true },
-  { key: 'balance', label: 'Balance owed', kind: 'money' },
+  { key: 'charged', label: 'Tirnu parne', kind: 'money', total: true }, { key: 'paid', label: 'Tireko', kind: 'money', total: true },
+  { key: 'balance', label: 'Baki', kind: 'money' },
 ]
 
 export const REPORTS: ReportDef[] = [

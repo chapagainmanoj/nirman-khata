@@ -75,6 +75,9 @@ function HeadingsTab() {
   const write = useCatalogWrite('cost_headings', 'headings')
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
   const [adding, setAdding] = useState<{ parentId: string | null; name: string } | null>(null)
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
+  const ids = useId()
+  const toggle = (id: string) => setCollapsed((c) => { const n = new Set(c); if (n.has(id)) n.delete(id); else n.add(id); return n })
 
   const top = headings.data?.filter((h) => !h.parent_id) ?? []
   const children = (id: string) => headings.data?.filter((h) => h.parent_id === id) ?? []
@@ -104,7 +107,7 @@ function HeadingsTab() {
       {editing?.id === h.id ? (
         <form className="flex flex-wrap items-center gap-2 py-2"
           onSubmit={(e) => { e.preventDefault(); write.mutate({ id: h.id, values: { name: editing.name.trim() } }, { onSuccess: () => setEditing(null) }) }}>
-          <Input aria-label={`New name for ${h.name}`} value={editing.name} onChange={(e) => setEditing({ id: h.id, name: e.target.value })} autoFocus className="min-w-0 flex-1" />
+          <Input aria-label={`New name for ${h.name}`} value={editing.name} onChange={(e) => setEditing({ id: h.id, name: e.target.value })} autoFocus className="min-w-0 basis-full sm:basis-48 sm:flex-1" />
           <Button type="submit" disabled={!editing.name.trim()} busy={write.isPending}>{t('common.save')}</Button>
           <Button type="button" variant="secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
           <Button type="button" variant="ghost" disabled={write.isPending}
@@ -115,7 +118,7 @@ function HeadingsTab() {
       ) : auth.isAdmin ? (
         <button type="button" onClick={() => setEditing({ id: h.id, name: h.name })} aria-label={`Edit ${h.name}`}
           className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left text-sm text-ink hover:bg-muted">
-          <span className={h.active ? '' : 'text-subtle line-through'}>{h.name}</span>
+          <span className={`min-w-0 break-words ${h.active ? '' : 'text-subtle line-through'}`}>{h.name}</span>
           {!h.active && <Badge>Inactive</Badge>}
         </button>
       ) : (
@@ -133,22 +136,29 @@ function HeadingsTab() {
       {top.map((h) => {
         const kids = children(h.id)
         return (
-          <details key={h.id} open className="group rounded-xl border border-line bg-surface px-4">
-            <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 py-2 [&::-webkit-details-marker]:hidden">
-              <ChevronRightIcon size={16} className="shrink-0 text-subtle transition-transform group-open:rotate-90" />
-              <span className={`font-semibold ${h.active ? 'text-ink' : 'text-subtle line-through'}`}>{h.name}</span>
-              <span className="text-sm text-subtle">({kids.length})</span>
+          // A real toggle button with Edit beside it, not inside: a <summary> holding a button
+          // is a nested control that screen readers skip or misread (WCAG 4.1.2).
+          <section key={h.id} className="rounded-xl border border-line bg-surface px-4">
+            <div className="flex items-center gap-2">
+              <button type="button" aria-expanded={!collapsed.has(h.id)} aria-controls={`${ids}-${h.id}`} onClick={() => toggle(h.id)}
+                className="flex min-h-12 min-w-0 flex-1 items-center gap-2 py-2 text-left">
+                <ChevronRightIcon size={16} className={`shrink-0 text-subtle transition-transform ${collapsed.has(h.id) ? '' : 'rotate-90'}`} />
+                <span className={`min-w-0 font-semibold break-words ${h.active ? 'text-ink' : 'text-subtle line-through'}`}>{h.name}</span>
+                <span className="shrink-0 text-sm text-subtle">({kids.length})</span>
+              </button>
               {auth.isAdmin && editing?.id !== h.id && (
-                <Button variant="ghost" className="ml-auto" aria-label={`Edit ${h.name}`}
-                  onClick={(e) => { e.preventDefault(); setEditing({ id: h.id, name: h.name }) }}>Edit</Button>
+                <Button variant="ghost" className="shrink-0" aria-label={`Edit ${h.name}`}
+                  onClick={() => setEditing({ id: h.id, name: h.name })}>Edit</Button>
               )}
-            </summary>
-            {editing?.id === h.id && <ul>{row(h)}</ul>}
-            <ul className="border-t border-line">{kids.map(row)}</ul>
-            {auth.isAdmin && (addForm(h.id, `New heading under ${h.name}`) ?? (
-              <Button variant="ghost" className="my-1" onClick={() => setAdding({ parentId: h.id, name: '' })}>+ Add under {h.name}</Button>
-            ))}
-          </details>
+            </div>
+            <div id={`${ids}-${h.id}`} hidden={collapsed.has(h.id)}>
+              {editing?.id === h.id && <ul>{row(h)}</ul>}
+              <ul className="border-t border-line">{kids.map(row)}</ul>
+              {auth.isAdmin && (addForm(h.id, `New heading under ${h.name}`) ?? (
+                <Button variant="ghost" className="my-1" onClick={() => setAdding({ parentId: h.id, name: '' })}>+ Add under {h.name}</Button>
+              ))}
+            </div>
+          </section>
         )
       })}
       {auth.isAdmin && (addForm(null, 'New top-level heading') ?? (

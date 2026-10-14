@@ -32,13 +32,35 @@ export function usePosting<A = void, R = unknown>(fn: (opKey: string, args: A) =
   })
 }
 
+/**
+ * Save a draft before submitting it, unless an earlier submit with `submitKey` already went
+ * through and only its answer was lost. `cameBack` says whether the record has been sent back to
+ * its sender since (a rejected slip), which makes this a new send. Returns the key to submit with.
+ */
+export async function saveUnlessSent(
+  submitKey: string,
+  save: () => Promise<unknown>,
+  cameBack?: () => Promise<boolean>,
+): Promise<{ alreadySent: boolean; key: string }> {
+  // Asked before saving: a save would turn a slip rejected since then back into a draft, and the
+  // used key would then "send" it without sending (second review, Codex finding 1).
+  if (await rpc('finished_submit', { p_op_key: submitKey })) {
+    if (!cameBack || !(await cameBack())) return { alreadySent: true, key: submitKey }
+    // Sent, then sent back (a rejected slip): this is a new send, under a new key.
+    submitKey = newId()
+  }
+  await save()
+  return { alreadySent: false, key: submitKey }
+}
+
 /** Refresh everything that a money posting can change. */
 export function useRefreshMoney() {
   const queryClient = useQueryClient()
   return () =>
     Promise.all(
       ['bills', 'bill', 'payments', 'nav-count', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview',
-        'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees', 'project-dashboard', 'dashboard', 'report']
+        'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees', 'project-dashboard', 'dashboard', 'report',
+        'calendar']
         .map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
     )
 }

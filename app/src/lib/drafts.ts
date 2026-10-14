@@ -9,6 +9,8 @@ const PREFIX = 'draft:'
 type Draft<T> = { values: T; savedAt: string }
 
 const keyFor = (userId: string, companyId: string, formKey: string) => `${PREFIX}${userId}:${companyId}:${formKey}`
+/** A device key next to the drafts: counted and cleared with them when the user signs out. */
+export const deviceKey = keyFor
 
 export async function listUserDrafts(userId: string): Promise<string[]> {
   return platform.storage.keys(`${PREFIX}${userId}:`)
@@ -63,6 +65,11 @@ export function useFormDraft<T extends FieldValues>(
 
   return {
     restoredAt,
+    /** Write the form now, e.g. just before sending it, so a reload keeps its id and operation key. */
+    save: async () => {
+      clearTimeout(timer.current)
+      await platform.storage.set(key, { values: form.getValues(), savedAt: new Date().toISOString() } satisfies Draft<unknown>)
+    },
     clear: async () => {
       ready.current = false
       clearTimeout(timer.current)

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatNPR, formatNPRShort, paisaToInput, parseNPR, percent, splitEvenly, splitProRata } from './money'
+import { formatNPR, formatNPRShort, lineAmount, paisaToInput, parseNPR, percent, splitEvenly, splitProRata } from './money'
 
 describe('formatNPR', () => {
   it('uses lakh/crore grouping (acceptance #15)', () => {
@@ -96,5 +96,33 @@ describe('splitEvenly', () => {
   it('gives leftover paisa to the first days, totalling exactly', () => {
     expect(splitEvenly(1000001, 3)).toEqual([333334, 333334, 333333])
     expect(splitEvenly(5, 0)).toEqual([])
+  })
+})
+
+describe('lineAmount', () => {
+  it('rounds half up without float error', () => {
+    expect(Math.round(20100 * 1.005)).toBe(20200) // the float bug this avoids
+    expect(lineAmount(20100, '1.005')).toBe(20201)
+    expect(lineAmount(20100, 1.005)).toBe(20201)
+    expect(lineAmount(1, '0.5')).toBe(1)
+    expect(lineAmount(1, '0.499')).toBe(0)
+  })
+
+  it('multiplies whole and decimal quantities', () => {
+    expect(lineAmount(85000, '100')).toBe(8500000)
+    expect(lineAmount(85000, '2.25')).toBe(191250)
+    expect(lineAmount(85000, '0')).toBe(0)
+    expect(lineAmount(85000, '.5')).toBe(42500)
+  })
+
+  it('refuses quantities it cannot store exactly', () => {
+    expect(lineAmount(100, '1.0005')).toBeNull()
+    expect(lineAmount(100, '')).toBeNull()
+    expect(lineAmount(100, 'abc')).toBeNull()
+    expect(lineAmount(100, '-1')).toBeNull()
+  })
+
+  it('refuses a result too large to hold exactly', () => {
+    expect(lineAmount(Number.MAX_SAFE_INTEGER, '2')).toBeNull()
   })
 })

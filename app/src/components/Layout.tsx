@@ -7,6 +7,7 @@
 import { Suspense, useEffect, useRef, type ComponentType } from 'react'
 import { Link, NavLink, Outlet, useLocation } from 'react-router'
 import { useCompany } from '../auth/AuthProvider'
+import { PhotosWaitingNotice } from '../features/photos/WaitingPhotosPage'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import {
@@ -136,6 +137,7 @@ function Frame() {
         </header>
 
         <main className="mx-auto max-w-5xl px-4 py-5 lg:px-8">
+          <PhotosWaitingNotice />
           <Suspense fallback={<Spinner />}><Outlet /></Suspense>
         </main>
       </div>

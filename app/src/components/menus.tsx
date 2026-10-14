@@ -4,6 +4,7 @@
 import { useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router'
 import { useCompany } from '../auth/AuthProvider'
+import { useIsPlatformAdmin } from '../features/platform/api'
 import { useCurrentProject } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import { ROLE_LABELS } from '../lib/labels'
@@ -192,6 +193,7 @@ export function AccountMenu({ className, alignRight, up }: { className?: string;
   const auth = useCompany()
   const navigate = useNavigate()
   const roles = auth.membership?.roles.map((r) => ROLE_LABELS[r]).join(', ')
+  const { isPlatformAdmin } = useIsPlatformAdmin()
   return (
     <Disclosure ariaLabel={`${t('nav.account')}: ${auth.company.name}`}
       panelClass={cx(alignRight && 'right-0', up && 'bottom-full mb-1')}
@@ -209,6 +211,7 @@ export function AccountMenu({ className, alignRight, up }: { className?: string;
         <>
           <div className="border-b border-line px-4 py-2 text-xs text-subtle">{roles}</div>
           <Link to="/settings" className={cx(rowClass, 'text-sm font-medium text-ink')}>{t('nav.myAccount')}</Link>
+          {isPlatformAdmin && <Link to="/platform" className={cx(rowClass, 'text-sm font-medium text-ink')}>{t('nav.platform')}</Link>}
           <button type="button" className={cx(rowClass, 'text-sm font-medium text-ink')}
             onClick={async () => { if (await auth.signOut()) navigate('/login') }}>
             {t('nav.signOut')}

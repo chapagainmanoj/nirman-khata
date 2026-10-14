@@ -144,7 +144,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.getByRole('tab', { name: 'Payments' }).click()
   // The Match card reads the same open items; once it shows, Unpaid bills has had its data too.
   await expect(page.getByRole('heading', { name: 'Match payments to bills' })).toBeVisible()
-  await expect(page.getByText(/^Bought/)).toBeVisible()
+  await expect(page.getByText(/^Tirnu parne/)).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Unpaid bills' })).toHaveCount(0)
   await page.getByLabel('Bill', { exact: true }).selectOption({ index: 1 }) // the only unpaid bill, 1001
   await page.getByLabel('Paid from').selectOption({ index: 1 })
@@ -170,7 +170,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.getByRole('link', { name: /Shrestha Suppliers/ }).click()
   await expect(page.getByRole('link', { name: 'Bill 1001' })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Payment PAY-0001' })).toBeVisible()
-  await expect(page.getByText('Settled').first()).toBeVisible()
+  await expect(page.getByText('Nothing to pay').first()).toBeVisible()
   await page.screenshot(shots('m2-09-khata'))
 
   // Paper first: a bill photographed before anything is typed is saved as an untyped draft.

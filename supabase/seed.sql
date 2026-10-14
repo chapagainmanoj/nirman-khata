@@ -34,6 +34,11 @@ select u.id::text, u.id, jsonb_build_object('sub', u.id::text, 'email', u.email,
 from auth.users u
 where u.email like '97798000000%@phone.nirmankhata.invalid';
 
+-- Local only: anyone may register (the hosted project requires an allow-list entry),
+-- and the demo owner is a platform admin, so /platform can be tried.
+update private.settings set registration_approval = false;
+insert into private.platform_admins (user_id) values ('10000000-0000-0000-0000-000000000001');
+
 -- Company, created as the owner so the normal setup (admin membership, default catalog) runs.
 select set_config('request.jwt.claims', '{"sub": "10000000-0000-0000-0000-000000000001", "role": "authenticated"}', false);
 select public.create_company('Demo Nirman Sewa', 'Ram Owner', '+9779800000001');

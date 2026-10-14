@@ -129,6 +129,8 @@ function CostBreakdown({ projectId }: { projectId: string }) {
   const auth = useCompany()
   const dash = useProjectDashboard(projectId)
   const d = dash.data
+  if (dash.error) return <ErrorBanner onRetry={() => void dash.refetch()}>{friendlyError(dash.error)}</ErrorBanner>
+  if (dash.isPending) return <Spinner />
   if (!d || !d.money_visible) return null
   return (
     <div className="flex flex-col gap-4">
@@ -154,6 +156,8 @@ function CostBreakdown({ projectId }: { projectId: string }) {
 function SummaryStrip({ projectId }: { projectId: string }) {
   const dash = useProjectDashboard(projectId)
   const f = dash.data
+  if (dash.error) return <ErrorBanner onRetry={() => void dash.refetch()}>{friendlyError(dash.error)}</ErrorBanner>
+  if (dash.isPending) return <Spinner />
   if (!f || !f.money_visible) return null
   const spent = Number(f.cost_paisa ?? 0)
   const budget = f.budget_paisa || null

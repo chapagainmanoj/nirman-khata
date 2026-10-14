@@ -5,9 +5,9 @@ import { useMutation } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { PhotoPicker, type PendingPhoto, uploadPending } from '../../components/Attachments'
+import { Attachments, PhotoPicker, type PendingPhoto, uploadPending } from '../../components/Attachments'
 import { DateInput, DateText } from '../../components/DateInput'
-import { Badge, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Input, Select, Spinner, Textarea } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, Checkbox, ErrorBanner, Field, Input, Notice, Select, Spinner, Textarea } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { ShowMore } from '../../components/ShowMore'
@@ -99,6 +99,8 @@ function ProgressUpdateForm({ projectId, row, onDone }: { projectId: string; row
   const [reason, setReason] = useState('')
   const [photos, setPhotos] = useState<PendingPhoto[]>([])
   const [error, setError] = useState('')
+  // Saved, but some photos are still on the phone: show them here to upload again.
+  const [photosWaiting, setPhotosWaiting] = useState(false)
   const lower = row.pct != null && pct !== '' && Number(pct) < Number(row.pct)
 
   const save = useMutation({
@@ -107,9 +109,13 @@ function ProgressUpdateForm({ projectId, row, onDone }: { projectId: string; row
         id, project_id: projectId, stage_id: row.stage_id, effective_date: date, pct: Number(pct),
         notes: notes.trim() || null, reason: reason.trim() || null,
       } })
-      return uploadPending(auth.companyId, { progress_update_id: id }, photos)
+      return uploadPending({ userId: auth.userId, companyId: auth.companyId }, { progress_update_id: id }, photos)
     },
-    onSuccess: async () => { await refresh(); onDone() },
+    onSuccess: async (failed) => {
+      if (failed) return setPhotosWaiting(true)
+      await refresh()
+      onDone()
+    },
   })
 
   function submit() {
@@ -125,6 +131,16 @@ function ProgressUpdateForm({ projectId, row, onDone }: { projectId: string; row
   const serverError = save.error && ((save.error as { message?: string }).message ?? '').startsWith('reason_required')
     ? 'Progress on that date was higher. Say why it goes down.'
     : save.error && friendlyError(save.error)
+
+  if (photosWaiting) {
+    return (
+      <div className="mt-3 flex flex-col gap-3 rounded-lg border border-line p-3">
+        <Notice>Progress is saved, but a photo did not upload. It is kept on this phone; it also waits under Photos waiting.</Notice>
+        <Attachments owner={{ progress_update_id: id }} canAdd={false} />
+        <div><Button variant="secondary" onClick={() => { void refresh(); onDone() }}>Done</Button></div>
+      </div>
+    )
+  }
 
   return (
     <div className="mt-3 rounded-lg border border-line p-3">

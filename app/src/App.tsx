@@ -5,7 +5,7 @@ import { LoginPage } from './features/auth/LoginPage'
 import { EMAIL_RESET, ForgotPasswordPage, ResetPasswordPage } from './features/auth/PasswordResetPages'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
-import { AdminOnly, Home, RedirectIfSignedIn, RequireCompany } from './routes/guards'
+import { AdminOnly, Home, RedirectIfSignedIn, RequireCompany, RequirePlatformAdmin } from './routes/guards'
 
 // Each screen is its own chunk, so the first load is only sign-in, the frame and Projects
 // (/impeccable optimize). The service worker precaches the rest for later visits.
@@ -15,6 +15,7 @@ function page<M extends Record<K, ComponentType<any>>, K extends keyof M>(load: 
 }
 
 const MorePage = page(() => import('./components/MorePage'), 'MorePage')
+const WaitingPhotosPage = page(() => import('./features/photos/WaitingPhotosPage'), 'WaitingPhotosPage')
 const CatalogPage = page(() => import('./features/catalog/CatalogPage'), 'CatalogPage')
 const ProjectDetailPage = page(() => import('./features/projects/ProjectDetailPage'), 'ProjectDetailPage')
 const ProjectNewPage = page(() => import('./features/projects/ProjectNewPage'), 'ProjectNewPage')
@@ -52,6 +53,7 @@ const CalendarPage = page(() => import('./features/calendar/CalendarPage'), 'Cal
 const DashboardPage = page(() => import('./features/dashboard/DashboardPage'), 'DashboardPage')
 const ReportsPage = page(() => import('./features/reports/ReportsPage'), 'ReportsPage')
 const ReportPage = page(() => import('./features/reports/ReportPage'), 'ReportPage')
+const PlatformPage = page(() => import('./features/platform/PlatformPage'), 'PlatformPage')
 
 export function App() {
   return (
@@ -61,6 +63,7 @@ export function App() {
         <Route path="/register" element={<RedirectIfSignedIn><RegisterPage /></RedirectIfSignedIn>} />
         {EMAIL_RESET && <Route path="/forgot" element={<RedirectIfSignedIn><ForgotPasswordPage /></RedirectIfSignedIn>} />}
         {EMAIL_RESET && <Route path="/reset" element={<ResetPasswordPage />} />}
+        <Route path="/platform" element={<RequirePlatformAdmin><PlatformPage /></RequirePlatformAdmin>} />
         <Route element={<RequireCompany><Layout /></RequireCompany>}>
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/new" element={<AdminOnly><ProjectNewPage /></AdminOnly>} />
@@ -69,6 +72,7 @@ export function App() {
           <Route path="/catalog" element={<CatalogPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/more" element={<MorePage />} />
+          <Route path="/photos-waiting" element={<WaitingPhotosPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />

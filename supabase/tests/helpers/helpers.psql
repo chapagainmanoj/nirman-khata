@@ -41,6 +41,17 @@ begin
   return v;
 end $$;
 
+-- Platform admin (superuser) and the registration allow-list switch, as the superuser.
+create or replace function tests.make_platform_admin(p_user uuid) returns void
+language sql as $$
+  insert into private.platform_admins (user_id) values (p_user)
+$$;
+
+create or replace function tests.require_approval(p_on boolean) returns void
+language sql as $$
+  update private.settings set registration_approval = p_on
+$$;
+
 -- Add a staff member (as the Edge Function would, with the service role).
 create or replace function tests.add_member(
   p_company uuid, p_user uuid, p_roles public.app_role[], p_finance boolean default false

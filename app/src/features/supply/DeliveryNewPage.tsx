@@ -114,7 +114,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
         rejected_qty: Number(l.rejected) || 0, issue: l.issue || null, note: l.note || null,
       })),
       } })
-      return uploadPending(auth.companyId, { delivery_id: id }, photos)
+      return uploadPending({ userId: auth.userId, companyId: auth.companyId }, { delivery_id: id }, photos)
     },
     onSuccess: async (failed) => {
       setPhotoFailed(failed)
@@ -161,7 +161,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
       <>
         <PageHeader title="Delivery recorded" crumbs={crumbs} />
         <Card title="Challan photo">
-          {photoFailed > 0 && <div className="mb-3"><Notice>A photo did not upload. Take it again.</Notice></div>}
+          {photoFailed > 0 && <div className="mb-3"><Notice>A photo did not upload. It is kept on this phone; upload it again below.</Notice></div>}
           {photos.length === 0 && <p className="mb-3 text-sm text-subtle">Take a photo of the challan so accounts can match the bill.</p>}
           <Attachments owner={{ delivery_id: id }} canAdd label="Take challan photo" />
         </Card>

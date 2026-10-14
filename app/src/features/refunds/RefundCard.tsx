@@ -35,7 +35,8 @@ function useRefundRooms(partyId: string, enabled: boolean) {
   })
 }
 
-export function RefundCard({ kind, partyId }: { kind: PartyKind; partyId: string }) {
+/** `embedded`: a section at the foot of the balance card instead of a card of its own. */
+export function RefundCard({ kind, partyId, embedded }: { kind: PartyKind; partyId: string; embedded?: boolean }) {
   const auth = useCompany()
   const rooms = useRefundRooms(partyId, auth.canSeeFinance && canRecordPayments(auth))
   const [open, setOpen] = useState(false)
@@ -46,8 +47,8 @@ export function RefundCard({ kind, partyId }: { kind: PartyKind; partyId: string
   const peski = Math.max(...usable.map((r) => r.peski_paisa))
   const held = [peski > 0 && `${formatNPR(peski)} peski not yet used`, overpaid > 0 && `${formatNPR(overpaid)} overpaid`]
     .filter(Boolean).join(' and ')
-  return (
-    <Card title="Money given back">
+  const body = (
+    <>
       <p className="text-sm text-subtle">
         This {PARTY[kind].one.toLowerCase()} holds up to <span className="font-semibold text-ink tabular-nums">{held}</span>.
         Record money they give back here; it is not a cost.
@@ -55,8 +56,17 @@ export function RefundCard({ kind, partyId }: { kind: PartyKind; partyId: string
       {open
         ? <RefundForm kind={kind} partyId={partyId} rooms={usable} onDone={() => setOpen(false)} />
         : <Button variant="secondary" className="mt-3" onClick={() => setOpen(true)}>Record refund</Button>}
-    </Card>
+    </>
   )
+  if (embedded) {
+    return (
+      <section className="mt-4 border-t border-line pt-3" aria-label="Money given back">
+        <h3 className="mb-1 text-sm font-semibold text-ink">Money given back</h3>
+        {body}
+      </section>
+    )
+  }
+  return <Card title="Money given back">{body}</Card>
 }
 
 function RefundForm({ kind, partyId, rooms: all, onDone }: {

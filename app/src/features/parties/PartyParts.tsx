@@ -16,11 +16,35 @@ import { useProjects } from '../projects/api'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { usePartyBalances, usePartyKhata, usePartyOpenItems, usePartyOpeningBalance, usePartyPayments } from './api'
 import { ShowMore } from '../../components/ShowMore'
+import { RefundCard } from '../refunds/RefundCard'
 import { DOC_WORD, docPath, PARTY, type PartyKind } from './kinds'
+
+/** One line of the balance statement: + adds to what we owe, − reduces it (as in the khata). */
+function StatementRow({ label, paisa }: { label: ReactNode; paisa: number }) {
+  return (
+    <>
+      <dt className="text-subtle">{label}</dt>
+      <dd className="text-right font-medium text-ink tabular-nums">{paisa > 0 ? '+' : ''}{formatNPR(paisa)}</dd>
+    </>
+  )
+}
+
+/** The balance card's headline: the amount on its own line, what it means under it. */
+function BalanceHeadline({ paisa }: { paisa: number }) {
+  if (paisa === 0) return <p className="mb-3 text-lg text-subtle">Nothing to pay</p>
+  return (
+    <div className="mb-3">
+      <div className="text-2xl font-semibold text-ink tabular-nums">{formatNPR(Math.abs(paisa))}</div>
+      <div className={`text-sm font-medium ${paisa > 0 ? 'text-warn-ink' : 'text-good-ink'}`}>
+        {paisa > 0 ? 'Baki · still to pay' : 'They hold · peski or overpaid'}
+      </div>
+    </div>
+  )
+}
 
 /** Positive = we owe (baki), negative = the party holds our money (peski or overpaid). */
 export function BalanceText({ paisa }: { paisa: number }) {
-  if (paisa === 0) return <span className="text-subtle">Settled</span>
+  if (paisa === 0) return <span className="text-subtle">Nothing to pay</span>
   return (
     <span className="tabular-nums">
       <span className="font-semibold text-ink">{formatNPR(Math.abs(paisa))}</span>{' '}
@@ -36,6 +60,9 @@ export function BalanceCard({ kind, partyId, children }: { kind: PartyKind; part
   const b = balances.data?.find((x) => x.party_id === partyId)
   const ob = usePartyOpeningBalance(partyId, true)
   const fresh = !!b && b.charged_paisa === 0 && b.paid_paisa === 0 && b.balance_paisa === 0 && !ob.isPending && !ob.data
+  // The opening balance counts once it is in the ledger (cutover today or earlier), company level only.
+  const opening = b?.company_level && ob.data && ob.data.cutover_date <= todayKathmandu() ? ob.data.amount_paisa : 0
+  const unassigned = (b?.unallocated_paisa ?? 0) - opening
   return (
     <Card title={kind === 'supplier' ? 'To pay' : 'Balance'}>
       {balances.isPending && <Spinner />}
@@ -48,24 +75,31 @@ export function BalanceCard({ kind, partyId, children }: { kind: PartyKind; part
       )}
       {b && !fresh && (
         <>
-          <div className="mb-2 text-lg"><BalanceText paisa={b.balance_paisa} /></div>
-          <p className="text-sm text-subtle">
-            {kind === 'supplier' ? 'Bought' : `Charged (${PARTY[kind].charges})`} <span className="font-semibold text-ink tabular-nums">{formatNPR(b.charged_paisa)}</span>
-            {' · '}Paid <span className="font-semibold text-ink tabular-nums">{formatNPR(b.paid_paisa)}</span>
-          </p>
+          <BalanceHeadline paisa={b.balance_paisa} />
+          {/* How the balance adds up. The opening balance sits in the ledger as a non-cash,
+              no-project row, so take it out of Tirnu parne and "not given to a project". */}
+          <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-line pt-3 text-sm">
+            {opening !== 0 && (
+              <StatementRow label={<>Opening balance, <DateText value={ob.data!.cutover_date} display={auth.dateDisplay} /></>} paisa={opening} />
+            )}
+            {/* Khata words (GLOSSARY.md): Tirnu parne, Tireko, Baki. */}
+            <StatementRow label={`Tirnu parne (${PARTY[kind].charges})`} paisa={b.charged_paisa - opening} />
+            <StatementRow label="Tireko" paisa={-b.paid_paisa} />
+          </dl>
+          {opening !== 0 && auth.seesAllProjects && <OpeningBalance kind={kind} partyId={partyId} inStatement />}
           {children}
-          {/* The unallocated bucket holds payments not given to a project, and opening balances. */}
-          {b.company_level && b.unallocated_paisa < 0 && <Detail label="Paid, not yet given to a project">{formatNPR(-b.unallocated_paisa)}</Detail>}
-          {b.company_level && b.unallocated_paisa > 0 && <Detail label="Owed from before, on no project">{formatNPR(b.unallocated_paisa)}</Detail>}
+          {b.company_level && unassigned < 0 && <Detail label="Paid, not yet given to a project">{formatNPR(-unassigned)}</Detail>}
+          {b.company_level && unassigned > 0 && <Detail label="Owed from before, on no project">{formatNPR(unassigned)}</Detail>}
           {!b.company_level && <p className="mt-2 text-xs text-subtle">Only your projects are included.</p>}
         </>
       )}
-      {auth.seesAllProjects && <OpeningBalance kind={kind} partyId={partyId} prompt={fresh} />}
+      {auth.seesAllProjects && opening === 0 && <OpeningBalance kind={kind} partyId={partyId} prompt={fresh} />}
+      <RefundCard kind={kind} partyId={partyId} embedded />
     </Card>
   )
 }
 
-function OpeningBalance({ kind, partyId, prompt }: { kind: PartyKind; partyId: string; prompt?: boolean }) {
+function OpeningBalance({ kind, partyId, prompt, inStatement }: { kind: PartyKind; partyId: string; prompt?: boolean; inStatement?: boolean }) {
   const auth = useCompany()
   const ob = usePartyOpeningBalance(partyId, true)
   const refresh = useRefreshMoney()
@@ -94,11 +128,15 @@ function OpeningBalance({ kind, partyId, prompt }: { kind: PartyKind; partyId: s
 
   if (ob.data) {
     return (
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-line pt-3 text-sm">
-        <span>
-          Opening balance <BalanceText paisa={ob.data.amount_paisa} /> on <DateText value={ob.data.cutover_date} display={auth.dateDisplay} />
-          <span className="block text-xs text-subtle">{ob.data.note}</span>
-        </span>
+      <div className={`flex flex-wrap items-center justify-between gap-x-2 text-sm ${inStatement ? '' : 'mt-3 border-t border-line pt-3'}`}>
+        {inStatement ? (
+          <span className="min-w-0 text-xs text-subtle">Opening balance note: <span className="break-words text-ink">{ob.data.note}</span></span>
+        ) : (
+          <span>
+            Opening balance <BalanceText paisa={ob.data.amount_paisa} /> on <DateText value={ob.data.cutover_date} display={auth.dateDisplay} />
+            <span className="block text-xs text-subtle">{ob.data.note}</span>
+          </span>
+        )}
         <ReasonButton variant="ghost" title="Correct the opening balance" hint="It is reversed and kept in history; then set the right amount."
           confirmLabel="Reverse it" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
           withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
@@ -240,7 +278,7 @@ export function Khata({ kind, partyId, projectId: fixedProject }: { kind: PartyK
   return (
     <Card>
       {!fixedProject && (projectId || !!khata.data?.length) && (
-        <div className="mb-3">
+        <div className="mb-3 sm:max-w-sm">
           <Field label="Project" htmlFor="khata-project">
             <Select id="khata-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
               <option value="">{auth.seesAllProjects ? 'All projects (company khata)' : 'All my projects'}</option>

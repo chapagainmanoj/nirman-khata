@@ -106,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (
             drafts.length > 0 &&
             !window.confirm(
-              `You have ${drafts.length} unsent draft(s) on this phone. Signing out deletes them. Sign out anyway?`,
+              `You have ${drafts.length} unsent draft(s) or photo(s) on this phone. Signing out deletes them. Sign out anyway?`,
             )
           ) {
             return false

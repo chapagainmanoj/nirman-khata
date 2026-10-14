@@ -164,14 +164,17 @@ These exceptions never show other people's entries, totals, ledger rows, or part
 - `attachments`: `company_id`, one owner FK (exactly one), `kind`, `content_type`, `size_bytes`, `uploaded_at`, `removed_at`.
 - **Files live in Cloudflare R2** (bucket `nirman-khata-files`), key `{company_id}/{attachment_id}`. Company logos stay in the public Supabase Storage `logos` bucket.
 - The browser never holds bucket keys. The **`files` Edge Function** hands out **5-minute presigned URLs** after the database says yes, asked **as the signed-in user**:
-  - **upload:** `attachment_upload_target()` allows only the user who created the row, while it is not uploaded, when the owning record's upload rule from 3.6 holds. Photos and PDFs only, at most 10 MB. The link signs the declared `content-type` and `content-length`, so it accepts only that file.
-  - **confirm:** the function checks that the object exists with the declared size, then calls `mark_attachment_uploaded()`, which only the service role may run.
+  - **upload:** `attachment_upload_target()` allows only the user who created the row, while it is not uploaded, when the owning record's upload rule from 3.6 holds. Photos and PDFs only, at most 10 MB. The link signs the declared `content-type` and `content-length`, so it accepts only that file. It writes to `staging/{company_id}/{attachment_id}`, never to the final key.
+  - **confirm:** the function checks the staged object, copies it to the final key only if it is still the same object (`x-amz-copy-source-if-match` with its ETag), deletes the staged copy, and calls `mark_attachment_uploaded()` with its size, which only the service role may run. Confirming again an upload the same user already finished answers `{ ok, already: true }`, so a retry after a lost answer is not an error.
   - **read:** links are made only for rows that row security returns to the user (`can_access_attachment(id, 'read')`, including the X1/X2 exceptions).
   - **remove:** `remove_attachment()` decides. On a draft owner the row and the object are deleted; otherwise the row gets `removed_at` and the file is kept.
-- **Files are immutable:** an uploaded row never gets another upload link. Replacing a photo creates a new attachment.
+- **Files are immutable:** an uploaded row never gets another upload link. Replacing a photo creates a new attachment. An upload link reused within its 5 minutes reaches only staging, never the confirmed file (presigned PUTs on R2 and local Storage ignore `If-None-Match`, so staging is the guard).
+- R2 lifecycle rule (set in the Cloudflare dashboard): delete objects under `staging/` after 1 day.
 - Locally and in CI the same code runs against Supabase Storage's S3 endpoint (`[edge_runtime.secrets]` in `supabase/config.toml`). Production settings are set by CI with `supabase secrets set`.
 - R2 CORS (`cloudflare/r2-cors.json`) allows `PUT` from the app's origins.
 - Attachment rows whose upload never finished are cleaned up nightly.
+- **Photos taken in a form wait on the device** (`uploadPending` in `Attachments.tsx`, stored next to the drafts and cleared with them at sign-out) until each one is confirmed. Each keeps its attachment id, so a retry finishes the same attachment and never adds a copy. The record's photo section lists what is waiting, with "Upload again" and "Discard".
+- **Bill photos after sending:** because a waiting photo can arrive late, a photo may be added to a bill that is sent to Accounts or posted, by its creator (while they still work on all its projects) or by Accounts or Admin (`can_add_bill_photo`). Removing one still needs a draft.
 
 ### 3.8 Audit
 A trigger on every tenant table writes `audit_log`. Only admins can read it, through an RPC.

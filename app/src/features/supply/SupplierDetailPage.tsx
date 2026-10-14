@@ -6,7 +6,6 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Button, ButtonLink, Card, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from '../parties/PartyParts'
-import { RefundCard } from '../refunds/RefundCard'
 import { useBills, useSuppliers } from './api'
 import { ShowMore } from '../../components/ShowMore'
 import { BillRow } from './BillRow'
@@ -66,7 +65,6 @@ export function SupplierDetailPage() {
         {auth.canSeeFinance && <UnpaidBills supplierId={s.id} />}
         {canEnter(auth) && <ComingFromThem supplierId={s.id} />}
         {auth.canSeeFinance && <TheirRates supplierId={s.id} />}
-        <RefundCard kind="supplier" partyId={s.id} />
       </div>
 
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Supplier records">

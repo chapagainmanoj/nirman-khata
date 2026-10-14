@@ -112,6 +112,10 @@ async function resetPassword(admin: ReturnType<typeof createClient>, body: Reset
     .eq('user_id', body.user_id)
     .maybeSingle()
   if (!target) return fail('Staff member not found', 404)
+  // A platform admin's login also opens /platform; only they may change its password.
+  const { data: platformAdmin, error: lookupError } = await admin.rpc('is_platform_admin_user', { p_user: body.user_id })
+  if (lookupError) return fail('Could not reset the password', 500)
+  if (platformAdmin) return fail('This login is a platform admin; its password cannot be reset here', 403)
 
   const { error } = await admin.auth.admin.updateUserById(body.user_id, { password: body.password })
   if (error) return fail('Could not reset the password', 500)

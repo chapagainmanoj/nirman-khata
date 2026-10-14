@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { Attachments } from '../../components/Attachments'
+import { Attachments, QueuedPhotos } from '../../components/Attachments'
 import { DateInput, DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { ReasonButton } from '../../components/ReasonButton'
@@ -28,7 +28,7 @@ export function BillDetailPage() {
   const queryClient = useQueryClient()
   const bill = useBill(billId)
   // From "Save and post": the draft is saved, but posting may have been refused by a check.
-  const arrived = (useLocation().state as { postError?: string; failedPhotos?: number } | null) ?? {}
+  const arrived = (useLocation().state as { postError?: string; failedPhotos?: number; alreadySent?: boolean; sent?: boolean } | null) ?? {}
   const projects = useProjects(auth.companyId)
   const headings = useHeadings(auth.companyId)
   const members = useMembers(auth.companyId)
@@ -52,6 +52,19 @@ export function BillDetailPage() {
 
   if (bill.isPending) return <Spinner />
   if (bill.error) return <ErrorBanner onRetry={() => void bill.refetch()}>{friendlyError(bill.error)}</ErrorBanner>
+  // Site staff stop seeing a bill once it goes to Accounts: say where it went, not "not found".
+  if (!b && arrived.sent) {
+    return (
+      <>
+        <EmptyState title="Sent to Accounts">
+          {arrived.alreadySent ? 'This bill had already been sent to Accounts; it was not sent twice.' : 'Accounts will check it and post it.'}{' '}
+          <Link className="text-slate" to="/bills/new">Enter another bill</Link>
+        </EmptyState>
+        {/* A photo that did not upload is kept on this phone; it can still be added to the sent bill. */}
+        <div className="mt-4"><QueuedPhotos owner={{ bill_id: billId }} /></div>
+      </>
+    )
+  }
   if (!b) return <EmptyState title="Bill not found">It does not exist or you cannot see it. <Link className="text-slate" to="/suppliers">Suppliers</Link></EmptyState>
 
   const { charges, lines } = bill.data
@@ -63,6 +76,10 @@ export function BillDetailPage() {
   const settled = status.data?.reduce((s, r) => s + r.settled_paisa, 0) ?? 0
   const blockers = preview.data?.checks.filter((c) => c.severity !== 'warning') ?? []
   const canEdit = isDraft && ((b.status === 'draft' && b.created_by === auth.userId) || canPost(auth))
+  // A photo is evidence, not money: it can still be added once the bill is sent or posted, by its
+  // creator or by Accounts. Only a draft lets a photo be removed.
+  const canAddPhoto = (isDraft && canEdit && canEnter(auth))
+    || ((b.status === 'under_review' || b.status === 'posted') && (canPost(auth) || b.created_by === auth.userId))
   const subtotal = lines.reduce((s, l) => s + l.amount_paisa, 0)
   // Each line's share of the bill-level charges, named: "Incl. transport + VAT".
   const chargeNames = [
@@ -87,7 +104,8 @@ export function BillDetailPage() {
         }
       />
       {arrived.postError && isDraft && <div className="mb-4"><Notice>Saved as a draft, not posted: {arrived.postError}</Notice></div>}
-      {!!arrived.failedPhotos && <div className="mb-4"><Notice>The bill is saved, but a photo did not upload. Take it again below.</Notice></div>}
+      {arrived.alreadySent && <div className="mb-4"><Notice>This bill had already been sent to Accounts; it was not sent twice.</Notice></div>}
+      {!!arrived.failedPhotos && <div className="mb-4"><Notice>The bill is saved, but a photo did not upload. It is kept on this phone; upload it again below.</Notice></div>}
       {b.status === 'under_review' && !canPost(auth) && <div className="mb-4"><Notice>Sent to Accounts for posting.</Notice></div>}
       {b.status === 'draft' && !canPost(auth) && b.created_by === auth.userId && (
         <div className="mb-4"><Notice>Draft. Send it to Accounts when the lines and photo are complete.</Notice></div>
@@ -199,7 +217,7 @@ export function BillDetailPage() {
         )}
 
         <Card title="Bill photo">
-          <Attachments owner={{ bill_id: b.id }} canAdd={isDraft && canEdit && canEnter(auth)} canRemove={b.status === 'draft' && canEdit} label="Take bill photo" />
+          <Attachments owner={{ bill_id: b.id }} canAdd={canAddPhoto} canRemove={b.status === 'draft' && canEdit} label="Take bill photo" />
         </Card>
 
         {b.status !== 'draft' && b.status !== 'under_review' && auth.canSeeFinance && !!credits.data?.length && (

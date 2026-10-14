@@ -28,7 +28,8 @@ begin
     execute format('delete from public.%I where company_id = any(%L::uuid[])', t, '$companies');
   end loop;
 end \$\$;
-delete from storage.objects where bucket_id = 'attachments' and split_part(name, '/', 1) = any('$companies'::text[]);
+delete from storage.objects where bucket_id = 'attachments' and (split_part(name, '/', 1) = any('$companies'::text[])
+  or (split_part(name, '/', 1) = 'staging' and split_part(name, '/', 2) = any('$companies'::text[])));
 delete from public.companies where id = any('$companies'::uuid[]);
 delete from public.profiles where id = any('$users'::uuid[]);
 delete from auth.users where id = any('$users'::uuid[]);
@@ -92,6 +93,8 @@ uploaded() { q -c "select uploaded_at is not null from public.attachments where 
 
 printf 'a bill photo, honestly' >"$WORK/photo.jpg"   # 22 bytes
 printf 'a much bigger file than was declared' >"$WORK/big.jpg"
+printf 'a forged photo, sneaky' >"$WORK/forged.jpg"   # same size and type as the real one
+staged() { q -c "select count(*) from storage.objects where bucket_id = 'attachments' and name = 'staging/$CO/$1'"; }
 
 # --- Upload ---------------------------------------------------------------------------------
 A=$(new_attachment "$OWNER" 22 image/jpeg)
@@ -102,10 +105,19 @@ UP=$(jget 'd["url"]' <"$WORK/out")
 check "a file bigger than declared is rejected by the link" true "$([ "$(put "$UP" "$WORK/big.jpg" image/jpeg)" -ge 400 ] && echo true || echo false)"
 check "a different content type is rejected by the link" true "$([ "$(put "$UP" "$WORK/photo.jpg" text/html)" -ge 400 ] && echo true || echo false)"
 check "the declared file uploads" 200 "$(put "$UP" "$WORK/photo.jpg" image/jpeg)"
+check "... into staging, not yet the confirmed key" 1 "$(staged "$A")"
 check "someone else cannot confirm the owner's upload" 409 "$(files "$STAFF_JWT" "$(act confirm "$A")")"
 check "the owner confirms" 200 "$(files "$OWNER_JWT" "$(act confirm "$A")")"
 check "the row is marked uploaded" t "$(uploaded "$A")"
+check "confirming again after a lost answer is not an error" 200 "$(files "$OWNER_JWT" "$(act confirm "$A")")"
+check "... and says the upload had already finished" true "$(jget 'd.get("already")' <"$WORK/out" | tr 'A-Z' 'a-z')"
 check "an uploaded file cannot get another upload link" 403 "$(files "$OWNER_JWT" "$(act upload "$A")")"
+check "the staged upload is cleared once confirmed" 0 "$(staged "$A")"
+# The old link still works for its 5 minutes, but only reaches staging, never the confirmed file.
+put "$UP" "$WORK/forged.jpg" image/jpeg >/dev/null
+files "$OWNER_JWT" "$(reads "$A")" >/dev/null
+check "a reused upload link does not reach the confirmed file" "a bill photo, honestly" \
+  "$(curl -sf "$(jget "d['urls'].get('$A', '')" <"$WORK/out")")"
 check "users cannot mark uploads themselves" 42501 "$(curl -s -X POST "$API_URL/rest/v1/rpc/mark_attachment_uploaded" \
   -H "Authorization: Bearer $OWNER_JWT" -H "apikey: $ANON_KEY" -H 'Content-Type: application/json' \
   -d "$(printf '{"p_attachment":"%s","p_user":"%s","p_size":22}' "$A" "$OWNER")" | jget 'd.get("code")')"
