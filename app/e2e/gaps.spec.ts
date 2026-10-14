@@ -109,7 +109,8 @@ test('paged lists, rate hint, refund and password reset', async ({ page }) => {
 
   // Refund: 55 × 4,500 = 2,47,500 billed, 2,50,000 paid, so Rs. 2,500 is overpaid.
   await page.goto(`/suppliers/${supplierId}`)
-  const refundCard = page.locator('section').filter({ has: page.getByRole('heading', { name: 'Money given back' }) })
+  // A section at the foot of the balance card, named by its aria-label.
+  const refundCard = page.getByRole('region', { name: 'Money given back' })
   await expect(refundCard).toContainText('Rs. 2,500')
   await refundCard.getByRole('button', { name: 'Record refund' }).click()
   await expect(page.getByLabel('Amount received')).toHaveValue('2500')

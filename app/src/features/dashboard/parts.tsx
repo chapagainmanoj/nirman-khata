@@ -63,7 +63,7 @@ export function UsedBars({ figures: f, setProgress }: { figures: ProjectFigures;
         <span className="flex justify-between text-xs text-subtle">
           <span>Work done</span>
           {setProgress
-            ? <Link to={setProgress} className="relative z-10 font-medium text-brand hover:underline">Set progress <span aria-hidden>→</span></Link>
+            ? <Link to={setProgress} className="relative z-10 -my-3.5 inline-flex min-h-11 items-center font-medium text-brand hover:underline">Set progress <span aria-hidden>&nbsp;→</span></Link>
             : <span>Not set</span>}
         </span>
       ) : <Bar label="Work done" value={Number(f.progress_pct)} tone="bg-bar" />}
@@ -125,7 +125,7 @@ export function HeadingTable({ figures: f, projectId }: { figures: ProjectFigure
           )
         })}
       </ul>
-      <Link className="mt-2 inline-block text-sm font-medium text-slate hover:underline" to={`/reports/budget-vs-cost?project=${projectId}`}>
+      <Link className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-slate hover:underline" to={`/reports/budget-vs-cost?project=${projectId}`}>
         Budget vs recorded cost report
       </Link>
     </>

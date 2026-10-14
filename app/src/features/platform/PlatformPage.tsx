@@ -4,6 +4,7 @@
 import { Fragment, useEffect, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router'
 import { useAuth } from '../../auth/AuthProvider'
+import { ChevronRightIcon } from '../../components/icons'
 import { ShowMore } from '../../components/ShowMore'
 import { Badge, Button, Card, ConfirmButton, EmptyState, ErrorBanner, Field, Input, PageHeader, Spinner, Status } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
@@ -30,7 +31,7 @@ function ago(ts: string | null): string {
   return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-/** A table that scrolls sideways on a phone instead of squeezing its columns. */
+/** /platform is a desktop page; in a narrow window the table scrolls sideways instead of squeezing. */
 function Table({ head, children, minWidth = 'min-w-[40rem]' }: { head: ReactNode; children: ReactNode; minWidth?: string }) {
   return (
     <div className="-mx-4 overflow-x-auto px-4">
@@ -65,7 +66,7 @@ export function PlatformPage() {
   const auth = useAuth()
   const navigate = useNavigate()
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6">
+    <div className="mx-auto max-w-7xl px-6 py-8">
       <PageHeader
         title={t('platform.title')}
         subtitle={t('platform.subtitle')}
@@ -119,7 +120,7 @@ function Companies() {
                     {c.name}
                   </button>
                   {c.changes_30d === 0 && <> <Badge tone="warn">Idle</Badge></>}
-                  <div className="text-xs text-subtle">{c.owner_name || 'Owner'} · {showLogin(c.owner_login)}</div>
+                  <div className="text-xs text-subtle">{c.owner_name || 'Owner'} · <span className="whitespace-nowrap">{showLogin(c.owner_login)}</span></div>
                 </td>
                 <td className={`${td} whitespace-nowrap`}>{ago(c.last_activity)}</td>
                 <td className={num}>{c.changes_7d}</td>
@@ -155,7 +156,7 @@ function CompanyUsers({ companyId }: { companyId: string }) {
             <td className={td}>
               <span className="font-medium text-ink">{u.full_name || showLogin(u.login)}</span>
               {!u.active && <> <Badge>Inactive</Badge></>}
-              <div className="text-xs text-subtle">{showLogin(u.login)}</div>
+              <div className="text-xs whitespace-nowrap text-subtle">{showLogin(u.login)}</div>
             </td>
             <td className={td}>{u.roles.map((r) => ROLE_LABELS[r]).join(', ')}</td>
             <td className={`${td} whitespace-nowrap`}>{ago(u.last_activity)}</td>
@@ -201,8 +202,10 @@ function AllowList() {
         <Badge tone={approval.data ? 'good' : 'warn'}>{approval.data ? 'Approval required' : 'Approval off (anyone can register)'}</Badge>
       )}>
       <p className="mb-3 text-sm text-subtle">
-        A new company can only be registered from an approved mobile number or email. Each approval works once.
-        Staff that a company adds do not need approval.
+        {approval.data === false
+          ? 'Approval is off here, so anyone can register. Where it is on (the live app), only an approved mobile number or email can register a new company.'
+          : 'A new company can only be registered from an approved mobile number or email.'}
+        {' '}Each approval works once. Staff that a company adds never need approval.
       </p>
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end" noValidate>
         <Field label={t('auth.loginId')} htmlFor="approve-login" error={invalid ? 'Enter a valid Nepali mobile number (98XXXXXXXX) or email' : undefined}>
@@ -237,8 +240,9 @@ function AllowList() {
         </Table>
       )}
 
-      <details className="mt-4">
-        <summary className="flex min-h-11 cursor-pointer items-center text-sm font-semibold text-ink">
+      <details className="group mt-4">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
+          <ChevronRightIcon size={16} className="shrink-0 text-subtle transition-transform group-open:rotate-90" />
           Already registered{used.total != null ? ` (${used.total})` : ''}
         </summary>
         {used.isPending && <Spinner />}

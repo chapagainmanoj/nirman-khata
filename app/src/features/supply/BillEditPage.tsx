@@ -488,7 +488,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
                 <Controller control={control} name="transport" render={({ field }) => <MoneyInput id="b-trans" value={field.value} onChange={field.onChange} />} />
               </Field>
               <Field label="VAT" htmlFor="b-vat" hint={
-                <button type="button" className="text-slate underline" onClick={() => {
+                <button type="button" className="inline-flex min-h-11 items-center text-slate underline" onClick={() => {
                   const base = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0)
                   setValue('vat', paisaToInput(Math.round((base * Number(values.vat_rate || 13)) / 100)))
                 }}>Work out {values.vat_rate || 13}% VAT</button>
