@@ -85,7 +85,7 @@ test('dashboard, reports and exports agree', async ({ page }) => {
   await page.getByLabel('Split by cost heading (optional)').check()
   await page.getByLabel('Own Labour (Jyala)').fill('5,000')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
-  await expect(page.getByText('Extra floor')).toBeVisible()
+  await expect(page.getByText('Extra floor', { exact: true })).toBeVisible()
 
   // Reports agree with the dashboard (#14).
   await page.goto('/reports')
