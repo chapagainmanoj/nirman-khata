@@ -74,8 +74,8 @@ export function UsedBars({ figures: f, setProgress }: { figures: ProjectFigures;
 
 /**
  * What the recorded cost does not include yet: unbilled receipts, unposted bills, a quiet site.
- * Quiet grey text, not a banner: it qualifies the number, nothing is wrong. Planned projects
- * have nothing to be missing yet, so they show nothing.
+ * Quiet grey text, not a banner: it qualifies the number, nothing is wrong. A Planned project (an
+ * old status, now retired) shows nothing.
  */
 export function Completeness({ figures: f, compact, status }: { figures: ProjectFigures; compact?: boolean; status?: ProjectStatus }) {
   if (status === 'planned') return null

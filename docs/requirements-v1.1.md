@@ -142,9 +142,11 @@ Platform
 - Project manager and assigned staff.
 - Planned and actual start/completion dates.
 - Original and revised contract amount; original and revised spending budget.
-- Status: **Planned, Active, On Hold, Completed, Closed, Cancelled.**
+- Status: **Active, On Hold, Completed**, picked from a list; a new project starts Active. Two more by
+  their own action (product owner, 2026-10-17; Planned retired):
   - Completed = construction work done.
-  - Closed = financial reconciliation done too.
+  - Closed ("Close books", on a Completed project) = financial reconciliation done too. Reopen goes back to Completed.
+  - Cancelled ("Cancel project") = never went ahead; left out of dashboards and reports. Can be restored.
 
 ### 4.3 Shared parties
 - One supplier or subcontractor can work on several projects of the same company.

@@ -1,7 +1,7 @@
 // The company's running projects added up for the dashboard's top block: spent so far and left to
-// spend against budget, and where that money went. Running = Active or On hold, or Planned once it has any cost (the status is
-// often left at Planned after work starts). A Planned project with no cost stays out, since its
-// budget would only inflate "left"; Completed is done. Never called profit (req §19).
+// spend against budget, and where that money went. Running = Active or On hold; Completed is done.
+// (Planned is retired; an old row that still has it counts once money is spent on it.) Never
+// called profit (req §19).
 import type { ProjectStatus } from '../../lib/supabase'
 import type { ProjectFigures } from './parts'
 

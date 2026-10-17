@@ -10,13 +10,13 @@ select tests.add_member(:'co', :'site', array['site_staff']::public.app_role[]);
 
 select tests.login(:'owner');
 select public.create_project(:'co', 'G-1', 'Audit me', 100000) as p \gset
-update public.projects set status = 'active' where id = :'p';
+update public.projects set status = 'on_hold' where id = :'p';
 
 select ok(exists (
   select 1 from public.audit_log where entity = 'projects' and entity_id = :'p' and action = 'insert' and user_id = :'owner'
 ), 'project creation is audited with the user');
 select is((select before ->> 'status' || '->' || (after ->> 'status') from public.audit_log
-           where entity = 'projects' and entity_id = :'p' and action = 'update'), 'planned->active',
+           where entity = 'projects' and entity_id = :'p' and action = 'update'), 'active->on_hold',
   'updates keep before and after values');
 
 -- created_by cannot be spoofed.

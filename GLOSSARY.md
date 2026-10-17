@@ -23,8 +23,9 @@ Turning a crew's open Attendance for a project and a date (or range of dates) in
 A project whose books are final: work is done (see Completed) and its money has been reconciled. No new financial entries are allowed until an authorized user reopens it.
 
 - **Not:** Completed (work done, bills may still arrive). Not Hisab Milan (with a Party); a project can close while its parties' accounts stay open.
-- **States:** Planned → Active ⇄ On Hold → Completed → Closed (Cancelled from any open state).
-- **In code:** project status `closed`; rules in `docs/requirements-v1.1.md` §4.2, §20. The project details form warns before closing (`ProjectDetailPage.tsx`, `DetailsCard`).
+- **States:** see Project status. Reached only by "Close books" on a Completed project; "Reopen books" takes it back to Completed.
+- **In code:** project status `closed`, labelled "Books closed"; rules in `docs/requirements-v1.1.md` §4.2, §20. The action and its warning are in `ProjectDetailPage.tsx`, `StatusActions`.
+- **Aliases to avoid:** "Closed" as a status to pick from the list; say "close books".
 - **Notes:** Closing warns, but does not block, if the project still has Draft bills or Peski/Overpayment allocated to it. The owner decides when the books are final enough; anything left can still be Reallocated after reopening.
 
 ## Completed (project)
@@ -140,6 +141,14 @@ Unused Peski that a party gives back, for example when the work or order it was 
 - **Not:** Refund. A Refund returns Overpayment; Peski Returned closes out an agreed advance.
 - **In code:** `refunds` row with `kind = 'peski_returned'`, capped at the Peski held (`peski_returned_exceeds_peski`).
 - **Notes:** Example: Rs. 50,000 Peski to Ram Bahadur for plaster, work cancelled before starting, he returns Rs. 50,000.
+
+## Project status
+Where a project stands. A person picks one of three: **Active** (the default for a new project), **On hold** or **Completed**. Two more are set only by their own actions on the project page: **Books closed** ("Close books" on a Completed project; see Closed) and **Cancelled** ("Cancel project", for one that never went ahead; it leaves the dashboard and reports).
+
+- **States:** Active ⇄ On hold → Completed ⇄ Books closed. Cancelled from Active or On hold; "Restore project" takes it back to Active.
+- **In code:** enum `project_status`; the picker uses `PICK_STATUSES` (`lib/labels.ts`). `planned` is retired: kept in the enum, barred by `projects_status_not_planned`, and `create_project` turns it into `active`.
+- **Aliases to avoid:** "Planned" (retired; a project not yet started is simply Active), "Closed" as a pick.
+- **Notes:** Decided 2026-10-17: six statuses in one list were confusing for a small contractor. Completed and Books closed stay apart because final bills and retention arrive after the work ends; locking at Completed would mean reopening for every late bill.
 
 ## Reallocation
 Moving a Party's money from one project to another inside the company, e.g. Rs. 15,000 Overpayment on finished Project A is moved to Project B so it can be deducted from Project B's bills. The party's balance does not change; only the company's project split does.

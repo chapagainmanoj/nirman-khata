@@ -24,7 +24,7 @@ export type DetailsValues = z.infer<typeof detailsSchema>
 export const emptyDetails: DetailsValues = {
   code: '', name: '', client_name: '', client_phone: '', district: '', municipality: '', ward: '',
   location_note: '', manager_id: '', planned_start: '', planned_end: '', actual_start: '', actual_end: '',
-  status: 'planned',
+  status: 'active',
 }
 
 /** Form values -> database columns (empty strings become null). */
