@@ -5,7 +5,7 @@
 //   phone: slim header (brand, bell) and a bottom bar chosen by role, with "+" in the centre;
 //     the account lives in More
 import { Suspense, useEffect, useRef, type ComponentType } from 'react'
-import { Link, NavLink, Outlet, useLocation } from 'react-router'
+import { Link, Outlet, useLocation } from 'react-router'
 import { useCompany } from '../auth/AuthProvider'
 import { PhotosWaitingNotice } from '../features/photos/WaitingPhotosPage'
 import { CurrentProjectProvider } from '../features/projects/current'
@@ -71,15 +71,17 @@ function Frame() {
   }, [active])
   const bellLabel = unread ? `${t('nav.notifications')}, ${unread} new` : t('nav.notifications')
 
+  // Plain Links: this layout decides which section is current (navHighlight). NavLink drops an
+  // aria-current it did not match itself, so Reports could not keep the Dashboard lit.
   const sideLink = (key: NavKey) => {
     const item = navItem(key)
     const Icon = ICONS[key]
     const n = counts[key]
     return (
-      <NavLink key={key} to={item.to} aria-current={active === key ? 'page' : undefined}
+      <Link key={key} to={item.to} aria-current={active === key ? 'page' : undefined}
         className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium [@media(pointer:fine)]:min-h-9 ${active === key ? 'bg-brand-soft text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
         <Icon />{t(item.label)}<Count n={n} label={countLabel(key, n ?? 0)} />
-      </NavLink>
+      </Link>
     )
   }
 
@@ -127,10 +129,10 @@ function Frame() {
             {/* Nine sections can be wider than a tablet: the links scroll, the buttons on the right stay. */}
             <nav ref={strip} aria-label="Main" className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] md:flex">
               {stripItems.map((i) => (
-                <NavLink key={i.key} to={i.to} aria-current={stripActive === i.key ? 'page' : undefined}
+                <Link key={i.key} to={i.to} aria-current={stripActive === i.key ? 'page' : undefined}
                   className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium ${stripActive === i.key ? 'bg-brand-soft text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
                   {t(i.label)}<Count n={counts[i.key]} label={countLabel(i.key, counts[i.key] ?? 0)} />
-                </NavLink>
+                </Link>
               ))}
             </nav>
             <div className="hidden md:block"><RecordMenu role={role} className="w-auto" alignRight /></div>
@@ -152,10 +154,10 @@ function Frame() {
         {bar.slice(0, 2).map((key) => <BarLink key={key} navKey={key} active={active === key} count={counts[key]} />)}
         {hasRecord ? <RecordSheetButton role={role} /> : <span aria-hidden />}
         <BarLink navKey={bar[2]} active={active === bar[2]} count={counts[bar[2]]} />
-        <NavLink to="/more" aria-current={moreActive ? 'page' : undefined}
+        <Link to="/more" aria-current={moreActive ? 'page' : undefined}
           className={`flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium active:bg-muted ${moreActive ? 'font-semibold text-brand' : 'text-subtle'}`}>
           <MoreIcon />{t('nav.more')}
-        </NavLink>
+        </Link>
       </nav>
     </div>
   )
@@ -176,14 +178,14 @@ function BarLink({ navKey, active, count }: { navKey: NavKey; active: boolean; c
   const item = navItem(navKey)
   const Icon = ICONS[navKey]
   return (
-    <NavLink to={item.to} aria-current={active ? 'page' : undefined}
+    <Link to={item.to} aria-current={active ? 'page' : undefined}
       className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium active:bg-muted ${active ? 'font-semibold text-brand' : 'text-subtle'}`}>
       <Icon />{t(item.short ?? item.label)}
       {!!count && (
         <span className="absolute top-1 left-1/2 ml-2 min-w-4 rounded-full bg-brand px-1 text-center text-[10px] leading-4 font-bold text-white"
           aria-label={countLabel(navKey, count)}>{count}</span>
       )}
-    </NavLink>
+    </Link>
   )
 }
 

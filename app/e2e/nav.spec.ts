@@ -216,6 +216,9 @@ test.describe('desktop with a mouse', () => {
     await page.goto('/dashboard')
     await page.getByRole('main').getByRole('link', { name: 'View detailed reports' }).click()
     await expect(page).toHaveURL(/\/reports$/)
+    // Wait for the page itself: the URL changes before the lazy page loads, and the old screen
+    // (still on the Dashboard) would pass by accident.
+    await expect(page.getByRole('heading', { name: 'Reports', exact: true })).toBeVisible()
     await expect(side.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
 
     // Forms carry a trail back to where they were started.
