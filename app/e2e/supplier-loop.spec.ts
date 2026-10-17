@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { runId } from './helpers'
 
 // Milestone 2 walk-through on a phone: supplier -> slip -> approval -> partial delivery ->
 // bill from the delivery -> post -> payment -> project cost and supplier khata.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 
 function trackErrors(page: Page) {

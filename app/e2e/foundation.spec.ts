@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
-import { signOut } from './helpers'
+import { runId, signOut } from './helpers'
 
 // Milestone 1 walk-through: owner registers, creates projects, adds a site staff
 // member; the staff member sees only the assigned project and no amounts.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const ownerPhone = `981${run}`
 const staffPhone = `982${run}`
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })

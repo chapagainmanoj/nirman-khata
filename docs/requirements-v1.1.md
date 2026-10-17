@@ -422,6 +422,9 @@ Equipment hire, transport, fuel, khaja, permits, small site purchases.
 - Fields: project, heading, date, amount, description, payee, attachment.
 - **Payee** is a lightweight record (name, phone optional, type e.g. JCB owner, transporter, shop). Pick an existing payee or type a new one. Payees are company-level and reusable. A payee can be promoted to a supplier later.
 - Can be unpaid or paid immediately. Immediate payment creates a linked payment without duplicating cost. Settlement status is derived from linked payments.
+- **Cash without a name** (product owner, 2026-10-17): when it is paid now, "Paid to" may be left empty; it is filed under the company's one Cash payee, whose khata nets to zero. An unpaid expense still names who is owed it.
+- **Company expenses** (product owner, 2026-10-17): an expense can be for the company as a whole instead of a project (sabal, measuring tape). It is a record only: already paid (how it was paid is kept), no payee, and not part of any project cost, report or khata. The form asks "For: A project / Company" explicitly; leaving the project empty never makes one. Seen by its creator for 7 days and by Admin and Accounts; reversed by Admin or Accounts with a reason.
+- **Other expenses list** (Money): every other expense the person may see, in two tabs: On projects (follows Working on) and Company.
 
 ---
 

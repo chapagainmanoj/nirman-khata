@@ -4,6 +4,8 @@
 --   * Planned is retired: a new project starts Active, and existing Planned projects become Active.
 --     The enum value stays (Postgres cannot drop one), barred by a check.
 --   * create_project maps a 'planned' it is still sent (an older draft on a phone) to Active.
+--   * A cancelled project takes no new money, like Books closed: every ledger posting and client
+--     receipt goes through require_project_open. "Restore project" (back to Active) allows it again.
 
 update public.projects set status = 'active' where status = 'planned';
 alter table public.projects alter column status set default 'active';
@@ -52,4 +54,18 @@ begin
     values (p_company, v_project, (p_details ->> 'manager_id')::uuid, auth.uid());
   end if;
   return v_project;
+end $$;
+
+-- No new money on a cancelled project either.
+create or replace function private.require_project_open(p_project uuid) returns void
+language plpgsql security definer set search_path = '' as $$
+declare v_status public.project_status;
+begin
+  select status into v_status from public.projects where id = p_project for share;
+  if v_status = 'closed' then
+    raise exception 'This project is closed. Reopen it before posting.' using errcode = 'P0001';
+  end if;
+  if v_status = 'cancelled' then
+    raise exception 'This project is cancelled. Restore it before posting.' using errcode = 'P0001';
+  end if;
 end $$;

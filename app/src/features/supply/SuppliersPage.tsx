@@ -4,7 +4,9 @@ import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Input, PageHeader, Spinner } from '../../components/ui'
+import { ChevronRightIcon } from '../../components/icons'
 import { friendlyError } from '../../lib/errors'
+import { t } from '../../lib/i18n'
 import { supabase } from '../../lib/supabase'
 import { usePartyBalances } from '../parties/api'
 import { BalanceText } from '../parties/PartyParts'
@@ -67,6 +69,15 @@ export function SuppliersPage() {
           )
         })}
       </ul>
+      {/* Other services (payees) live here rather than in the nav: JCB owners, tankers and
+          others paid through other expenses, without order slips (GLOSSARY: Payee). */}
+      <Link to="/payees" className="mt-4 flex min-h-14 items-center justify-between gap-3 rounded-xl border border-line bg-surface px-4 py-2 hover:border-slate">
+        <span className="min-w-0">
+          <span className="block font-medium text-ink">{t('nav.payees')}</span>
+          <span className="block text-xs text-subtle">{t('suppliers.payees.hint')}</span>
+        </span>
+        <ChevronRightIcon className="shrink-0 text-subtle" />
+      </Link>
     </>
   )
 }

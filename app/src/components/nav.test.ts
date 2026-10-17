@@ -15,12 +15,13 @@ const keys = (r: NavRole) => sectionsFor(r).flatMap((g) => g.items.map((i) => i.
 
 describe('sectionsFor', () => {
   it('hides money sections from people who cannot see them', () => {
-    const parties = ['suppliers', 'subcontractors', 'crews', 'payees']
+    const parties = ['suppliers', 'subcontractors', 'crews']
     expect(keys(viewer)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', ...parties, 'catalog', 'settings'])
-    expect(keys(site)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', 'bills', ...parties, 'catalog', 'settings'])
+    expect(keys(site)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', 'bills', 'expenses', ...parties, 'catalog', 'settings'])
   })
   it('shows payments with finance access, and staff only to admins', () => {
     expect(keys(pmFinance)).toContain('payments')
+    expect(keys(pmFinance)).toContain('expenses')
     expect(keys(pmFinance)).not.toContain('staff')
     expect(keys(admin)).toContain('staff')
     expect(keys(pmFinance)).toContain('dashboard')
@@ -55,8 +56,11 @@ describe('activeSection', () => {
     ['/bills/abc', 'bills'],
     ['/bills/new', 'bills'],
     ['/payments/abc', 'payments'],
+    ['/expenses', 'expenses'],
+    ['/expenses/new', 'expenses'],
     ['/work/abc', 'subcontractors'],
     ['/suppliers/abc', 'suppliers'],
+    ['/payees/abc', 'suppliers'],
     ['/crews/abc', 'crews'],
     ['/parties', 'parties'],
     ['/deliveries/new', 'deliveries'],

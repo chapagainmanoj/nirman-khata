@@ -1,11 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
-import { signOut } from './helpers'
+import { runId, signOut } from './helpers'
 import { readFileSync } from 'node:fs'
 
 // Milestone 5 on a phone and a desktop: the dashboard after sign-in, the project's recorded
 // cost with what is still missing, reports that agree with the dashboard (acceptance #14),
 // Excel and print export, and the admin's full company export.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const kathmandu = (ms: number) => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Asia/Kathmandu' })
 const today = kathmandu(Date.now())
 const tomorrow = kathmandu(Date.now() + 86_400_000)

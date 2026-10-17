@@ -1,4 +1,4 @@
-// Subcontractors, labour crews and payees: lightweight parties shared across projects
+// Subcontractors, labour crews and other services (payees): lightweight parties shared across projects
 // (req §4.3, §13-§15), with what is owed to each (req §12.2).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
@@ -10,7 +10,7 @@ import { supabase } from '../../lib/supabase'
 import { useProjects } from '../projects/api'
 import { canManageSuppliers } from '../supply/permissions'
 import { usePartyBalances } from './api'
-import { PARTY, type PartyKind } from './kinds'
+import { PARTY, partyCrumbs, type PartyKind } from './kinds'
 import { BalanceText } from './PartyParts'
 
 type Row = {
@@ -18,13 +18,14 @@ type Row = {
   work_types?: string[]; project_id?: string | null; is_default?: boolean; kind?: string | null
   contact_person?: string | null; address?: string | null; pan_vat?: string | null; notes?: string | null
   promoted_supplier_id?: string | null
+  is_cash?: boolean
 }
 
 const EMPTY: Record<PartyKind, string> = {
   supplier: '',
   subcontractor: 'Add the petty contractors who do plaster, masonry, electrical, plumbing and other work.',
   crew: 'Every project has a "Site crew". Add more crews if you pay groups separately, e.g. "Ram\'s crew".',
-  payee: 'Payees are added when an expense is entered: JCB owners, transporters, shops.',
+  payee: 'They are added when an other expense is entered: JCB owners, tankers, transporters.',
 }
 
 export function usePartyRows(kind: PartyKind) {
@@ -65,6 +66,7 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
     <>
       <PageHeader
         title={PARTY[kind].many}
+        crumbs={kind === 'payee' ? partyCrumbs(kind).slice(0, 1) : undefined}
         subtitle={auth.canSeeFinance && balances.data ? <>Total: <BalanceText paisa={total} /></> : undefined}
         actions={canAdd && !adding && <Button variant="tonal" onClick={() => setAdding(true)}>Add {PARTY[kind].one.toLowerCase()}</Button>}
       />
@@ -72,7 +74,7 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
       {auth.canSeeFinance && !companyLevel && balances.data && (
         <p className="mb-3 text-xs text-subtle">Balances include only the projects you are assigned to.</p>
       )}
-      {(rows.data?.length ?? 0) > 8 && (
+      {((rows.data?.length ?? 0) > 8 || (kind === 'payee' && (rows.data?.length ?? 0) > 1)) && (
         <div className="mb-3">
           <Input aria-label={`Search ${PARTY[kind].many.toLowerCase()}`} placeholder="Search by name" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
@@ -85,6 +87,9 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
       </ErrorBanner>
       {q && list?.length === 0 && <p className="text-sm text-subtle">Nothing matches “{search.trim()}”.</p>}
       {rows.data?.length === 0 && <EmptyState title={`No ${PARTY[kind].many.toLowerCase()} yet`}>{EMPTY[kind]}</EmptyState>}
+      {kind === 'payee' && list && list.length > 0 ? (
+        <PayeeTable rows={list} balance={(id) => balance.get(id)?.balance_paisa} showBalance={auth.canSeeFinance && !!balances.data} />
+      ) : (
       <ul className="grid gap-3 sm:grid-cols-2">
         {list?.map((r) => {
           const b = balance.get(r.id)
@@ -104,7 +109,51 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
           )
         })}
       </ul>
+      )}
     </>
+  )
+}
+
+/**
+ * Other services (payees) as a table: a company can collect many of them through other
+ * expenses. Those still owed come first, largest first; the Cash payee last. On a phone the type
+ * of service moves under the name and the phone column is dropped.
+ */
+function PayeeTable({ rows, balance, showBalance }: { rows: Row[]; balance: (id: string) => number | undefined; showBalance: boolean }) {
+  const owed = (r: Row) => (showBalance ? balance(r.id) ?? 0 : 0)
+  const sorted = [...rows].sort((a, b) =>
+    Number(!!a.is_cash) - Number(!!b.is_cash) || Number(owed(b) > 0) - Number(owed(a) > 0) || owed(b) - owed(a) || a.name.localeCompare(b.name))
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs text-subtle">
+            <th scope="col" className="px-4 py-2 font-medium">Name</th>
+            <th scope="col" className="hidden py-2 pr-3 font-medium sm:table-cell">Type of service</th>
+            <th scope="col" className="hidden py-2 pr-3 font-medium md:table-cell">Phone</th>
+            {showBalance && <th scope="col" className="py-2 pr-4 text-right font-medium">Balance</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((r) => (
+            <tr key={r.id} className="border-b border-line align-middle last:border-0 hover:bg-muted">
+              <td className="px-4 py-2">
+                <Link to={`${PARTY.payee.path}/${r.id}`} className="inline-flex min-h-8 items-center font-medium break-words text-ink hover:underline">{r.name}</Link>
+                {!r.active && <span className="ml-2"><Badge>{r.promoted_supplier_id ? 'Now a supplier' : 'Inactive'}</Badge></span>}
+                {r.kind && <div className="text-xs text-subtle sm:hidden">{r.kind}</div>}
+              </td>
+              <td className="hidden py-2 pr-3 text-subtle sm:table-cell">{r.kind}</td>
+              <td className="hidden py-2 pr-3 whitespace-nowrap text-subtle md:table-cell">{r.phone}</td>
+              {showBalance && (
+                <td className="py-2 pr-4 text-right">
+                  {owed(r) === 0 ? <span className="text-subtle">—</span> : <BalanceText paisa={owed(r)} />}
+                </td>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
 

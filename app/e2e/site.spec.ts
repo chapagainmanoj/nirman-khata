@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test'
+import { runId } from './helpers'
 
 // Milestone 4 walk-through on a phone: stages from the list, "+" -> Daily report on the current
 // project with a photo, labour paid now and the day's delivery shown (acceptance #23); progress
 // 40% beside 65% of budget used (acceptance #10); the calendar day in BS and AD (acceptance #11);
 // with own labour off, labour leaves the menus and the report form.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 

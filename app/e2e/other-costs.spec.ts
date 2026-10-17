@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
+import { runId } from './helpers'
 
 // Milestone 3 walk-through on a phone: labour paid now, a weekly labour batch (with the
 // near-duplicate check), an other expense to a new payee, and subcontract peski -> claim ->
 // approval -> match. Project cost, cash and amounts owed must add up.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 
 function trackErrors(page: Page) {
@@ -68,7 +69,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await page.getByLabel('Amount').fill('4,500')
   await page.getByLabel('What for').fill('JCB 3 hours')
   await page.getByLabel('Paid to').fill('Gurung JCB')
-  await page.getByLabel('Payee type').fill('JCB owner')
+  await page.getByLabel('Type of service').fill('JCB owner')
   await page.screenshot(shots('m3-02-expense'))
   await page.getByRole('button', { name: 'Save other expense' }).click()
   await expect(page.getByRole('heading', { name: 'Other expense saved' })).toBeVisible()

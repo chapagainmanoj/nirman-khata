@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
+import { runId } from './helpers'
 
 // Attendance on a phone (req §14, company setting "Labour by: Attendance"): workers with a daily or
 // hourly rate on the project's Site crew, "Everyone in", one exception, close the day paid now; then
 // a worker brought in on another project for a day, which that project's crew is owed.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 
 function trackErrors(page: Page) {

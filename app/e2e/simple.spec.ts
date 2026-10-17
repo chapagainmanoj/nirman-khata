@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { runId } from './helpers'
 
 // Simple forms (company setting): the same records, with less-used fields folded under "More".
 // A fold opens by itself when it holds a value, and Detailed shows every field as before.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 
 function trackErrors(page: Page) {

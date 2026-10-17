@@ -41,16 +41,38 @@ export function useLabourCosts(filter: { projectId?: string; crewId?: string }) 
   })
 }
 
-export function useExpenses(filter: { projectId?: string; payeeId?: string }) {
+type ExpenseFilter = { projectId?: string; payeeId?: string; kind?: 'project' | 'company' }
+
+// PostgREST filters shared by the list and its count.
+function expenseQuery<Q extends { eq: (c: string, v: string) => Q; not: (c: string, op: string, v: null) => Q; is: (c: string, v: null) => Q }>(q: Q, filter: ExpenseFilter): Q {
+  if (filter.projectId) q = q.eq('project_id', filter.projectId)
+  if (filter.payeeId) q = q.eq('payee_id', filter.payeeId)
+  if (filter.kind === 'project') q = q.not('project_id', 'is', null)
+  if (filter.kind === 'company') q = q.is('project_id', null)
+  return q
+}
+
+/** `kind`: only expenses on a project, or only company expenses (no project, record only). */
+export function useExpenses(filter: ExpenseFilter) {
   return usePaged(['expenses', filter], async (from, to) => {
-    let q = supabase.from('expense_summaries').select('*, payees(name), cost_headings(name)')
-    if (filter.projectId) q = q.eq('project_id', filter.projectId)
-    if (filter.payeeId) q = q.eq('payee_id', filter.payeeId)
+    const q = expenseQuery(supabase.from('expense_summaries').select('*, payees(name, is_cash), cost_headings(name)'), filter)
     const { data, error } = await q.order('expense_date', { ascending: false }).order('id').range(from, to)
     if (error) throw error
     return data.map((e) => ({
       ...e, id: e.id!, expense_date: e.expense_date!, amount_paisa: e.amount_paisa ?? 0, settled_paisa: e.settled_paisa ?? 0,
-      status: e.status!, project_id: e.project_id!, payee_id: e.payee_id!, description: e.description ?? '',
+      status: e.status!, description: e.description ?? '',
     }))
+  })
+}
+
+/** How many other expenses match (every row the person may see), for "Showing 50 of 230". */
+export function useExpenseCount(filter: ExpenseFilter) {
+  return useQuery({
+    queryKey: ['expenses', 'count', filter],
+    queryFn: async () => {
+      const { count, error } = await expenseQuery(supabase.from('expense_summaries').select('id', { count: 'exact', head: true }), filter)
+      if (error) throw error
+      return count ?? 0
+    },
   })
 }

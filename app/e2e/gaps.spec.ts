@@ -1,9 +1,10 @@
 import { expect, test, type Page } from '@playwright/test'
 import { readFileSync } from 'node:fs'
+import { runId } from './helpers'
 
 // Milestone 6: lists load 50 at a time, the bill form shows the last billed rate, a refund
 // from a supplier lowers the overpayment and cash paid, and an email login resets its own password.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 const email = `owner${run}@nirman.test`
 

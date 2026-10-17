@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
-import { signOut } from './helpers'
+import { runId, signOut } from './helpers'
 
 // A slip or bill whose "send" went through but whose answer was lost can be sent again: the retry
 // finds it already sent instead of failing on a record that is no longer a draft (second review #11).
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 /** The next call to this RPC reaches the server, but the phone never hears back. */

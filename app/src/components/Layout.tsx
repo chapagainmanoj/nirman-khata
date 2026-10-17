@@ -11,7 +11,7 @@ import { PhotosWaitingNotice } from '../features/photos/WaitingPhotosPage'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import {
-  BellIcon, BillIcon, CalendarIcon, CatalogIcon, CrewIcon, DashboardIcon, DeliveryIcon, MoreIcon, PartiesIcon, PayeeIcon, PaymentIcon, ProjectsIcon,
+  BellIcon, BillIcon, CalendarIcon, CatalogIcon, CrewIcon, DashboardIcon, DeliveryIcon, ExpenseIcon, MoreIcon, PartiesIcon, PayeeIcon, PaymentIcon, ProjectsIcon,
   ReportIcon, SettingsIcon, SlipIcon, StaffIcon, SubcontractorIcon, SupplierIcon,
 } from './icons'
 import { CompanyMark } from './CompanyMark'
@@ -22,7 +22,7 @@ import { Spinner } from './ui'
 import { useNavRole } from './useNavRole'
 
 const ICONS: Record<NavKey, ComponentType> = {
-  dashboard: DashboardIcon, projects: ProjectsIcon, calendar: CalendarIcon, reports: ReportIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon,
+  dashboard: DashboardIcon, projects: ProjectsIcon, calendar: CalendarIcon, reports: ReportIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon, expenses: ExpenseIcon,
   parties: PartiesIcon, suppliers: SupplierIcon, subcontractors: SubcontractorIcon, crews: CrewIcon, payees: PayeeIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
 }
 

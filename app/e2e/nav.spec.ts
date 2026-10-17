@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
-import { signOut } from './helpers'
+import { runId, signOut } from './helpers'
 
 // Navigation by role (UX review): the phone bar follows the role, "+" starts records on the
 // current project, counts show work waiting, and detail pages light up their section.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const ownerPhone = `983${run}`
 const staffPhone = `984${run}`
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })

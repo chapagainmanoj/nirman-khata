@@ -47,6 +47,7 @@ const BillsPage = page(() => import('./features/lists/BillsPage'), 'BillsPage')
 const DeliveriesPage = page(() => import('./features/lists/DeliveriesPage'), 'DeliveriesPage')
 const PartiesHubPage = page(() => import('./features/lists/PartiesPage'), 'PartiesHubPage')
 const PaymentsPage = page(() => import('./features/lists/PaymentsPage'), 'PaymentsPage')
+const ExpensesPage = page(() => import('./features/lists/ExpensesPage'), 'ExpensesPage')
 const DailyReportPage = page(() => import('./features/site/DailyReportPage'), 'DailyReportPage')
 const ReportDetailPage = page(() => import('./features/site/ReportDetailPage'), 'ReportDetailPage')
 const CalendarPage = page(() => import('./features/calendar/CalendarPage'), 'CalendarPage')
@@ -84,6 +85,7 @@ export function App() {
           <Route path="/deliveries/new" element={<DeliveryNewPage />} />
           <Route path="/bills" element={<BillsPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
+          <Route path="/expenses" element={<ExpensesPage />} />
           <Route path="/parties" element={<PartiesHubPage />} />
           <Route path="/bills/new" element={<BillEditPage />} />
           <Route path="/bills/:billId" element={<BillDetailPage />} />

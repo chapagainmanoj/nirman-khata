@@ -128,7 +128,7 @@ Site staff must be able to enter money without having broad finance access (req 
 | ID | Exception | Ends when |
 |---|---|---|
 | X1 | The creator of a **draft** supplier bill can read and edit it, including amounts and its photo | The bill leaves draft (submitted for review or posted). After that, normal rules apply |
-| X2 | The creator of a labour cost or expense can read **that entry's** amount and attachment | 7 days after creation, or once it has been settled or reversed |
+| X2 | The creator of a labour cost or expense can read **that entry's** amount and attachment. For a Company Expense (no project) "works for the company" stands in for "can see the project"; Admin and Accounts always see it | 7 days after creation, or once it has been settled or reversed |
 | X3 | A user may record "pay now" on their own X2 entry only with `can_record_payments` | Not applicable |
 
 These exceptions never show other people's entries, totals, ledger rows, or party balances.
@@ -251,6 +251,15 @@ ledger_entries
 | Credit post | −cost share | −payable share | 0 | project | credit date |
 | Refund | 0 | +amount | −amount | project or null | refund date |
 | Reversal | negation of every ledger row of the target event **and** of its later dependent events | | | same | **reversal date** |
+
+A **Company Expense** (an expense with no project, GLOSSARY) writes no event and no ledger row: it is a
+record only, so cost always stays on a project. It is reversed by `reverse_company_expense`, which
+only marks it reversed (`company_expense_reversals`). An expense on a project paid now with no name
+posts to the company's Cash payee (`payees.is_cash`) like any other expense.
+"Paid now" writes two records, the cost and the payment; the lists link them so they never read as
+the same money twice: `payment_summaries.paid_for` (what a payment settled) and
+`expense_summaries.paid_by` (the payments that paid an expense). Both follow `settlement_events`
+RLS, so only finance users see the link.
 
 ### 4.4 Derived, never stored
 - Settlement status (from `settlement_events`).
