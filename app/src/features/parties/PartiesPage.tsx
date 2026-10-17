@@ -199,8 +199,9 @@ export function PartyForm({ kind, party, onDone }: { kind: PartyKind; party?: Ro
   }
 
   const one = PARTY[kind].one
+  // Editing has its own page, whose heading names it.
   return (
-    <Card title={party ? `Edit ${one.toLowerCase()}` : `New ${one.toLowerCase()}`} className="mb-4">
+    <Card title={party ? undefined : `New ${one.toLowerCase()}`} className="mb-4">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Name" htmlFor="pt-name" hint={kind === 'crew' ? 'e.g. Ram\'s crew, Local jyami' : undefined}>

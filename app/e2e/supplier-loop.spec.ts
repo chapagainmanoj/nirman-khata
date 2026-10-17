@@ -114,11 +114,14 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   // 60 of the 100 bags came and are billed; the slip still waits for 40.
   await expect(coming).toContainText('Ordered, still to come')
   await expect(coming.getByRole('link', { name: /OS-0001/ })).toContainText('Part received')
-  const rates = page.locator('section', { has: page.getByRole('heading', { name: 'Their rates' }) })
-  await expect(rates).toContainText('Cement')
-  await expect(rates).toContainText('Rs. 850')
   await expect(page.getByRole('heading', { name: 'Match payments to bills' })).toHaveCount(0)
   await page.screenshot(shots('m2-06a-supplier'))
+  // Their rates is a link beside Call and WhatsApp, to its own page.
+  await page.getByRole('link', { name: 'Their rates' }).click()
+  await expect(page.getByRole('heading', { name: 'Their rates', level: 1 })).toBeVisible()
+  await expect(page.getByRole('main')).toContainText('Cement')
+  await expect(page.getByRole('main')).toContainText('Rs. 850')
+  await page.goBack()
 
   // Payment from the supplier page: the bill comes ticked and sets the amount. Peski is not offered
   // while the bill is unpaid. Accounts unticks it and pays the 51,000 anyway: it is overpaid on the

@@ -21,6 +21,7 @@ const ProjectDetailPage = page(() => import('./features/projects/ProjectDetailPa
 const ProjectNewPage = page(() => import('./features/projects/ProjectNewPage'), 'ProjectNewPage')
 const SettingsPage = page(() => import('./features/settings/SettingsPage'), 'SettingsPage')
 const StaffPage = page(() => import('./features/staff/StaffPage'), 'StaffPage')
+const HowToUsePage = page(() => import('./features/help/HowToUsePage'), 'HowToUsePage')
 const NotificationsPage = page(() => import('./features/notifications/NotificationsPage'), 'NotificationsPage')
 const BillDetailPage = page(() => import('./features/supply/BillDetailPage'), 'BillDetailPage')
 const BillEditPage = page(() => import('./features/supply/BillEditPage'), 'BillEditPage')
@@ -34,12 +35,17 @@ const SlipDetailPage = page(() => import('./features/supply/SlipDetailPage'), 'S
 const SlipEditPage = page(() => import('./features/supply/SlipEditPage'), 'SlipEditPage')
 const SlipsPage = page(() => import('./features/supply/SlipsPage'), 'SlipsPage')
 const SupplierDetailPage = page(() => import('./features/supply/SupplierDetailPage'), 'SupplierDetailPage')
+const SupplierRatesPage = page(() => import('./features/supply/SupplierDetailPage'), 'SupplierRatesPage')
+const SupplierEditPage = page(() => import('./features/supply/SupplierDetailPage'), 'SupplierEditPage')
+const SupplierInfoPage = page(() => import('./features/supply/SupplierDetailPage'), 'SupplierInfoPage')
 const SuppliersPage = page(() => import('./features/supply/SuppliersPage'), 'SuppliersPage')
 const ExpenseNewPage = page(() => import('./features/costs/ExpenseNewPage'), 'ExpenseNewPage')
 const LabourNewPage = page(() => import('./features/costs/LabourNewPage'), 'LabourNewPage')
 const AttendancePage = page(() => import('./features/labour/AttendancePage'), 'AttendancePage')
 const TimeCardPage = page(() => import('./features/labour/TimeCardPage'), 'TimeCardPage')
 const PartiesPage = page(() => import('./features/parties/PartiesPage'), 'PartiesPage')
+const PartyEditPage = page(() => import('./features/parties/PartyDetailPage'), 'PartyEditPage')
+const PartyInfoPage = page(() => import('./features/parties/PartyDetailPage'), 'PartyInfoPage')
 const PartyDetailPage = page(() => import('./features/parties/PartyDetailPage'), 'PartyDetailPage')
 const WorkPackageDetailPage = page(() => import('./features/subcontract/WorkPackageDetailPage'), 'WorkPackageDetailPage')
 const WorkPackageEditPage = page(() => import('./features/subcontract/WorkPackageEditPage'), 'WorkPackageEditPage')
@@ -75,8 +81,12 @@ export function App() {
           <Route path="/more" element={<MorePage />} />
           <Route path="/photos-waiting" element={<WaitingPhotosPage />} />
           <Route path="/notifications" element={<NotificationsPage />} />
+          <Route path="/how-to-use" element={<HowToUsePage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/suppliers/:supplierId" element={<SupplierDetailPage />} />
+          <Route path="/suppliers/:supplierId/details" element={<SupplierInfoPage />} />
+          <Route path="/suppliers/:supplierId/edit" element={<SupplierEditPage />} />
+          <Route path="/suppliers/:supplierId/rates" element={<SupplierRatesPage />} />
           <Route path="/slips" element={<SlipsPage />} />
           <Route path="/slips/new" element={<SlipEditPage />} />
           <Route path="/slips/:slipId" element={<SlipDetailPage />} />
@@ -97,10 +107,16 @@ export function App() {
           <Route path="/receipts/:receiptId" element={<ClientReceiptDetailPage />} />
           <Route path="/subcontractors" element={<PartiesPage key="subcontractor" kind="subcontractor" />} />
           <Route path="/subcontractors/:partyId" element={<PartyDetailPage key="subcontractor" kind="subcontractor" />} />
+          <Route path="/subcontractors/:partyId/details" element={<PartyInfoPage key="subcontractor" kind="subcontractor" />} />
+          <Route path="/subcontractors/:partyId/edit" element={<PartyEditPage key="subcontractor" kind="subcontractor" />} />
           <Route path="/crews" element={<PartiesPage key="crew" kind="crew" />} />
           <Route path="/crews/:partyId" element={<PartyDetailPage key="crew" kind="crew" />} />
+          <Route path="/crews/:partyId/details" element={<PartyInfoPage key="crew" kind="crew" />} />
+          <Route path="/crews/:partyId/edit" element={<PartyEditPage key="crew" kind="crew" />} />
           <Route path="/payees" element={<PartiesPage key="payee" kind="payee" />} />
           <Route path="/payees/:partyId" element={<PartyDetailPage key="payee" kind="payee" />} />
+          <Route path="/payees/:partyId/details" element={<PartyInfoPage key="payee" kind="payee" />} />
+          <Route path="/payees/:partyId/edit" element={<PartyEditPage key="payee" kind="payee" />} />
           <Route path="/work/new" element={<WorkPackageEditPage />} />
           <Route path="/work/:packageId" element={<WorkPackageDetailPage />} />
           <Route path="/work/:packageId/edit" element={<WorkPackageEditPage />} />

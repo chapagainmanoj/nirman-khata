@@ -176,7 +176,7 @@ export function ComingFromThem({ supplierId }: { supplierId: string }) {
 }
 
 /** The latest posted rate for each material from this supplier. */
-function useTheirRates(supplierId: string) {
+export function useTheirRates(supplierId: string, enabled = true) {
   return useQuery({
     queryKey: ['supplier-rates', supplierId],
     queryFn: async () => {
@@ -196,17 +196,20 @@ function useTheirRates(supplierId: string) {
         return true
       })
     },
+    enabled,
   })
 }
 
-export function TheirRates({ supplierId }: { supplierId: string }) {
+export function TheirRates({ supplierId, emptyText }: { supplierId: string; emptyText?: string }) {
   const auth = useCompany()
+  // On its own page (emptyText set) the page heading already says "Their rates".
+  const title = emptyText ? undefined : 'Their rates'
   const rates = useTheirRates(supplierId)
-  if (rates.isPending || !rates.data?.length) return rates.error
-    ? <Card title="Their rates"><ErrorBanner onRetry={() => void rates.refetch()}>{friendlyError(rates.error)}</ErrorBanner></Card>
-    : null
+  if (rates.error) return <Card title={title}><ErrorBanner onRetry={() => void rates.refetch()}>{friendlyError(rates.error)}</ErrorBanner></Card>
+  if (rates.isPending) return emptyText ? <Spinner /> : null
+  if (!rates.data.length) return emptyText ? <Card title={title}><p className="text-sm text-subtle">{emptyText}</p></Card> : null
   return (
-    <Card title="Their rates">
+    <Card title={title}>
       <p className="mb-2 text-xs text-subtle">Last billed rate for each material.</p>
       <ul>
         {rates.data.map((r) => (

@@ -123,8 +123,9 @@ export function SupplierForm({ supplier, onDone }: {
     if (v.name.trim()) save.mutate()
   }
 
+  // Editing has its own page, whose heading names it.
   return (
-    <Card title={supplier ? 'Edit supplier' : 'New supplier'} className="mb-4">
+    <Card title={supplier ? undefined : 'New supplier'} className="mb-4">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Business name" htmlFor="sup-name"><Input id="sup-name" value={v.name} onChange={set('name')} required /></Field>

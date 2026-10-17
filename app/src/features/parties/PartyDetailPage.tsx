@@ -1,10 +1,11 @@
-// One subcontractor, crew or payee: contact, balance, khata, payments, matching, and what
-// is particular to the kind (work packages, labour entry, becoming a supplier).
+// One subcontractor, crew or payee: call them, balance, khata, payments, matching, and what is
+// particular to the kind (work packages, labour entry). Contact details (and, for a payee,
+// becoming a supplier) are on their own page (PartyInfoPage), linked under the name.
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
+import { Badge, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { PACKAGE_STATUS } from '../../lib/labels'
 import { useProjects } from '../projects/api'
@@ -15,7 +16,7 @@ import { PARTY, partyCrumbs, type PartyKind } from './kinds'
 import { PartyForm, subtitleOf, usePartyRows } from './PartiesPage'
 import { labourPath } from '../labour/api'
 import { MembersCard } from '../labour/MembersCard'
-import { BalanceCard, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
+import { BalanceCard, ContactRow, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
 
 type Tab = 'khata' | 'payments'
 
@@ -24,7 +25,6 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   const auth = useCompany()
   const rows = usePartyRows(kind)
   const projects = useProjects(auth.companyId)
-  const [editing, setEditing] = useState(false)
   const [tab, setTab] = useState<Tab>('khata')
 
   if (rows.isPending) return <Spinner />
@@ -35,8 +35,6 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   }
   const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
   const sub = subtitleOf(kind, r, code)
-  // A subcontractor with nothing filled in gets a link under the name, not an empty card.
-  const noDetails = kind === 'subcontractor' && [r.contact_person, r.phone, r.address, r.pan_vat, r.notes].every((f) => !f)
   const showMembers = kind === 'crew' && auth.company.labour_mode === 'attendance' && canEnter(auth)
 
   return (
@@ -45,12 +43,6 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
         title={r.name}
         crumbs={partyCrumbs(kind)}
         subtitle={<span className="flex flex-wrap items-center gap-2">{sub}{!r.active && <Badge>Inactive</Badge>}</span>}
-        after={noDetails && !editing && canManageSuppliers(auth) && (
-          <button type="button" onClick={() => setEditing(true)}
-            className="flex min-h-11 items-center text-sm font-medium text-slate underline underline-offset-2">
-            Add phone, contact person, PAN
-          </button>
-        )}
         actions={
           <div className="flex flex-wrap gap-2">
             {kind === 'subcontractor' && canManageSuppliers(auth) && (
@@ -65,23 +57,20 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
           </div>
         }
       />
-      {editing && <div className="mb-4"><PartyForm kind={kind} party={r} onDone={() => setEditing(false)} /></div>}
-      {/* Money on the left (it decides what to do next), who they are on the right. Each column
-          stacks on its own, so a short card never leaves a hole beside a tall one. */}
-      <div className={`grid items-start gap-4 ${auth.canSeeFinance ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''}`}>
-        {auth.canSeeFinance && (
-          <div className="grid min-w-0 gap-4">
-            <BalanceCard kind={kind} partyId={r.id} />
-            {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
-          </div>
-        )}
-        {((!editing && !noDetails) || showMembers) && (
-          <div className="grid min-w-0 gap-4">
-            {!editing && !noDetails && <PartyDetails kind={kind} party={r} code={code} onEdit={canManageSuppliers(auth) ? () => setEditing(true) : undefined} />}
-            {showMembers && <MembersCard crewId={r.id} projectId={r.project_id ?? null} />}
-          </div>
-        )}
-      </div>
+      <ContactRow phone={r.phone} links={[[`${PARTY[kind].path}/${r.id}/details`, 'Details']]} />
+      {/* Money on the left (it decides what to do next), the crew's members on the right. Each
+          column stacks on its own, so a short card never leaves a hole beside a tall one. */}
+      {(auth.canSeeFinance || showMembers) && (
+        <div className={`grid items-start gap-4 ${auth.canSeeFinance && showMembers ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''}`}>
+          {auth.canSeeFinance && (
+            <div className="grid min-w-0 gap-4">
+              <BalanceCard kind={kind} partyId={r.id} />
+              {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
+            </div>
+          )}
+          {showMembers && <div className="grid min-w-0 gap-4"><MembersCard crewId={r.id} projectId={r.project_id ?? null} /></div>}
+        </div>
+      )}
 
       {auth.canSeeFinance && (
         <Tabs tabs={[['khata', 'Khata'], ['payments', 'Payments']]} value={tab} onChange={setTab} label={`${PARTY[kind].one} records`}>
@@ -96,20 +85,66 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   )
 }
 
+/** Who the party is: contact details, with Edit to change them; a payee can become a supplier here. */
+export function PartyInfoPage({ kind }: { kind: PartyKind }) {
+  const { partyId = '' } = useParams()
+  const auth = useCompany()
+  const rows = usePartyRows(kind)
+  const projects = useProjects(auth.companyId)
+
+  if (rows.isPending) return <Spinner />
+  if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
+  const r = rows.data.find((x) => x.id === partyId)
+  if (!r) return <PartyNotFound kind={kind} />
+  const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
+  const empty = [r.phone, r.notes, 'contact_person' in r && r.contact_person, 'address' in r && r.address, 'pan_vat' in r && r.pan_vat].every((f) => !f)
+  return (
+    <>
+      <PageHeader title="Details" crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }]} />
+      <PartyDetails kind={kind} party={r} code={code} empty={empty} edit={canManageSuppliers(auth) ? `${PARTY[kind].path}/${r.id}/edit` : undefined} />
+    </>
+  )
+}
+
+/** Changing a party's details, on its own page; Save or Cancel goes back to Details. */
+export function PartyEditPage({ kind }: { kind: PartyKind }) {
+  const { partyId = '' } = useParams()
+  const navigate = useNavigate()
+  const rows = usePartyRows(kind)
+
+  if (rows.isPending) return <Spinner />
+  if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
+  const r = rows.data.find((x) => x.id === partyId)
+  if (!r) return <PartyNotFound kind={kind} />
+  const details = `${PARTY[kind].path}/${r.id}/details`
+  return (
+    <>
+      <PageHeader title={`Edit ${PARTY[kind].one.toLowerCase()}`}
+        crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }, { to: details, label: 'Details' }]} />
+      <PartyForm kind={kind} party={r} onDone={() => navigate(details, { replace: true })} />
+    </>
+  )
+}
+
+function PartyNotFound({ kind }: { kind: PartyKind }) {
+  return <EmptyState title={`${PARTY[kind].one} not found`}><Link className="text-slate" to={PARTY[kind].path}>Back to {PARTY[kind].many.toLowerCase()}</Link></EmptyState>
+}
+
 type PartyRow = NonNullable<ReturnType<typeof usePartyRows>['data']>[number]
 
-/** Contact details. An empty subcontractor shows a link under its name instead (see above). */
-function PartyDetails({ kind, party: r, code, onEdit }: {
-  kind: PartyKind; party: PartyRow; code: (id: string | null | undefined) => string | undefined; onEdit?: () => void
+/** Contact details. */
+function PartyDetails({ kind, party: r, code, empty, edit }: {
+  kind: PartyKind; party: PartyRow; code: (id: string | null | undefined) => string | undefined; empty: boolean; edit?: string
 }) {
   return (
-    <Card title="Details" actions={onEdit && <Button variant="ghost" onClick={onEdit}>Edit</Button>}>
+    <Card title={r.name} actions={edit && <ButtonLink variant="ghost" to={edit}>Edit</ButtonLink>}>
       {kind === 'subcontractor' && <Detail label="Contact">{r.contact_person}</Detail>}
       <Detail label="Phone">{r.phone && <a className="text-slate" href={`tel:${r.phone}`}>{r.phone}</a>}</Detail>
       {kind === 'subcontractor' && <Detail label="Address">{r.address}</Detail>}
       {kind === 'subcontractor' && <Detail label="PAN">{r.pan_vat}</Detail>}
       {kind === 'crew' && <Detail label="Project">{r.project_id ? code(r.project_id) : 'Any project'}</Detail>}
       <Detail label="Notes">{r.notes}</Detail>
+      {empty && kind !== 'crew' && <p className="text-sm text-subtle">No contact details yet.</p>}
       {kind === 'payee' && <PromotePayee payeeId={r.id} supplierId={r.promoted_supplier_id ?? null} />}
     </Card>
   )

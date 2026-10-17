@@ -7,11 +7,12 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { ReasonButton } from '../../components/ReasonButton'
-import { Badge, Button, Card, Detail, ErrorBanner, Field, Input, Select, Spinner, Status } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, Detail, ErrorBanner, Field, Input, Select, Spinner, Status } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
+import { parseLoginId } from '../../lib/login-id'
 import { useProjects } from '../projects/api'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { usePartyBalances, usePartyKhata, usePartyOpenItems, usePartyOpeningBalance, usePartyPayments } from './api'
@@ -389,5 +390,30 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, children 
       </div>
       <div role="tabpanel" id={`${ids}-panel`} aria-labelledby={tabId(value)}>{children}</div>
     </>
+  )
+}
+
+/**
+ * Under a party's name: one tap to call or message (how most orders and reminders happen), then
+ * quiet links to what is looked up rather than acted on (details, rates), each on its own page.
+ */
+export function ContactRow({ phone, links }: { phone: string | null; links: Array<[to: string, label: string] | false> }) {
+  const shown = links.filter((l) => l !== false)
+  const mobile = phone ? parseLoginId(phone) : null
+  const whatsApp = mobile?.kind === 'phone' ? `https://wa.me/${mobile.phone.slice(1)}` : null
+  if (!phone && !shown.length) return null
+  return (
+    <div className="-mt-2 mb-4 flex flex-wrap items-center gap-x-2 gap-y-1">
+      {phone && <ButtonLink variant="secondary" to={`tel:${phone}`} reloadDocument>Call {phone}</ButtonLink>}
+      {whatsApp && <ButtonLink variant="secondary" to={whatsApp} reloadDocument target="_blank" rel="noreferrer">WhatsApp</ButtonLink>}
+      {/* The links wrap as a group, so a phone does not leave one alone on a line. */}
+      {shown.length > 0 && (
+        <span className="flex flex-wrap items-center gap-x-3">
+          {shown.map(([to, label]) => (
+            <Link key={to} to={to} className="inline-flex min-h-11 items-center px-1 text-sm font-medium text-slate underline underline-offset-2">{label}</Link>
+          ))}
+        </span>
+      )}
+    </div>
   )
 }
