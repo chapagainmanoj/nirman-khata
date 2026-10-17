@@ -31,7 +31,7 @@ export function AttendancePage() {
   const [params, setParams] = useSearchParams()
   const current = useCurrentProject()
   const today = todayKathmandu()
-  const projectId = params.get('project') || current.projectId || ''
+  const projectId = params.get('project') || current.project?.id || ''
   const date = params.get('date') && params.get('date')! <= today ? params.get('date')! : today
   const crews = useCrews(auth.companyId)
   const projectCrews = crews.data?.filter((c) => c.active && (c.project_id === projectId || !c.project_id)) ?? []

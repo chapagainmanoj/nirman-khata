@@ -31,8 +31,8 @@ const en = {
   'nav.group.site': 'Site work',
   'nav.group.money': 'Money',
   'nav.group.setup': 'Setup',
-  'nav.project.none': 'No project chosen',
-  'nav.project.noneOption': 'No project (see everything)',
+  // One name for "no project chosen", the same as the lists' toggle (GLOSSARY: All projects).
+  'nav.project.all': 'All projects',
   'nav.project.choose': 'Working on',
   'record.title': 'Record',
   'record.noProject': 'No open project yet',

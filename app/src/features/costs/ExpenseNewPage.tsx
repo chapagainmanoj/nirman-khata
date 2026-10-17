@@ -21,6 +21,7 @@ import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { useHeadings, useProjects } from '../projects/api'
 import { projectCrumbs } from '../projects/crumbs'
+import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc, useRefreshMoney } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
 import { usePayees } from './api'
@@ -67,6 +68,8 @@ export function ExpenseNewPage() {
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: 'expense-new' })
   const { register, control, watch, getValues } = form
   const v = watch()
+  // No project in the link: start on the Working on project.
+  useWorkingOnDefault(v.project_id, (id) => form.setValue('project_id', id), params.has('project'))
   const headingId = v.heading_id || siteHeading
   const known = payees.data?.find((p) => p.name.trim().toLowerCase() === v.payee_name.trim().toLowerCase())
   const choices = headings.data?.filter((h) => h.active && h.kind !== 'materials') ?? []
@@ -148,7 +151,7 @@ export function ExpenseNewPage() {
             <Field label="Project" htmlFor="ex-project">
               <Select id="ex-project" value={watch('project_id')} onChange={(e) => form.setValue('project_id', e.target.value, { shouldDirty: true })}>
                 <option value="">Choose project</option>
-                {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                {projectChoices(projects.data, 'money').map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
             <Field label="Amount" htmlFor="ex-amount">

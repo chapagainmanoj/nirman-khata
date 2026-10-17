@@ -64,6 +64,8 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Delivery recorded' })).toBeVisible()
   // The dashboard names what came without a bill and offers to enter it.
   await page.goto('/dashboard')
+  // Records to complete are folded behind one line with their count.
+  await page.getByRole('button', { name: /records? to complete/ }).click()
   const unbilled = page.getByRole('link', { name: /^60 .*Cement from Pokhara Cement Traders, came today; no bill yet/ })
   await expect(unbilled).toContainText('Enter bill')
   await expect(unbilled).toHaveAttribute('href', /\/bills\/new\?supplier=/)

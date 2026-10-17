@@ -21,6 +21,7 @@ import { formatNPR, lineAmount, paisaToInput, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
+import { projectChoices, useWorkingOnId } from '../projects/current'
 import { billTitle } from '../../lib/labels'
 import { rpc, saveUnlessSent, useBill, useDeliveryLineStatus, useRefreshMoney, useSuppliers } from './api'
 import { canEnter, canPost } from './permissions'
@@ -125,7 +126,10 @@ function BillForm({ initial }: { initial?: BillValues }) {
   const supplierId = watch('supplier_id')
   const values = watch()
 
-  const workable = projects.data?.filter((p) => p.status !== 'closed') ?? []
+  // Money: Active, On hold and Completed (final bills), plus any project already on the bill.
+  const workable = projectChoices(projects.data, 'money', initial?.lines.map((l) => l.project_id))
+  // A new line with no project in the link starts on the Working on project.
+  const workingOn = useWorkingOnId()
   const leafHeadings = headings.data?.filter((h) => h.active && (h.parent_id || !headings.data?.some((c) => c.parent_id === h.id))) ?? []
   const transportHeading = headings.data?.find((h) => h.kind === 'transport' && !h.parent_id)
   const unbilled = useDeliveryLineStatus({ supplierId, billableOnly: true }, !!supplierId)
@@ -160,7 +164,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
   function blankLine(type: 'material' | 'charge'): BillLine {
     const last = getValues('lines').at(-1)
     return {
-      id: newId(), line_type: type, project_id: last?.project_id ?? params.get('project') ?? (workable.length === 1 ? workable[0].id : ''),
+      id: newId(), line_type: type, project_id: last?.project_id ?? params.get('project') ?? (workingOn || (workable.length === 1 ? workable[0].id : '')),
       heading_id: type === 'charge' ? transportHeading?.id ?? '' : '', material_id: '', description: type === 'charge' ? 'Transport' : '',
       qty: '', unit_id: '', unit_note: '', rate: '', amount: '', amount_edited: false, unmatched_reason: '', rate_variance_reason: '', matches: [],
     }

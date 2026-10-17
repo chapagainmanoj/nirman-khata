@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { resolveCurrentProject } from './current'
+import { projectChoices, resolveCurrentProject } from './current'
 
 const p = (id: string, status = 'active') => ({ id, code: id.toUpperCase(), name: id, status })
 
@@ -17,5 +17,20 @@ describe('resolveCurrentProject', () => {
   })
   it('keeps the stored id while projects are still loading', () => {
     expect(resolveCurrentProject('a', undefined)).toBe('a')
+  })
+})
+
+describe('projectChoices', () => {
+  const all = ['active', 'on_hold', 'completed', 'closed', 'cancelled'].map((s) => p(s, s))
+  const ids = (list: Array<{ id: string }>) => list.map((x) => x.id)
+
+  it('lists Active and On hold for site work', () => {
+    expect(ids(projectChoices(all, 'site'))).toEqual(['active', 'on_hold'])
+  })
+  it('adds Completed for money: final bills come after the work ends', () => {
+    expect(ids(projectChoices(all, 'money'))).toEqual(['active', 'on_hold', 'completed'])
+  })
+  it('keeps the projects already on a record being edited', () => {
+    expect(ids(projectChoices(all, 'site', ['completed', null]))).toEqual(['active', 'on_hold', 'completed'])
   })
 })

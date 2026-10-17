@@ -19,6 +19,7 @@ import { PAYMENT_METHODS, WORK_TYPES } from '../../lib/labels'
 import { formatNPR, paisaToInput, parseNPR, splitEvenly } from '../../lib/money'
 import { useProjects } from '../projects/api'
 import { projectCrumbs } from '../projects/crumbs'
+import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc, useRefreshMoney } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
 import { useCrews } from './api'
@@ -70,6 +71,8 @@ export function LabourNewPage() {
   const form = useForm<Values>({ defaultValues: fresh() })
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: 'labour-new' })
   const { register, control, watch, setValue, getValues } = form
+  // No project or crew in the link: start on the Working on project. (A crew link: its project.)
+  useWorkingOnDefault(watch('project_id'), (id) => setValue('project_id', id), params.has('project') || params.has('crew'))
   const v = watch()
 
   const crewOptions = crews.data?.filter((c) => (c.active || c.id === v.crew_id) && (!c.project_id || c.project_id === v.project_id)) ?? []
@@ -173,7 +176,7 @@ export function LabourNewPage() {
             <Field label="Project" htmlFor="lb-project">
               <Select id="lb-project" value={watch('project_id')} onChange={(e) => form.setValue('project_id', e.target.value, { shouldDirty: true })}>
                 <option value="">Choose project</option>
-                {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                {projectChoices(projects.data, 'money').map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
             <Field label="Crew" htmlFor="lb-crew">

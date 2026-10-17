@@ -17,6 +17,7 @@ import { paisaToInput, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useProjects } from '../projects/api'
+import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc, saveUnlessSent, useSlip, useSuppliers } from './api'
 import { TrashIcon } from '../../components/icons'
 
@@ -88,7 +89,8 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
   const [error, setError] = useState('')
   const [showNeeded, setShowNeeded] = useState(false)
 
-  const workable = projects.data?.filter((p) => !['completed', 'closed', 'cancelled'].includes(p.status)) ?? []
+  // Site work: Active and On hold, plus any project already on the slip being edited.
+  const workable = projectChoices(projects.data, 'site', initial?.lines.map((l) => l.project_id))
   const emptyLine = (projectId = params.get('project') ?? (workable.length === 1 ? workable[0].id : '')): LineValues => ({
     id: newId(), project_id: projectId, material_id: '', material_text: '', spec: '', qty: '', unit_id: '', unit_note: '', est_rate: '', note: '',
   })
@@ -102,6 +104,9 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: initial ? `slip-${initial.id}` : 'slip-new' })
   const lines = useFieldArray({ control: form.control, name: 'lines', keyName: 'key' })
   const { register, control, watch, setValue } = form
+
+  // No project in the link: the first line starts on the Working on project.
+  useWorkingOnDefault(watch('lines.0.project_id') ?? '', (id) => setValue('lines.0.project_id', id), !!initial || params.has('project'))
 
   // Single-project users: fill the project once the list loads.
   useEffect(() => {

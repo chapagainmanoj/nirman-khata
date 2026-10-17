@@ -3,6 +3,13 @@
 Shared language for NirmanKhata. Terms are the ones we use in conversation, docs, code and UI.
 Trade terms and their English labels start from `docs/requirements-v1.1.md` §3.1; this file sharpens them.
 
+## All projects
+What a person sees when no project is chosen in Working on: lists show every project they may see, and new records start with "Choose project". Also the list toggle that shows every project while one is chosen.
+
+- **Not:** a permission. Nobody sees more than their assigned projects either way.
+- **In code:** `nav.project.all`; Working on's "none" (`setProjectId(null)`); the list toggle in `lists/ProjectFilter.tsx`.
+- **Aliases to avoid:** "No project chosen", "No project (see everything)".
+
 ## Attendance (Hajiri)
 One Crew Member's time on one project on one work date: in, out and minutes worked. Used only when the company setting "Labour by" is Attendance; the default, Day total, records one amount per crew per day instead.
 
@@ -146,6 +153,7 @@ Unused Peski that a party gives back, for example when the work or order it was 
 Where a project stands. A person picks one of three: **Active** (the default for a new project), **On hold** or **Completed**. Two more are set only by their own actions on the project page: **Books closed** ("Close books" on a Completed project; see Closed) and **Cancelled** ("Cancel project", for one that never went ahead; it leaves the dashboard and reports).
 
 - **States:** Active ⇄ On hold → Completed ⇄ Books closed. Cancelled from Active or On hold; "Restore project" takes it back to Active.
+- **Relations:** forms for site work (order slip, daily report, delivery, attendance, work package) list Active and On hold projects; forms for money (bill, labour, other expense, payment, client receipt) also list Completed. The server refuses money on Books closed and Cancelled projects.
 - **In code:** enum `project_status`; the picker uses `PICK_STATUSES` (`lib/labels.ts`). `planned` is retired: kept in the enum, barred by `projects_status_not_planned`, and `create_project` turns it into `active`.
 - **Aliases to avoid:** "Planned" (retired; a project not yet started is simply Active), "Closed" as a pick.
 - **Notes:** Decided 2026-10-17: six statuses in one list were confusing for a small contractor. Completed and Books closed stay apart because final bills and retention arrive after the work ends; locking at Completed would mean reopening for every late bill.
@@ -189,6 +197,14 @@ The three figures in a Party's Khata. **Tirnu parne** (to be paid) is everything
 - **In code:** `charged_paisa`, `paid_paisa`, `balance_paisa` (`party_balances`); the Khata report columns `charged`, `paid`, `balance`. UI labels are the Nepali words: the balance card ("Tirnu parne (bills)", "Tireko") and the Khata report columns.
 - **Aliases to avoid:** "Charged" (reads as if the company charged the party), "Bought" (does not fit crews, payees, an opening balance or a reversal), "Jamma/Naam" (the formal bookkeeping words; *jamma* reads as "deposit" in everyday use).
 - **Notes:** Chosen 2026-10-14 because it is how contractors say it out loud ("kati tirnu parne, kati tireko, kati baki"), it never reads backwards, and it matches "Baki / Tirna Baki" in `docs/requirements-v1.1.md` §3.1.
+
+## Working on
+The project a person is working on right now, chosen once in the sidebar or top bar. New records start on it when their link names no project, lists open filtered to it, and Calendar and Reports start on it. Choosing nothing means All projects.
+
+- **Not:** a permission or a server setting. It is remembered on the device only, per person and company.
+- **Relations:** one of the site-work projects (Active or On hold; see Project status). With exactly one such project it is chosen automatically.
+- **In code:** `features/projects/current.tsx` (`useCurrentProject`, `useWorkingOnDefault`); forms read their list from `projectChoices(projects, 'site' | 'money')`.
+- **Notes:** A new form takes its project from, in order: the link (`?project=`), the record it comes from (an order slip, a delivery, the record being edited), Working on, else "Choose project". Payment is the exception: it never takes Working on, because a payment with no project is normal and a guess could put it on the wrong one.
 
 ---
 
