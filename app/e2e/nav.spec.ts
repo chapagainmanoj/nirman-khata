@@ -121,6 +121,17 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   const side = page.getByRole('navigation', { name: 'Main' })
   await expect(side.getByLabel('1 to approve')).toBeVisible()
   await page.screenshot(shots('nav-02-desktop-sidebar'))
+  // The dashboard's company-wide count opens the list on all projects, even with P-1 chosen:
+  // the P-2 slip it counts must not be hidden by the sidebar project.
+  await switchTo('P-1 · Ward 5 school building')
+  await page.goto('/dashboard')
+  const attention = page.locator('section', { has: page.getByRole('heading', { name: 'Needs attention' }) })
+  await attention.getByRole('link', { name: /1 order slip waiting for approval/ }).click()
+  await expect(page).toHaveURL(/\/slips\?all=1$/)
+  await expect(shown.getByRole('button', { name: 'All projects' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: /^To approve/ }).click()
+  await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
+  await switchTo('P-2 · Private house Pokhara')
   await side.getByRole('link', { name: /Order slips/ }).click()
   await page.getByRole('button', { name: 'To approve (1)' }).click()
   await page.getByRole('link', { name: /OS-0001/ }).click()

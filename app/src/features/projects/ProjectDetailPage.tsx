@@ -495,7 +495,7 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
                 <Link to="?tab=client" className="-my-3.5 inline-flex min-h-11 items-center text-xs font-medium text-brand underline underline-offset-4">See receipts</Link>
               </h3>
               <Detail label="Received">{formatNPR(received.data)}</Detail>
-              <Detail label={a.contract_paisa - received.data < 0 ? 'Received more than contract by' : 'To collect'}>
+              <Detail label={a.contract_paisa - received.data < 0 ? 'Received more than contract by' : 'Contract balance'}>
                 {formatNPR(Math.abs(a.contract_paisa - received.data))}
               </Detail>
             </>

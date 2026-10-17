@@ -1,5 +1,5 @@
 // Record money the client paid on a project. One amount: what the client settled, including any
-// TDS or retention they kept back, so "To collect" stays right without accounting knowledge.
+// TDS or retention they kept back, so "Contract balance" stays right without accounting knowledge.
 import { useMutation } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { useForm, type Path, type PathValue } from 'react-hook-form'

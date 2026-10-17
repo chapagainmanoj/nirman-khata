@@ -10,6 +10,12 @@ describe('formatNPR', () => {
     expect(formatNPR(0)).toBe('Rs. 0')
   })
 
+  it('rounds to the rupee when asked, half up', () => {
+    expect(formatNPR(82132250, { whole: true })).toBe('Rs. 8,21,323')
+    expect(formatNPR(82132249, { whole: true })).toBe('Rs. 8,21,322')
+    expect(formatNPR(-150, { whole: true })).toBe('-Rs. 2')
+  })
+
   it('shows paisa only when present', () => {
     expect(formatNPR(123450)).toBe('Rs. 1,234.50')
     expect(formatNPR(5)).toBe('Rs. 0.05')

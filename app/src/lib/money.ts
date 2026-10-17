@@ -13,9 +13,11 @@ function groupLakh(rupees: bigint): string {
 }
 
 /** "Rs. 12,34,567" or "Rs. 12,34,567.50". Negative: "-Rs. 500". */
-export function formatNPR(paisa: number | null | undefined, opts: { symbol?: boolean } = {}): string {
+/** `whole`: rounded to the rupee (half up), for summaries where paisa are noise. */
+export function formatNPR(paisa: number | null | undefined, opts: { symbol?: boolean; whole?: boolean } = {}): string {
   if (paisa === null || paisa === undefined) return 'Not available'
   assertPaisa(paisa)
+  if (opts.whole) paisa = Math.sign(paisa) * Math.round(Math.abs(paisa) / 100) * 100
   const symbol = opts.symbol === false ? '' : 'Rs. '
   const negative = paisa < 0
   const abs = BigInt(Math.abs(paisa))

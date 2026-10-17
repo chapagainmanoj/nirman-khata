@@ -134,16 +134,21 @@ export function HeadingTable({ figures: f, projectId }: { figures: ProjectFigure
 
 /** Recorded cost split by where it came from. */
 export function SourceList({ figures: f }: { figures: ProjectFigures }) {
-  const s = f.by_source
-  if (!s) return null
-  const total = Number(f.cost_paisa) || 0
+  if (!f.by_source) return null
+  return <SourceRows bySource={f.by_source} total={Number(f.cost_paisa) || 0} />
+}
+
+/** Where the money went: one row per kind of cost, with its share. `whole` drops paisa. */
+export function SourceRows({ bySource: s, total, whole }: {
+  bySource: NonNullable<ProjectFigures['by_source']>; total: number; whole?: boolean
+}) {
   const rows: Array<[string, number]> = [['Materials', s.materials], ['Subcontract', s.subcontract], ['Own labour', s.labour], ['Other expenses', s.other]]
   return (
     <ul>
       {rows.map(([label, n]) => (
         <li key={label} className="flex justify-between gap-3 border-b border-line py-2 text-sm last:border-0">
           <span className="text-subtle">{label}</span>
-          <span className="tabular-nums text-ink">{formatNPR(n)} <span className="text-xs text-subtle">{total ? percent(n, total) : ''}</span></span>
+          <span className="tabular-nums text-ink">{formatNPR(n, { whole })} <span className="text-xs text-subtle">{total ? percent(n, total) : ''}</span></span>
         </li>
       ))}
     </ul>

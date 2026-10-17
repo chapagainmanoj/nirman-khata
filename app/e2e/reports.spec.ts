@@ -59,6 +59,11 @@ test('dashboard, reports and exports agree', async ({ page }) => {
   await expect(totals.getByRole('link', { name: /^Spent/ })).toContainText('Rs. 6,000')
   await expect(totals.getByRole('link', { name: /^Paid out/ })).toContainText('Rs. 6,000')
   await expect(page.getByRole('progressbar', { name: 'Budget used' })).toBeVisible()
+  // Running projects added up: spent so far and what is left of the budget; the month's cost by kind.
+  const running = page.getByRole('region', { name: 'Running projects' })
+  await expect(running.getByRole('link', { name: /^Spent so far/ })).toContainText('Rs. 6,000')
+  await expect(running.getByRole('link', { name: /^Left to spend/ })).toContainText('budget')
+  await expect(totals.getByRole('listitem').filter({ hasText: 'Own labour' })).toContainText('Rs. 6,000')
   // Work done is kept apart from budget used; with no progress entered it offers a way to set it.
   await expect(page.getByRole('link', { name: /Set progress/ })).toHaveAttribute('href', `/projects/${projectId}?tab=site`)
   await page.screenshot(shots('m5-01-dashboard'))

@@ -33,6 +33,14 @@ A project whose construction work is done. Final bills, payments and Reallocatio
 - **Not:** Closed (books final).
 - **In code:** project status `completed`.
 
+## Contract balance
+What is left of a project's contract after everything the client has paid: contract amount less client receipts. Shown on the project page, not on the company dashboard.
+
+- **Not:** money the client owes. Part of it is for work not yet done or billed; telling those apart needs client bills, which do not exist yet.
+- **In code:** `to_collect_paisa` (`company_dashboard`); "Contract balance" on the project's Client tab and the Contract and budget card.
+- **Aliases to avoid:** "To collect" (read as money due now; renamed by the product owner, 2026-10-17).
+- **Notes:** Client receipts include any TDS or retention the client kept back, so this is less than the cash still to come.
+
 ## Crew
 A lightweight Party for the company's own labour ("Ram's crew", "Site crew"). The crew, never a single worker, is the one owed and paid for labour.
 
