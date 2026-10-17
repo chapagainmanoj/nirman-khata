@@ -42,6 +42,7 @@ export function MorePage() {
         </Group>
       ))}
       <Group title={t('nav.account')}>
+        <li className="border-b border-line"><Link to="/how-to-use" className={rowClass}>{t('nav.help')}</Link></li>
         <li className="border-b border-line"><Link to="/notifications" className={rowClass}>{t('nav.notifications')}</Link></li>
         {isPlatformAdmin && <li className="border-b border-line"><Link to="/platform" className={rowClass}>{t('nav.platform')}</Link></li>}
         <li className="border-b border-line px-4 py-3 text-sm">

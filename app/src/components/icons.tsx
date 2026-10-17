@@ -3,7 +3,7 @@
 // Decorative by default (aria-hidden): the text next to an icon names the action.
 import {
   ArrowRight, Banknote, Bell, Building2, CalendarDays, Camera, ChartColumn, Check, ChevronDown, ChevronLeft, ChevronRight,
-  ClipboardList, Ellipsis, Hammer, HandCoins, Handshake, HardHat, Info, LayoutDashboard, Lock, LogOut, NotebookPen, Package, Plus, Receipt, Share2, ShieldCheck,
+  CircleHelp, ClipboardList, Ellipsis, Hammer, HandCoins, Handshake, HardHat, Info, LayoutDashboard, Lock, LogOut, NotebookPen, Package, Plus, Receipt, Share2, ShieldCheck,
   SlidersHorizontal, Store, Trash2, TriangleAlert, Truck, Users, Wallet, type LucideIcon, type LucideProps,
 } from 'lucide-react'
 
@@ -40,6 +40,7 @@ export const SettingsIcon = icon(SlidersHorizontal, 'SettingsIcon')
 export const BellIcon = icon(Bell, 'BellIcon')
 export const MoreIcon = icon(Ellipsis, 'MoreIcon')
 export const PlatformIcon = icon(ShieldCheck, 'PlatformIcon')
+export const HelpIcon = icon(CircleHelp, 'HelpIcon')
 export const SignOutIcon = icon(LogOut, 'SignOutIcon')
 
 // Records ("+ Record")

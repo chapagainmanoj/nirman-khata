@@ -10,7 +10,7 @@ import { useCurrentProject } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import { ROLE_LABELS } from '../lib/labels'
 import {
-  BillIcon, CatalogIcon, ChevronDownIcon, DailyReportIcon, DeliveryIcon, ExpenseIcon, LabourIcon, PaymentIcon, PlatformIcon, PlusIcon, ReceiptInIcon,
+  BillIcon, CatalogIcon, ChevronDownIcon, DailyReportIcon, DeliveryIcon, ExpenseIcon, HelpIcon, LabourIcon, PaymentIcon, PlatformIcon, PlusIcon, ReceiptInIcon,
   SettingsIcon, SignOutIcon, SlipIcon, StaffIcon,
 } from './icons'
 import { recordActionsFor, recordHref, sectionsFor, type NavItem, type NavRole, type RecordKey } from './nav'
@@ -229,6 +229,7 @@ export function AccountMenu({ className, alignRight, up, setup, current }: {
               <MenuLink key={i.key} to={i.to} icon={SETUP_ICONS[i.key]}>{t(i.label)}</MenuLink>
             ))}
             <MenuLink to="/settings" icon={SettingsIcon}>{t('nav.myAccount')}</MenuLink>
+            <MenuLink to="/how-to-use" icon={HelpIcon}>{t('nav.help')}</MenuLink>
           </MenuGroup>
           {isPlatformAdmin && <MenuGroup><MenuLink to="/platform" icon={PlatformIcon}>{t('nav.platform')}</MenuLink></MenuGroup>}
           <MenuGroup>
