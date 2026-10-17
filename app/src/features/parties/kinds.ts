@@ -1,13 +1,14 @@
-// The four kinds of party money is owed to (req §12.3: "the same rules apply to subcontractor
-// and labour payments"). Each has its own table; payments, ledger rows and khata are shared.
-export type PartyKind = 'supplier' | 'subcontractor' | 'crew' | 'payee'
+// The kinds of party money is owed to (req §12.3: "the same rules apply to subcontractor and
+// labour payments"). Each has its own table; payments, ledger rows and khata are shared. A worker
+// is owed for their days when the company works by attendance (GLOSSARY: Worker).
+export type PartyKind = 'supplier' | 'subcontractor' | 'crew' | 'payee' | 'worker'
 
 export const PARTY: Record<PartyKind, {
   one: string
   many: string
   path: string
-  column: 'supplier_id' | 'subcontractor_id' | 'crew_id' | 'payee_id'
-  table: 'suppliers' | 'subcontractors' | 'crews' | 'payees'
+  column: 'supplier_id' | 'subcontractor_id' | 'crew_id' | 'payee_id' | 'worker_id'
+  table: 'suppliers' | 'subcontractors' | 'crews' | 'payees' | 'workers'
   /** What raises the balance, for the khata legend. */
   charges: string
 }> = {
@@ -19,6 +20,7 @@ export const PARTY: Record<PartyKind, {
   crew: { one: 'Crew', many: 'Labour crews', path: '/crews', column: 'crew_id', table: 'crews', charges: 'labour costs' },
   // "Payee" in code and SQL; people see "Other service" (GLOSSARY: Payee).
   payee: { one: 'Other service', many: 'Other services', path: '/payees', column: 'payee_id', table: 'payees', charges: 'expenses' },
+  worker: { one: 'Worker', many: 'Workers', path: '/workers', column: 'worker_id', table: 'workers', charges: 'days worked' },
 }
 
 export const PARTY_KINDS = Object.keys(PARTY) as PartyKind[]

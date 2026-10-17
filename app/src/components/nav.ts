@@ -51,7 +51,7 @@ const ITEMS: Record<NavKey, NavItem> = {
   // Other services (payees) open from the Suppliers page, so their pages light Suppliers.
   suppliers: { key: 'suppliers', to: '/suppliers', label: 'nav.suppliers', match: ['/suppliers', '/payees'] },
   subcontractors: { key: 'subcontractors', to: '/subcontractors', label: 'nav.subcontractors', match: ['/subcontractors', '/work'] },
-  crews: { key: 'crews', to: '/crews', label: 'nav.crews', match: ['/crews'] },
+  crews: { key: 'crews', to: '/crews', label: 'nav.crews', match: ['/crews', '/workers'] },
   payees: { key: 'payees', to: '/payees', label: 'nav.payees', match: [] },
   staff: { key: 'staff', to: '/staff', label: 'nav.staff', match: ['/staff'] },
   catalog: { key: 'catalog', to: '/catalog', label: 'nav.catalog', match: ['/catalog'] },
@@ -152,8 +152,8 @@ export function recordActionsFor(r: NavRole): RecordAction[] {
       const a = RECORD[k]
       // Accounts type the bill; everyone else photographs it and sends it on.
       if (k === 'bill' && r.seesAllProjects) return { ...a, label: 'record.bill', hint: 'record.bill.hint' }
-      // With attendance on, labour is marked per worker on the day roster.
-      if (k === 'labour' && r.labourByAttendance) return { ...a, path: '/labour/attendance', label: 'record.attendance', hint: 'record.attendance.hint' }
+      // With attendance on, labour is marked per worker on the crew's page.
+      if (k === 'labour' && r.labourByAttendance) return { ...a, path: '/labour/crew', label: 'record.attendance', hint: 'record.attendance.hint' }
       return a
     })
 }

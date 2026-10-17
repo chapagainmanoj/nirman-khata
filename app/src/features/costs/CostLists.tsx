@@ -80,7 +80,7 @@ export function LabourSection({ projectId }: { projectId: string }) {
             <li key={l.id} className="flex flex-wrap items-start justify-between gap-2 border-b border-line py-2 last:border-0">
               <div className="min-w-0 text-sm">
                 <div className="font-medium text-ink">
-                  <DateText value={l.work_date} display={auth.dateDisplay} /> · {l.crews?.name}
+                  <DateText value={l.work_date} display={auth.dateDisplay} /> · {l.workers?.name ?? l.crews?.name}
                 </div>
                 <div className="text-xs text-subtle">
                   {[l.work_type, l.headcount && `${l.headcount} people`, l.person_days && `${Number(l.person_days)} person-days`, l.description]

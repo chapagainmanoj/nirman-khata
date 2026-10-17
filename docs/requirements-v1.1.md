@@ -396,8 +396,8 @@ Measurement books, retention and deductions are future scope.
 
 ## 14. Own Labour Cost (optional module)
 
-- No individual worker profiles.
-- **Crew** is a lightweight record (e.g. "Ram's crew", "Local jyami") acting as the payee for labour costs and payments. One default crew per project is created automatically.
+- With Day total (the default) there are no individual worker profiles.
+- **Crew** is a lightweight record (e.g. "Ram's crew", "Local jyami") for one project. With Day total it is the payee for labour costs and payments. One default crew per project is created automatically.
 - **Labour cost is recorded per project per work date** (confirmed: day-wise). Fields: crew/work description (Dakarmi, Jyami, Mixed), total cost, optional headcount, person-days and rate.
 - **Weekly/range entry** is a convenience form only: it generates one daily record per date (same amount each day, or edited per day). The calendar always shows cost on the actual work date.
 - Cost incurred is separate from labour payment. One payment can cover several days.
@@ -406,12 +406,14 @@ Measurement books, retention and deductions are future scope.
 - Show unpaid labour cost and labour advances.
 - Confirm before saving a near-duplicate entry for the same project and day.
 
-**Attendance (company setting "Labour by: Attendance"; default Day total)**
-- Workers (crew members) are listed per crew, each with a daily or hourly rate. The crew stays the payee.
-- Attendance is marked per worker per project per day: in, out, hours worked. "Everyone in" marks the standard day (setting: day start/end, paid hours, default 8 h).
-- Closing the day prices it and creates one labour cost per work date for the crew: daily rate × hours ÷ paid hours, or hourly rate × hours. Closed days are locked; reversing the labour cost reopens them.
-- A worker brought to another project for a day is owed through that project's crew. A day can be split between projects by times that do not overlap.
-- Each worker has a time card for the month (29–32 days): in, out, hours and a tick per day, the project for each day, Split to share a day with another project, and Close open days, which closes each of the worker's open days for the crew owed on that project.
+**Attendance (company setting "Labour by: Attendance"; default Day total)** (revised 2026-10-17)
+- Workers are added once for the company, from Labour crews, each with the kind of work and a daily or hourly rate. A worker is put on the crew of each project they work on.
+- **Each worker is a payee:** the days they work are owed to them, and they are paid one by one (with peski, khata and balance like any party). The crew groups the workers on a project.
+- The crew page is where attendance is marked: the crew's workers on one side, the chosen worker's month as a calendar with the hours in each day's box. A tap on a day changes it (full day, half day, not here, +1 hour, in/out/hours). Under the calendar: the worker's days, hours, earned, paid and still to pay on the project, with Pay; then the crew's totals.
+- Closing prices each worker's open days and creates one labour cost per worker per work date, owed to the worker: daily rate × hours ÷ paid hours, or hourly rate × hours. Closed days are locked; reversing the labour cost reopens that worker's day. Pay closes the worker's open days on the project first.
+- Attendance is entered in one place, the crew's page. "Everyone in" marks the whole crew a full day for a chosen day (today by default); absences and half days are then fixed on each worker's calendar. A day is edited at its box (a card beside it on a wider screen, a sheet from the bottom on a phone), where it can also be split with another project by times that do not overlap. A worker brought to another project for a day costs that project.
+- Each worker's page has their details, the crews they are on (each opening that crew's calendar with them chosen) and their khata. It has no calendar of its own. (Revised 2026-10-17: the separate day roster and the time card were removed, so attendance is entered and seen in one place.)
+- Days closed before this revision stay owed to their crew.
 
 ---
 

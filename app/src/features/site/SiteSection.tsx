@@ -28,7 +28,8 @@ export function SiteSection({ projectId }: { projectId: string }) {
   const [setup, setSetup] = useState(false)
 
   return (
-    <div className="flex flex-col gap-4">
+    // Side by side on a laptop; stacked on a phone, progress first.
+    <div className="grid items-start gap-4 lg:grid-cols-2">
       <Card title="Progress" actions={canPlan && !setup && (
         <Button variant="ghost" onClick={() => setSetup(true)}>{stages.data?.length ? 'Add stages' : 'Set up stages'}</Button>
       )}>

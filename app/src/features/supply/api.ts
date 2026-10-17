@@ -5,6 +5,8 @@ import { useMemo, useRef } from 'react'
 import type { Database, Json } from '../../lib/database.types'
 import { newId } from '../../lib/ids'
 import { PAGE_SIZE, usePaged } from '../../lib/paging'
+import { containsAny } from '../../lib/search'
+import type { ListSearch } from '../lists/ListFilters'
 import { supabase } from '../../lib/supabase'
 
 type Fns = Database['public']['Functions']
@@ -60,7 +62,7 @@ export function useRefreshMoney() {
     Promise.all(
       ['bills', 'bill', 'payments', 'nav-count', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview',
         'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees', 'project-dashboard', 'dashboard', 'report',
-        'calendar']
+        'calendar', 'attendance']
         .map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
     )
 }
@@ -83,15 +85,18 @@ export function useSuppliers(companyId: string) {
 // Slips
 // ---------------------------------------------------------------------------
 export type SlipTab = 'open' | 'pending' | 'draft' | 'all'
-type SlipFilter = { companyId: string; projectId?: string | null; supplierId?: string; tab?: SlipTab }
+type SlipFilter = { companyId: string; projectId?: string | null; supplierId?: string; tab?: SlipTab } & ListSearch
 
-function slipQuery<Q extends { eq: Function; in: Function; contains: Function }>(q: Q, f: SlipFilter): Q {
+function slipQuery<Q extends { eq: Function; in: Function; contains: Function; gte: Function; lte: Function; or: Function }>(q: Q, f: SlipFilter): Q {
   q = q.eq('company_id', f.companyId)
   if (f.projectId) q = q.contains('project_ids', [f.projectId])
   if (f.supplierId) q = q.eq('supplier_id', f.supplierId)
   if (f.tab === 'open') q = q.eq('status', 'approved').in('fulfilment', ['not_received', 'partially_received'])
   if (f.tab === 'pending') q = q.eq('status', 'pending')
   if (f.tab === 'draft') q = q.in('status', ['draft', 'rejected'])
+  if (f.from) q = q.gte('request_date', f.from)
+  if (f.to) q = q.lte('request_date', f.to)
+  if (f.search) q = q.or(containsAny(f.search, ['number'], 'supplier_id', f.supplierMatch))
   return q
 }
 
@@ -178,13 +183,18 @@ export type SlipPermissions = {
 // ---------------------------------------------------------------------------
 // Deliveries
 // ---------------------------------------------------------------------------
-export function useDeliveries(filter: { projectId?: string; slipId?: string; supplierId?: string }) {
+export type DeliveryFilter = { projectId?: string; slipId?: string; supplierId?: string } & ListSearch
+
+export function useDeliveries(filter: DeliveryFilter) {
   return usePaged(['deliveries', filter], async (from, to) => {
     let q = supabase.from('deliveries')
       .select('*, suppliers(name), projects(code, name), delivery_lines(*, materials(name), units(code))')
     if (filter.projectId) q = q.eq('project_id', filter.projectId)
     if (filter.slipId) q = q.eq('slip_id', filter.slipId)
     if (filter.supplierId) q = q.eq('supplier_id', filter.supplierId)
+    if (filter.from) q = q.gte('receipt_date', filter.from)
+    if (filter.to) q = q.lte('receipt_date', filter.to)
+    if (filter.search) q = q.or(containsAny(filter.search, ['challan_no'], 'supplier_id', filter.supplierMatch))
     const { data, error } = await q.order('receipt_date', { ascending: false }).order('created_at', { ascending: false }).order('id').range(from, to)
     if (error) throw error
     return data

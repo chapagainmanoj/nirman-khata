@@ -37,34 +37,49 @@ const ACTIVITY_ROWS = 3
 /** How far back "Recent" looks. */
 const RECENT_DAYS = 30
 
-type Tab = 'overview' | 'site' | 'deliveries' | 'subcontract' | 'labour' | 'client' | 'history' | 'details'
+type Tab = 'overview' | 'activity' | 'deliveries' | 'subcontract' | 'labour' | 'client' | 'details'
 
-// Money first (spent, left of the budget), then contract and budget with where the money went,
-// then today's work. Setup (details, staff) is rarely needed once a project runs, so it has its own tab.
-// The long lists (site, deliveries, subcontract, labour) each get a tab so the page stays short.
+// Money first (spent, left of the budget), then contract and budget with where the money went;
+// today's work (to do, recent) has its own Activity tab beside it. Project details holds progress and daily reports, then the setup (details,
+// staff) that is rarely needed once a project runs. The long lists (deliveries, subcontract,
+// labour) each get a tab so the page stays short.
 export function ProjectDetailPage() {
   const { projectId = '' } = useParams()
   const auth = useCompany()
   const project = useProject(projectId)
   const members = useMembers(auth.companyId)
-  const [params, setParams] = useSearchParams()
-  const tab = (params.get('tab') as Tab | null) ?? 'overview'
 
   if (project.isPending) return <Spinner />
   if (project.error) return <ErrorBanner onRetry={() => void project.refetch()}>{friendlyError(project.error)}</ErrorBanner>
   if (!project.data) {
     return <EmptyState title="Project not found">It does not exist or you are not assigned to it. <Link className="text-slate" to="/projects">Back to projects</Link></EmptyState>
   }
-  const p = project.data
+  return <ProjectBody p={project.data} members={members} />
+}
+
+/** The loaded project: header, money strip and tabs. */
+function ProjectBody({ p, members }: { p: Tables<'projects'>; members: ReturnType<typeof useMembers> }) {
+  const auth = useCompany()
+  const [params, setParams] = useSearchParams()
+  // Site (progress, daily reports) and History (contract and budget changes) are part of Project
+  // details; "?tab=site" and "?tab=history" links land there, the second scrolled to the changes.
+  // Overview is money (contract, budget, cost); without it a project opens on Activity.
+  const first: Tab = auth.canSeeFinance ? 'overview' : 'activity'
+  const asked = params.get('tab') as Tab | 'site' | 'history' | null
+  const tab: Tab = asked === 'site' || asked === 'history' ? 'details' : asked === 'overview' && !auth.canSeeFinance ? first : asked ?? first
+
   const canEdit = auth.isAdmin || auth.hasRole('project_manager')
   const labourOn = auth.company.labour_module_enabled
-  const tabs: Array<[Tab, string]> = [
-    ['overview', 'Overview'], ['site', 'Site'], ['deliveries', 'Deliveries'], ['subcontract', 'Subcontract'],
-    ['labour', labourOn ? 'Labour & costs' : 'Other costs'],
-    ...(auth.canSeeFinance ? [['client', 'Client'], ['history', 'History']] as [Tab, string][] : []),
-    ['details', 'Details'],
-  ]
   const showDeliveries = () => setParams({ tab: 'deliveries' }, { replace: true })
+  const { todo, isPending: todoPending } = useProjectTodo(p, canEdit, showDeliveries)
+  const tabs: Array<[Tab, string]> = [
+    ...(auth.canSeeFinance ? [['overview', 'Overview']] as [Tab, string][] : []),
+    // The count keeps the to-dos in sight now that they are not on the first tab.
+    ['activity', todo.length ? `Activity · ${todo.length}` : 'Activity'], ['deliveries', 'Deliveries'], ['subcontract', 'Subcontract'],
+    ['labour', labourOn ? 'Labour & costs' : 'Other costs'],
+    ...(auth.canSeeFinance ? [['client', 'Client']] as [Tab, string][] : []),
+    ['details', 'Project details'],
+  ]
 
   return (
     <>
@@ -74,27 +89,22 @@ export function ProjectDetailPage() {
         subtitle={<span className="flex items-center gap-2">{p.code} <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge></span>}
         actions={
           <div className="flex flex-wrap gap-2">
-            {canEnter(auth) && <ButtonLink to={`/daily/new?project=${p.id}`}>Daily report</ButtonLink>}
-            {canEnter(auth) && <ButtonLink variant="secondary" to={`/slips/new?project=${p.id}`}>New order slip</ButtonLink>}
+            {canEnter(auth) && <ButtonLink to={`/slips/new?project=${p.id}`}>New order slip</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant="secondary" to={`/daily/new?project=${p.id}`}>Daily report</ButtonLink>}
             <ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>Calendar</ButtonLink>
           </div>
         }
       />
       {auth.canSeeFinance && <SummaryStrip projectId={p.id} />}
       <Tabs tabs={tabs} value={tab} label="Project sections"
-        onChange={(next) => setParams(next === 'overview' ? {} : { tab: next }, { replace: true })}>
-        {tab === 'overview' && (
-          <>
-            <Activity project={p} canEdit={canEdit} onShowDeliveries={showDeliveries} />
-            {auth.canSeeFinance && (
-              <div className="mt-4 grid items-start gap-4 lg:grid-cols-2">
-                <AmountsCard projectId={p.id} status={p.status} />
-                <CostBreakdown projectId={p.id} />
-              </div>
-            )}
-          </>
+        onChange={(next) => setParams(next === first ? {} : { tab: next }, { replace: true })}>
+        {tab === 'overview' && auth.canSeeFinance && (
+          <div className="grid items-start gap-4 lg:grid-cols-2">
+            <AmountsCard projectId={p.id} status={p.status} />
+            <CostBreakdown projectId={p.id} />
+          </div>
         )}
-        {tab === 'site' && <SiteSection projectId={p.id} />}
+        {tab === 'activity' && (todoPending ? <Spinner /> : <Activity project={p} todo={todo} />)}
         {tab === 'deliveries' && (
           <section>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -112,11 +122,15 @@ export function ProjectDetailPage() {
           </>
         )}
         {tab === 'client' && auth.canSeeFinance && <ClientTab projectId={p.id} clientName={p.client_name} />}
-        {tab === 'history' && auth.canSeeFinance && <RevisionsCard projectId={p.id} members={members.data ?? []} />}
         {tab === 'details' && (
-          <div className="grid items-start gap-4 lg:grid-cols-2">
-            <DetailsCard project={p} members={members.data ?? []} canEdit={canEdit} />
-            <TeamCard projectId={p.id} members={members.data ?? []} />
+          <div className="flex flex-col gap-4">
+            {/* Progress first: "Set progress" and "Update progress" links land here. */}
+            <SiteSection projectId={p.id} />
+            <div className="grid items-start gap-4 lg:grid-cols-2">
+              <DetailsCard project={p} members={members.data ?? []} canEdit={canEdit} />
+              <TeamCard projectId={p.id} members={members.data ?? []} />
+            </div>
+            {auth.canSeeFinance && <RevisionsCard projectId={p.id} members={members.data ?? []} scrollTo={asked === 'history'} />}
           </div>
         )}
       </Tabs>
@@ -216,19 +230,14 @@ const RECENT_MONEY: Record<string, string> = { cost: 'Cost', payment: 'Paid', pe
 /** Routine steps that the calendar keeps but Recent leaves out. */
 const RECENT_SKIP = new Set(['slip_sent'])
 
-/**
- * What needs doing on this project, each with a link to do it, next to what happened lately
- * (the newest calendar events of any kind). People only see the to-dos they may act on.
- */
-function Activity({ project: p, canEdit, onShowDeliveries }: { project: Tables<'projects'>; canEdit: boolean; onShowDeliveries: () => void }) {
+/** What needs doing on this project, each with where to do it. People only see the to-dos they may act on. */
+function useProjectTodo(p: Tables<'projects'>, canEdit: boolean, onShowDeliveries: () => void): { todo: ToDo[]; isPending: boolean } {
   const auth = useCompany()
   const today = todayKathmandu()
   const slips = useOpenSlips({ companyId: auth.companyId, projectId: p.id })
   const deliveries = useDeliveries({ projectId: p.id })
   const unbilled = useDeliveryLineStatus({ projectId: p.id, billableOnly: true })
   const dash = useProjectDashboard(p.id)
-  const events = useCalendarEvents(auth.companyId, addDays(today, -RECENT_DAYS), today, p.id)
-  if (slips.isPending || events.isPending) return <Spinner />
 
   const f = dash.data
   const open = p.status !== 'completed' && p.status !== 'closed' && p.status !== 'cancelled'
@@ -264,15 +273,26 @@ function Activity({ project: p, canEdit, onShowDeliveries }: { project: Tables<'
   if (canEnter(auth) && p.status === 'active' && f && (f.days_since_report === null || f.days_since_report > 2)) {
     todo.push({ key: 'report', title: 'Send daily report', detail: f.days_since_report === null ? 'none yet' : `last one ${plural(f.days_since_report, 'day')} ago`, to: `/daily/new?project=${p.id}` })
   }
+  return { todo, isPending: slips.isPending }
+}
+
+/** The to-do list next to what happened lately (the newest calendar events of any kind). */
+function Activity({ project: p, todo }: { project: Tables<'projects'>; todo: ToDo[] }) {
+  const auth = useCompany()
+  const today = todayKathmandu()
+  const events = useCalendarEvents(auth.companyId, addDays(today, -RECENT_DAYS), today, p.id)
+  if (events.isPending) return <Spinner />
 
   const recent = (events.data ?? [])
     .filter((e) => !RECENT_SKIP.has(e.kind))
     .sort((a, b) => b.event_date.localeCompare(a.event_date) || (b.at ?? '').localeCompare(a.at ?? ''))
-    .slice(0, ACTIVITY_ROWS + 2)
+    // As many as the to-do list beside it (3 to 5), so neither column leaves a gap; 5 when alone.
+    .slice(0, todo.length ? Math.min(Math.max(ACTIVITY_ROWS, todo.length), ACTIVITY_ROWS + 2) : ACTIVITY_ROWS + 2)
   if (!todo.length && !recent.length) {
     return <p className="text-sm text-subtle">Nothing waiting, and nothing recorded in the last {RECENT_DAYS} days.</p>
   }
-  const row = 'flex min-h-11 w-full items-center justify-between gap-3 text-left text-sm hover:bg-muted'
+  // Touch screens keep 44px rows; with a mouse the rows are tighter.
+  const row = 'flex min-h-11 [@media(pointer:fine)]:min-h-9 w-full items-center justify-between gap-3 text-left text-sm hover:bg-muted'
   return (
     <Card title="Activity" actions={<ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>See all</ButtonLink>}>
       <div className={cx('grid grid-cols-1 gap-x-8 gap-y-3', todo.length > 0 && recent.length > 0 && 'lg:grid-cols-2')}>

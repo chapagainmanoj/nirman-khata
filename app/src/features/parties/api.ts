@@ -14,6 +14,16 @@ export function usePartyBalances(companyId: string, kind: PartyKind, enabled: bo
   })
 }
 
+/** With attendance: what each crew's workers are owed on its project, plus the crew's own balance.
+ *  Under 'balances', so every money change refreshes it. */
+export function useCrewBalances(companyId: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['balances', companyId, 'crew-workers'],
+    enabled,
+    queryFn: () => rpc('crew_balances', { p_company: companyId }),
+  })
+}
+
 export function usePartyKhata(partyId: string, projectId: string | null, enabled: boolean) {
   return useQuery({
     queryKey: ['khata', partyId, projectId],

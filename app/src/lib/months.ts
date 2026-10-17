@@ -40,3 +40,14 @@ export function monthInRange(m: MonthRef): boolean {
   const last = monthDays(m).at(-1)!
   return first >= BS_RANGE.first && last <= BS_RANGE.last
 }
+
+/** A month from a URL value like "2083-07", in the given calendar; the fallback when it is not one. */
+export function parseMonth(value: string | null, fallback: MonthRef): MonthRef {
+  const m = value && /^(\d{4})-(\d{2})$/.exec(value)
+  if (!m) return fallback
+  const ref = { display: fallback.display, year: Number(m[1]), month: Number(m[2]) }
+  return ref.month >= 1 && ref.month <= 12 ? ref : fallback
+}
+
+/** The URL value for a month: "2083-07". */
+export const monthParam = (m: MonthRef) => `${m.year}-${String(m.month).padStart(2, '0')}`

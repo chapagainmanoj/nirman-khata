@@ -10,7 +10,7 @@ import { friendlyError } from '../../lib/errors'
 import { ShowMore } from '../../components/ShowMore'
 import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
-import { rpc, useDeliveries, useDeliveryStatusFor } from './api'
+import { rpc, useDeliveries, useDeliveryStatusFor, type DeliveryFilter } from './api'
 import { canEnter } from './permissions'
 
 const qty = (n: number) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 })
@@ -42,7 +42,7 @@ function billing(d: Delivery, status: LineStatus): [string, 'neutral' | 'good' |
  * Deliveries as a compact table, newest first, 50 at a time: one line a delivery on a laptop.
  * On a phone, the date, challan, project and items move under the supplier.
  */
-export function DeliveryList({ filter, empty }: { filter: { projectId?: string; slipId?: string; supplierId?: string }; empty?: ReactNode }) {
+export function DeliveryList({ filter, empty }: { filter: DeliveryFilter; empty?: ReactNode }) {
   const auth = useCompany()
   const deliveries = useDeliveries(filter)
   const ids = useMemo(() => (deliveries.data ?? []).map((d) => d.id), [deliveries.data])

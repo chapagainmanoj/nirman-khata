@@ -9,7 +9,6 @@ const BY_CONSTRAINT: Record<string, string> = {
   payees_unique_name: 'One of your other services already has this name.',
   expense_project_or_company: 'An expense is either on a project with who is owed it, or a company expense with how it was paid.',
   crews_unique_name: 'A crew with this name already exists for this project.',
-  crew_members_unique_name: 'A worker with this name is already on this crew.',
   registration_allowlist_login_email_key: 'This mobile number or email is already on the list.',
 }
 

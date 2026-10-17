@@ -28,7 +28,7 @@ export function usePayees(companyId: string) {
 
 export function useLabourCosts(filter: { projectId?: string; crewId?: string }) {
   return usePaged(['labour', filter], async (from, to) => {
-    let q = supabase.from('labour_cost_summaries').select('*, crews(name)')
+    let q = supabase.from('labour_cost_summaries').select('*, crews(name), workers(name)')
     if (filter.projectId) q = q.eq('project_id', filter.projectId)
     if (filter.crewId) q = q.eq('crew_id', filter.crewId)
     const { data, error } = await q.order('work_date', { ascending: false }).order('id').range(from, to)

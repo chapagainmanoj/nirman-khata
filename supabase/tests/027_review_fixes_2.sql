@@ -27,8 +27,8 @@ create function tests.rf_line(p_project uuid, p_material uuid, p_unit uuid) retu
   select jsonb_build_array(jsonb_build_object('id', gen_random_uuid(), 'project_id', p_project,
     'material_id', p_material, 'qty', 10, 'unit_id', p_unit))
 $$;
-create function tests.rf_close(p_member uuid) returns jsonb language sql as $$
-  select public.close_worker_days('00000000-0000-0000-0000-0000000000c4', jsonb_build_object('member_id', p_member,
+create function tests.rf_close(p_worker uuid) returns jsonb language sql as $$
+  select public.close_worker_days('00000000-0000-0000-0000-0000000000c4', jsonb_build_object('worker_id', p_worker,
     'from_date', '2026-05-01', 'to_date', '2026-05-31'))
 $$;
 create function tests.rf_receipt(p_op uuid, p_id uuid, p_project uuid) returns jsonb language sql as $$
@@ -130,10 +130,11 @@ select lives_ok($$select public.cancel_slip('cccccccc-0000-0000-0000-00000000000
 select tests.logout();
 update public.companies set labour_mode = 'attendance' where id = :'co';
 select id as crew_a from public.crews where project_id = :'pa' and is_default \gset
-insert into public.crew_members (company_id, crew_id, name, rate_kind, rate_paisa)
-values (:'co', :'crew_a', 'Ram Bahadur', 'daily', 120000) returning id as ram \gset
+insert into public.workers (company_id, name, rate_kind, rate_paisa)
+values (:'co', 'Ram Bahadur', 'daily', 120000) returning id as ram \gset
+insert into public.crew_members (company_id, crew_id, worker_id) values (:'co', :'crew_a', :'ram');
 select tests.login(:'site');
-select public.set_attendance(jsonb_build_object('project_id', :'pa', 'crew_id', :'crew_a', 'member_id', :'ram',
+select public.set_attendance(jsonb_build_object('project_id', :'pa', 'crew_id', :'crew_a', 'worker_id', :'ram',
   'work_date', '2026-05-01', 'time_in', '08:00', 'time_out', '17:00', 'minutes', 480));
 select tests.rf_close(:'ram') as closed \gset
 

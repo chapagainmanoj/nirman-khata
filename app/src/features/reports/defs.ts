@@ -246,6 +246,7 @@ export const REPORTS: ReportDef[] = [
     description: 'Each day of own labour, what is paid, and reversals.',
     columns: [
       { key: 'date', label: 'Date', kind: 'date' }, PROJECT, { key: 'crew', label: 'Crew', kind: 'text' },
+      { key: 'worker', label: 'Worker', kind: 'text' },
       { key: 'type', label: 'Work', kind: 'text' }, { key: 'people', label: 'People', kind: 'qty', total: true },
       { key: 'amount', label: 'Amount', kind: 'money', total: true }, { key: 'paid', label: 'Paid', kind: 'money', total: true },
       { key: 'reversed', label: 'Reversed on', kind: 'date' },
@@ -258,7 +259,7 @@ export const REPORTS: ReportDef[] = [
         rows: rows.map((r) => ({
           link: r.daily_report_id ? `/daily/${r.daily_report_id}` : `/projects/${r.project_id}?tab=labour`,
           values: {
-            date: r.work_date, project: code(ctx, r.project_id), crew: r.crew, type: r.work_type, people: r.headcount,
+            date: r.work_date, project: code(ctx, r.project_id), crew: r.crew, worker: r.worker, type: r.work_type, people: r.headcount,
             amount: r.reversed_on ? 0 : r.amount_paisa, paid: r.paid_paisa, reversed: r.reversed_on,
           },
         })),

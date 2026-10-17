@@ -63,7 +63,7 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await expect(page.getByRole('heading', { name: 'Ward 5 school building' })).toBeVisible()
   await expect(page.getByText('Contract', { exact: true }).locator('..')).toContainText('Rs. 50,00,000')
   await expect(page.getByText('Spending budget', { exact: true }).locator('..')).toContainText('Rs. 40,00,000')
-  await page.getByRole('tab', { name: 'Details' }).click()
+  await page.getByRole('tab', { name: 'Project details' }).click()
   await expect(page.getByText('Planned start').locator('..')).toContainText('1 Shrawan 2083')
   await page.screenshot(shots('03-project-detail'))
 
@@ -76,7 +76,7 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await expect(page.getByRole('heading', { name: 'Private house Pokhara' })).toBeVisible()
   // A new project starts Active. Three statuses to pick; closing the books is its own step.
   await expect(page.getByText('Active', { exact: true }).first()).toBeVisible()
-  await page.getByRole('tab', { name: 'Details' }).click()
+  await page.getByRole('tab', { name: 'Project details' }).click()
   await page.getByRole('button', { name: 'Edit' }).click()
   await expect(page.getByLabel('Status').locator('option')).toHaveText(['Active', 'On Hold', 'Completed'])
   await page.getByLabel('Status').selectOption('Completed')

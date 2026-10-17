@@ -62,6 +62,7 @@ describe('activeSection', () => {
     ['/suppliers/abc', 'suppliers'],
     ['/payees/abc', 'suppliers'],
     ['/crews/abc', 'crews'],
+    ['/workers/abc', 'crews'],
     ['/parties', 'parties'],
     ['/deliveries/new', 'deliveries'],
     ['/labour/new', 'projects'],
@@ -108,7 +109,7 @@ describe('recordActionsFor', () => {
   })
   it('opens the attendance roster when labour is marked by attendance', () => {
     const labour = recordActionsFor({ ...site, labourByAttendance: true }).find((x) => x.key === 'labour')!
-    expect(labour.path).toBe('/labour/attendance')
+    expect(labour.path).toBe('/labour/crew')
     expect(labour.label).toBe('record.attendance')
     expect(recordActionsFor(site).find((x) => x.key === 'labour')!.path).toBe('/labour/new')
   })

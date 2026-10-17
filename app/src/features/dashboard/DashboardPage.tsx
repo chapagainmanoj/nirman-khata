@@ -11,7 +11,7 @@ import { Badge, ButtonLink, Card, EmptyState, ErrorBanner, PageHeader, Spinner }
 import { formatDate, todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
-import { formatNPR, percent } from '../../lib/money'
+import { formatNPR } from '../../lib/money'
 import type { ProjectStatus } from '../../lib/supabase'
 import type { PartyKind } from '../parties/kinds'
 import { rpc } from '../supply/api'
@@ -108,8 +108,9 @@ function Figure({ label, value, sub, to }: { label: string; value: number | unde
 
 /**
  * Running projects added up, in one card: spent so far, left to spend with the budget under it,
- * and what is to pay now; then the share of
- * budget used and where the money went. Each project's own figures are on its card below.
+ * and what is to pay now; then where the money went. No company "budget used" bar: added up, it
+ * hides the one project that is over, and alone it says nothing without work done beside it.
+ * Each project's own figures (work done beside budget used) are on its card below.
  * With no running project, only what is owed shows.
  */
 function RunningBlock({ projects, children }: { projects: Dashboard['projects']; children: ReactNode }) {
@@ -137,20 +138,8 @@ function RunningBlock({ projects, children }: { projects: Dashboard['projects'];
         <div className="col-span-2 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-4 lg:col-span-1 lg:grid-cols-1 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6">{children}</div>
       </div>
 
-      {r.usedPct !== null && (
-        <div className="mt-5">
-          <span className="mb-1.5 flex justify-between gap-3 text-xs text-subtle">
-            <span>Budget used</span>
-            <span className={`font-semibold tabular-nums ${over ? 'text-danger' : 'text-ink'}`}>{percent(r.budget - r.left, r.budget)}</span>
-          </span>
-          <span className="block h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label="Running projects: share of budget spent"
-            aria-valuenow={Math.round(r.usedPct)} aria-valuemin={0} aria-valuemax={100}>
-            <span className={`block h-full min-w-1 rounded-full ${over ? 'bg-danger' : 'bg-bar'}`} style={{ width: `${Math.min(100, r.usedPct)}%` }} />
-          </span>
-        </div>
-      )}
       {r.budget > 0 && r.noBudget.length > 0 && (
-        <p className="mt-2 text-xs text-subtle">{r.noBudget.join(', ')} {r.noBudget.length === 1 ? 'has' : 'have'} no budget, so {r.noBudget.length === 1 ? 'it is' : 'they are'} not in “left”.</p>
+        <p className="mt-3 text-xs text-subtle">{r.noBudget.join(', ')} {r.noBudget.length === 1 ? 'has' : 'have'} no budget, so {r.noBudget.length === 1 ? 'it is' : 'they are'} not in “left”.</p>
       )}
 
       {r.bySource && (

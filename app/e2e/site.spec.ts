@@ -41,7 +41,7 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   const projectId = projectUrl.split('/').at(-1)!
 
   // Stages from the common list.
-  await page.getByRole('tab', { name: 'Site' }).click()
+  await page.getByRole('tab', { name: 'Project details' }).click()
   await page.getByRole('button', { name: 'Set up stages' }).click()
   await page.getByLabel('Plaster').uncheck()
   await page.getByRole('button', { name: 'Add stages' }).click()

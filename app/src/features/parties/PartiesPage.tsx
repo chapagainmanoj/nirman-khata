@@ -1,5 +1,6 @@
-// Subcontractors, labour crews and other services (payees): lightweight parties shared across projects
-// (req §4.3, §13-§15), with what is owed to each (req §12.2).
+// Subcontractors, labour crews, workers and other services (payees): lightweight parties shared
+// across projects (req §4.3, §13-§15), with what is owed to each (req §12.2). When the company works
+// by attendance, Labour crews has two lists: the crews (one per project) and the workers.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
@@ -8,8 +9,12 @@ import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Input, PageHeader,
 import { friendlyError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
 import { useProjects } from '../projects/api'
+import { useCurrentProject } from '../projects/current'
 import { canManageSuppliers } from '../supply/permissions'
-import { usePartyBalances } from './api'
+import { useCrewBalances, usePartyBalances } from './api'
+import { rateText, type RateKind } from '../labour/api'
+import { WorkerForm } from '../labour/WorkerForm'
+import { formatNPR } from '../../lib/money'
 import { PARTY, partyCrumbs, type PartyKind } from './kinds'
 import { BalanceText } from './PartyParts'
 
@@ -19,6 +24,7 @@ type Row = {
   contact_person?: string | null; address?: string | null; pan_vat?: string | null; notes?: string | null
   promoted_supplier_id?: string | null
   is_cash?: boolean
+  work_type?: string | null; rate_kind?: RateKind; rate_paisa?: number
 }
 
 const EMPTY: Record<PartyKind, string> = {
@@ -26,6 +32,7 @@ const EMPTY: Record<PartyKind, string> = {
   subcontractor: 'Add the petty contractors who do plaster, masonry, electrical, plumbing and other work.',
   crew: 'Every project has a "Site crew". Add more crews if you pay groups separately, e.g. "Ram\'s crew".',
   payee: 'They are added when an other expense is entered: JCB owners, tankers, transporters.',
+  worker: 'Add each worker once with their daily or hourly rate, then put them on a project\'s crew from the crew page.',
 }
 
 export function usePartyRows(kind: PartyKind) {
@@ -44,6 +51,7 @@ export function subtitleOf(kind: PartyKind, r: Row, projectCode: (id: string | n
   if (kind === 'subcontractor') return r.work_types?.join(' · ')
   if (kind === 'crew') return r.project_id ? projectCode(r.project_id) : 'Any project'
   if (kind === 'payee') return r.kind ?? undefined
+  if (kind === 'worker') return [r.work_type, r.rate_paisa != null && rateText({ rate_kind: r.rate_kind ?? 'daily', rate_paisa: r.rate_paisa }, formatNPR)].filter(Boolean).join(' · ')
   return undefined
 }
 
@@ -51,11 +59,16 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
   const auth = useCompany()
   const rows = usePartyRows(kind)
   const projects = useProjects(auth.companyId)
-  const balances = usePartyBalances(auth.companyId, kind, auth.canSeeFinance)
+  // With attendance a crew's labour is owed to its workers: the crew list shows what they are owed.
+  const crewView = kind === 'crew' && auth.company.labour_mode === 'attendance'
+  const partyBalances = usePartyBalances(auth.companyId, kind, auth.canSeeFinance && !crewView)
+  const crewBalances = useCrewBalances(auth.companyId, auth.canSeeFinance && crewView)
+  const balances = crewView ? crewBalances : partyBalances
+  const workerCount = new Map(crewBalances.data?.map((b) => [b.crew_id, b.workers]))
   const [adding, setAdding] = useState(false)
   const [search, setSearch] = useState('')
-  const balance = new Map(balances.data?.map((b) => [b.party_id, b]))
-  const companyLevel = balances.data?.[0]?.company_level ?? false
+  const balance = new Map<string, { balance_paisa: number }>(crewView ? crewBalances.data?.map((b) => [b.crew_id, b]) : partyBalances.data?.map((b) => [b.party_id, b]))
+  const companyLevel = crewView || (partyBalances.data?.[0]?.company_level ?? false)
   const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
   const q = search.trim().toLowerCase()
   const list = rows.data?.filter((r) => !q || r.name.toLowerCase().includes(q) || (subtitleOf(kind, r, code) ?? '').toLowerCase().includes(q))
@@ -70,7 +83,10 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
         subtitle={auth.canSeeFinance && balances.data ? <>Total: <BalanceText paisa={total} /></> : undefined}
         actions={canAdd && !adding && <Button variant="tonal" onClick={() => setAdding(true)}>Add {PARTY[kind].one.toLowerCase()}</Button>}
       />
-      {adding && <PartyForm kind={kind} onDone={() => setAdding(false)} />}
+      {(kind === 'crew' || kind === 'worker') && auth.company.labour_mode === 'attendance' && <LabourLists current={kind} />}
+      {adding && (kind === 'worker'
+        ? <Card title="New worker" className="mb-4"><WorkerForm onDone={() => setAdding(false)} /></Card>
+        : <PartyForm kind={kind} onDone={() => setAdding(false)} />)}
       {auth.canSeeFinance && !companyLevel && balances.data && (
         <p className="mb-3 text-xs text-subtle">Balances include only the projects you are assigned to.</p>
       )}
@@ -89,6 +105,8 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
       {rows.data?.length === 0 && <EmptyState title={`No ${PARTY[kind].many.toLowerCase()} yet`}>{EMPTY[kind]}</EmptyState>}
       {kind === 'payee' && list && list.length > 0 ? (
         <PayeeTable rows={list} balance={(id) => balance.get(id)?.balance_paisa} showBalance={auth.canSeeFinance && !!balances.data} />
+      ) : kind === 'worker' && list && list.length > 0 ? (
+        <WorkerTable rows={list} balance={(id) => balance.get(id)?.balance_paisa} showBalance={auth.canSeeFinance && !!balances.data} />
       ) : (
       <ul className="grid gap-3 sm:grid-cols-2">
         {list?.map((r) => {
@@ -101,7 +119,7 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
                   <div className="min-w-0 font-semibold break-words text-ink">{r.name}</div>
                   {!r.active && <Badge>{r.promoted_supplier_id ? 'Now a supplier' : 'Inactive'}</Badge>}
                 </div>
-                {sub && <div className="mt-1 text-sm text-subtle">{sub}</div>}
+                {sub && <div className="mt-1 text-sm text-subtle">{crewView && workerCount.has(r.id) ? `${sub} · ${workerCount.get(r.id)} ${workerCount.get(r.id) === 1 ? 'worker' : 'workers'}` : sub}</div>}
                 {b && auth.canSeeFinance && <div className="mt-2 text-sm"><BalanceText paisa={b.balance_paisa} /></div>}
                 {!auth.canSeeFinance && r.phone && <div className="mt-2 text-sm text-subtle">{r.phone}</div>}
               </Link>
@@ -111,6 +129,67 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
       </ul>
       )}
     </>
+  )
+}
+
+/**
+ * Workers as a table (attendance): name, work, rate, phone and what each is owed, everywhere. On a
+ * phone the work moves under the name and the phone column is dropped.
+ */
+function WorkerTable({ rows, balance, showBalance }: { rows: Row[]; balance: (id: string) => number | undefined; showBalance: boolean }) {
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs text-subtle">
+            <th scope="col" className="px-4 py-2 font-medium">Name</th>
+            <th scope="col" className="hidden py-2 pr-3 font-medium sm:table-cell">Work</th>
+            <th scope="col" className="py-2 pr-3 text-right font-medium">Rate</th>
+            <th scope="col" className="hidden py-2 pr-3 font-medium md:table-cell">Phone</th>
+            {showBalance && <th scope="col" className="py-2 pr-4 text-right font-medium">To pay</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const owed = balance(r.id) ?? 0
+            return (
+              <tr key={r.id} className="border-b border-line align-middle last:border-0 hover:bg-muted">
+                <td className="px-4 py-2">
+                  <Link to={`${PARTY.worker.path}/${r.id}`} className="inline-flex min-h-8 items-center font-medium break-words text-ink hover:underline">{r.name}</Link>
+                  {!r.active && <span className="ml-2"><Badge>Left</Badge></span>}
+                  {r.work_type && <div className="text-xs text-subtle sm:hidden">{r.work_type}</div>}
+                </td>
+                <td className="hidden py-2 pr-3 text-subtle sm:table-cell">{r.work_type}</td>
+                <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">
+                  {r.rate_paisa != null && rateText({ rate_kind: r.rate_kind ?? 'daily', rate_paisa: r.rate_paisa }, formatNPR)}
+                </td>
+                <td className="hidden py-2 pr-3 whitespace-nowrap text-subtle md:table-cell">{r.phone}</td>
+                {showBalance && (
+                  <td className="py-2 pr-4 text-right whitespace-nowrap tabular-nums">
+                    {owed === 0 ? <span className="text-subtle">—</span>
+                      : <span className={owed > 0 ? 'font-semibold text-ink' : 'text-good-ink'}>{formatNPR(Math.abs(owed))}{owed < 0 && ' held'}</span>}
+                  </td>
+                )}
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** Labour crews and workers: two lists of one section, a link each so Back works. */
+function LabourLists({ current }: { current: 'crew' | 'worker' }) {
+  return (
+    <nav aria-label="Labour" className="mb-4 flex w-fit gap-1 rounded-lg bg-muted p-1">
+      {(['crew', 'worker'] as const).map((k) => (
+        <Link key={k} to={PARTY[k].path} aria-current={current === k ? 'page' : undefined}
+          className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-medium ${current === k ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
+          {k === 'crew' ? 'Crews' : 'Workers'}
+        </Link>
+      ))}
+    </nav>
   )
 }
 
@@ -161,10 +240,14 @@ export function PartyForm({ kind, party, onDone }: { kind: PartyKind; party?: Ro
   const auth = useCompany()
   const queryClient = useQueryClient()
   const projects = useProjects(auth.companyId)
+  const current = useCurrentProject()
+  // By attendance, a crew is a project's: its page is where that project's days are marked. A crew
+  // from before, without a project, keeps working (GLOSSARY: Crew).
+  const needsProject = kind === 'crew' && auth.company.labour_mode === 'attendance' && !(party && !party.project_id)
   const [v, setV] = useState({
     name: party?.name ?? '', phone: party?.phone ?? '', contact_person: party?.contact_person ?? '',
     address: party?.address ?? '', pan_vat: party?.pan_vat ?? '', notes: party?.notes ?? '',
-    work_types: party?.work_types?.join(', ') ?? '', project_id: party?.project_id ?? '', kind: party?.kind ?? '',
+    work_types: party?.work_types?.join(', ') ?? '', project_id: party?.project_id ?? (needsProject ? current.project?.id ?? '' : ''), kind: party?.kind ?? '',
     active: party?.active ?? true,
   })
   const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value })
@@ -195,7 +278,7 @@ export function PartyForm({ kind, party, onDone }: { kind: PartyKind; party?: Ro
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    if (v.name.trim()) save.mutate()
+    if (v.name.trim() && (!needsProject || v.project_id)) save.mutate()
   }
 
   const one = PARTY[kind].one
@@ -213,9 +296,9 @@ export function PartyForm({ kind, party, onDone }: { kind: PartyKind; party?: Ro
             </Field>
           )}
           {kind === 'crew' && !party?.is_default && (
-            <Field label="Project" htmlFor="pt-project">
-              <Select id="pt-project" value={v.project_id} onChange={set('project_id')}>
-                <option value="">Any project</option>
+            <Field label="Project" htmlFor="pt-project" hint={needsProject ? 'Its workers\' days are marked on this project.' : undefined}>
+              <Select id="pt-project" value={v.project_id} onChange={set('project_id')} required={needsProject}>
+                {needsProject ? <option value="" disabled>Choose a project</option> : <option value="">Any project</option>}
                 {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>

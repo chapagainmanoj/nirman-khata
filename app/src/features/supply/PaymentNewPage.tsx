@@ -72,7 +72,10 @@ export function PaymentNewPage() {
       allocations: [], settle: {}, extra_project: projectParam, photos: [],
     },
   })
-  const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: 'payment-new' })
+  // A payment started for a named party ("Pay Ram", a bill's "Record payment") keeps its own draft, so
+  // an unsaved payment to someone else is not restored over it; a retry from the same link still is.
+  const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId,
+    formKey: start.id ? `payment-new-${start.kind}-${start.id}` : 'payment-new' })
   const allocations = useFieldArray({ control: form.control, name: 'allocations' })
   const { register, control, watch, setValue, getValues } = form
   const v = watch()
@@ -221,7 +224,8 @@ export function PaymentNewPage() {
               <Field label="Paid to" htmlFor="p-kind">
                 <Select id="p-kind" value={v.party_kind}
                   onChange={(e) => { setValue('party_kind', e.target.value as PartyKind); setValue('party_id', ''); setSettle({}) }}>
-                  {PARTY_KINDS.map((k) => <option key={k} value={k}>{PARTY[k].one}</option>)}
+                  {PARTY_KINDS.filter((k) => k !== 'worker' || auth.company.labour_mode === 'attendance' || v.party_kind === 'worker')
+                    .map((k) => <option key={k} value={k}>{PARTY[k].one}</option>)}
                 </Select>
               </Field>
               <Field label={kindLabel} htmlFor="p-supplier">

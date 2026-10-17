@@ -63,14 +63,16 @@ test('a client payment counts toward the contract, not costs, and can be reverse
   // Not a cost and not money paid out.
   await expect(row(card, 'Spent')).toContainText('Rs. 0')
   await expect(row(card, 'Paid')).toContainText('Rs. 0')
+  await page.screenshot(shots('cr-03-overview'))
+  await page.getByRole('tab', { name: 'Activity' }).click()
   const activity = page.locator('section', { has: page.getByRole('heading', { name: 'Activity' }) })
   await expect(activity.getByRole('link', { name: /Received CR-0001/ })).toContainText('Rs. 1,00,000')
-  await page.screenshot(shots('cr-03-overview'))
+  await page.screenshot(shots('cr-03-activity'))
 
   // Money received is on the project page; the dashboard keeps to spending and what is owed.
   await page.goto('/dashboard')
   await expect(page.getByRole('link', { name: /^To pay/ })).toBeVisible()
-  await page.goto(projectUrl)
+  await page.goto(`${projectUrl}?tab=activity`)
 
   // A bounced cheque: reverse it with a reason; the totals go back.
   await activity.getByRole('link', { name: /Received CR-0001/ }).click()

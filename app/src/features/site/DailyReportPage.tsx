@@ -316,7 +316,7 @@ export function DailyReportPage() {
         {byAttendance && v.project_id && (
           <Card>
             <p className="text-sm text-ink">Labour is marked worker by worker on the attendance roster.</p>
-            <p className="mt-1 text-sm"><Link className="text-slate" to={`/labour/attendance?project=${v.project_id}${v.work_date !== todayKathmandu() ? `&date=${v.work_date}` : ''}`}>Open attendance</Link></p>
+            <p className="mt-1 text-sm"><Link className="text-slate" to={`/labour/crew?project=${v.project_id}${v.work_date !== todayKathmandu() ? `&date=${v.work_date}` : ''}`}>Open attendance</Link></p>
           </Card>
         )}
 

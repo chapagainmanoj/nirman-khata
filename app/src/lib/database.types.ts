@@ -147,14 +147,14 @@ isOneToOne: false
                   ]
                 },"attendance": {
                   Row: {
-                    "amount_paisa": number | null,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"id": string,"labour_cost_id": string | null,"member_id": string,"minutes": number,"project_id": string,"rate_kind": string | null,"rate_paisa": number | null,"time_in": string | null,"time_out": string | null,"updated_at": string,"work_date": string
+                    "amount_paisa": number | null,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"id": string,"labour_cost_id": string | null,"minutes": number,"project_id": string,"rate_kind": string | null,"rate_paisa": number | null,"time_in": string | null,"time_out": string | null,"updated_at": string,"work_date": string,"worker_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa"?: number | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"id"?: string,"labour_cost_id"?: string | null,"member_id": string,"minutes": number,"project_id": string,"rate_kind"?: string | null,"rate_paisa"?: number | null,"time_in"?: string | null,"time_out"?: string | null,"updated_at"?: string,"work_date": string
+                    "amount_paisa"?: number | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"id"?: string,"labour_cost_id"?: string | null,"minutes": number,"project_id": string,"rate_kind"?: string | null,"rate_paisa"?: number | null,"time_in"?: string | null,"time_out"?: string | null,"updated_at"?: string,"work_date": string,"worker_id": string
                   }
                   Update: {
-                    "amount_paisa"?: number | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"id"?: string,"labour_cost_id"?: string | null,"member_id"?: string,"minutes"?: number,"project_id"?: string,"rate_kind"?: string | null,"rate_paisa"?: number | null,"time_in"?: string | null,"time_out"?: string | null,"updated_at"?: string,"work_date"?: string
+                    "amount_paisa"?: number | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"id"?: string,"labour_cost_id"?: string | null,"minutes"?: number,"project_id"?: string,"rate_kind"?: string | null,"rate_paisa"?: number | null,"time_in"?: string | null,"time_out"?: string | null,"updated_at"?: string,"work_date"?: string,"worker_id"?: string
                   }
                   Relationships: [
                     {
@@ -182,16 +182,16 @@ isOneToOne: false
       referencedRelation: "labour_costs"
       referencedColumns: ["company_id","id"]
     },{
-      foreignKeyName: "attendance_company_id_member_id_fkey"
-      columns: ["company_id","member_id"]
-isOneToOne: false
-      referencedRelation: "crew_members"
-      referencedColumns: ["company_id","id"]
-    },{
       foreignKeyName: "attendance_company_id_project_id_fkey"
       columns: ["company_id","project_id"]
 isOneToOne: false
       referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "attendance_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
       referencedColumns: ["company_id","id"]
     }
                   ]
@@ -651,14 +651,14 @@ isOneToOne: false
                   ]
                 },"crew_members": {
                   Row: {
-                    "active": boolean,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"id": string,"name": string,"phone": string | null,"rate_kind": string,"rate_paisa": number,"updated_at": string,"work_type": string | null
+                    "active": boolean,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"id": string,"updated_at": string,"worker_id": string
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"id"?: string,"name": string,"phone"?: string | null,"rate_kind": string,"rate_paisa": number,"updated_at"?: string,"work_type"?: string | null
+                    "active"?: boolean,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"id"?: string,"updated_at"?: string,"worker_id": string
                   }
                   Update: {
-                    "active"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"id"?: string,"name"?: string,"phone"?: string | null,"rate_kind"?: string,"rate_paisa"?: number,"updated_at"?: string,"work_type"?: string | null
+                    "active"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"id"?: string,"updated_at"?: string,"worker_id"?: string
                   }
                   Relationships: [
                     {
@@ -673,6 +673,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "companies"
       referencedColumns: ["id"]
+    },{
+      foreignKeyName: "crew_members_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"crews": {
@@ -957,14 +963,14 @@ isOneToOne: false
                   ]
                 },"labour_costs": {
                   Row: {
-                    "amount_paisa": number,"batch_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"daily_report_id": string | null,"description": string | null,"headcount": number | null,"heading_id": string,"id": string,"person_days": number | null,"posted_at": string,"project_id": string,"rate_paisa": number | null,"status": Database["public"]['Enums']["doc_status"],"updated_at": string,"work_date": string,"work_type": string | null
+                    "amount_paisa": number,"batch_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string,"daily_report_id": string | null,"description": string | null,"headcount": number | null,"heading_id": string,"id": string,"person_days": number | null,"posted_at": string,"project_id": string,"rate_paisa": number | null,"status": Database["public"]['Enums']["doc_status"],"updated_at": string,"work_date": string,"work_type": string | null,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa": number,"batch_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"daily_report_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id": string,"id": string,"person_days"?: number | null,"posted_at"?: string,"project_id": string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date": string,"work_type"?: string | null
+                    "amount_paisa": number,"batch_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id": string,"daily_report_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id": string,"id": string,"person_days"?: number | null,"posted_at"?: string,"project_id": string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date": string,"work_type"?: string | null,"worker_id"?: string | null
                   }
                   Update: {
-                    "amount_paisa"?: number,"batch_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"daily_report_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string,"id"?: string,"person_days"?: number | null,"posted_at"?: string,"project_id"?: string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date"?: string,"work_type"?: string | null
+                    "amount_paisa"?: number,"batch_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string,"daily_report_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string,"id"?: string,"person_days"?: number | null,"posted_at"?: string,"project_id"?: string,"rate_paisa"?: number | null,"status"?: Database["public"]['Enums']["doc_status"],"updated_at"?: string,"work_date"?: string,"work_type"?: string | null,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1003,18 +1009,24 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "projects"
       referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "labour_costs_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"ledger_entries": {
                   Row: {
-                    "balance_paisa": number,"business_date": string,"cash_paisa": number,"company_id": string,"component_key": string,"cost_paisa": number,"crew_id": string | null,"event_id": string,"event_type": string,"heading_id": string | null,"id": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"project_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null
+                    "balance_paisa": number,"business_date": string,"cash_paisa": number,"company_id": string,"component_key": string,"cost_paisa": number,"crew_id": string | null,"event_id": string,"event_type": string,"heading_id": string | null,"id": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"project_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "balance_paisa"?: number,"business_date": string,"cash_paisa"?: number,"company_id": string,"component_key": string,"cost_paisa"?: number,"crew_id"?: string | null,"event_id": string,"event_type": string,"heading_id"?: string | null,"id"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at": string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null
+                    "balance_paisa"?: number,"business_date": string,"cash_paisa"?: number,"company_id": string,"component_key": string,"cost_paisa"?: number,"crew_id"?: string | null,"event_id": string,"event_type": string,"heading_id"?: string | null,"id"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at": string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"worker_id"?: string | null
                   }
                   Update: {
-                    "balance_paisa"?: number,"business_date"?: string,"cash_paisa"?: number,"company_id"?: string,"component_key"?: string,"cost_paisa"?: number,"crew_id"?: string | null,"event_id"?: string,"event_type"?: string,"heading_id"?: string | null,"id"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null
+                    "balance_paisa"?: number,"business_date"?: string,"cash_paisa"?: number,"company_id"?: string,"component_key"?: string,"cost_paisa"?: number,"crew_id"?: string | null,"event_id"?: string,"event_type"?: string,"heading_id"?: string | null,"id"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1064,6 +1076,12 @@ isOneToOne: false
       columns: ["company_id","supplier_id"]
 isOneToOne: false
       referencedRelation: "suppliers"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "ledger_entries_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
       referencedColumns: ["company_id","id"]
     }
                   ]
@@ -1299,14 +1317,14 @@ isOneToOne: false
                   ]
                 },"party_opening_balances": {
                   Row: {
-                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"cutover_date": string,"id": string,"note": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string
+                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"cutover_date": string,"id": string,"note": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"cutover_date": string,"id"?: string,"note": string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"cutover_date": string,"id"?: string,"note": string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Update: {
-                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"cutover_date"?: string,"id"?: string,"note"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"cutover_date"?: string,"id"?: string,"note"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1338,6 +1356,12 @@ isOneToOne: false
       columns: ["company_id","supplier_id"]
 isOneToOne: false
       referencedRelation: "suppliers"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "party_opening_balances_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
       referencedColumns: ["company_id","id"]
     }
                   ]
@@ -1407,14 +1431,14 @@ isOneToOne: false
                   ]
                 },"payments": {
                   Row: {
-                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"is_peski": boolean,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"payment_date": string,"posted_at": string,"reference": string | null,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string,"work_package_id": string | null
+                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"is_peski": boolean,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"payment_date": string,"posted_at": string,"reference": string | null,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string,"work_package_id": string | null,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"is_peski"?: boolean,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"payment_date": string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null
+                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"is_peski"?: boolean,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"payment_date": string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null,"worker_id"?: string | null
                   }
                   Update: {
-                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"is_peski"?: boolean,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"payment_date"?: string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null
+                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"is_peski"?: boolean,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"payment_date"?: string,"posted_at"?: string,"reference"?: string | null,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"work_package_id"?: string | null,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1453,18 +1477,24 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "work_packages"
       referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "payments_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"posting_events": {
                   Row: {
-                    "allocation_event_id": string | null,"bill_id": string | null,"business_date": string,"charge_id": string | null,"company_id": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"event_type": string,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"op_key": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"refund_id": string | null,"reversal_id": string | null,"reversed_event_ids": (string)[] | null,"source_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null
+                    "allocation_event_id": string | null,"bill_id": string | null,"business_date": string,"charge_id": string | null,"company_id": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"event_type": string,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"op_key": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"refund_id": string | null,"reversal_id": string | null,"reversed_event_ids": (string)[] | null,"source_id": string | null,"subcontractor_id": string | null,"supplier_id": string | null,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date": string,"charge_id"?: string | null,"company_id": string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type": string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null
+                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date": string,"charge_id"?: string | null,"company_id": string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type": string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"worker_id"?: string | null
                   }
                   Update: {
-                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date"?: string,"charge_id"?: string | null,"company_id"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type"?: string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null
+                    "allocation_event_id"?: string | null,"bill_id"?: string | null,"business_date"?: string,"charge_id"?: string | null,"company_id"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"event_type"?: string,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"op_key"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"refund_id"?: string | null,"reversal_id"?: string | null,"reversed_event_ids"?: (string)[] | null,"source_id"?: never,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1587,6 +1617,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "suppliers"
       referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "posting_events_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"profiles": {
@@ -1695,14 +1731,14 @@ isOneToOne: false
                   ]
                 },"refunds": {
                   Row: {
-                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"kind": string,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"project_id": string | null,"reference": string | null,"refund_date": string,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string
+                    "amount_paisa": number,"company_id": string,"created_at": string,"created_by": string | null,"crew_id": string | null,"id": string,"kind": string,"method": Database["public"]['Enums']["payment_method"],"notes": string | null,"number": string,"party_id": string | null,"payee_id": string | null,"posted_at": string,"project_id": string | null,"reference": string | null,"refund_date": string,"status": Database["public"]['Enums']["doc_status"],"subcontractor_id": string | null,"supplier_id": string | null,"updated_at": string,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"kind"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date": string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount_paisa": number,"company_id": string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"kind"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number": string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date": string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Update: {
-                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"kind"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string
+                    "amount_paisa"?: number,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string,"kind"?: string,"method"?: Database["public"]['Enums']["payment_method"],"notes"?: string | null,"number"?: string,"party_id"?: never,"payee_id"?: string | null,"posted_at"?: string,"project_id"?: string | null,"reference"?: string | null,"refund_date"?: string,"status"?: Database["public"]['Enums']["doc_status"],"subcontractor_id"?: string | null,"supplier_id"?: string | null,"updated_at"?: string,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1741,6 +1777,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "suppliers"
       referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "refunds_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"registration_allowlist": {
@@ -1765,14 +1807,14 @@ isOneToOne: false
                   ]
                 },"reversals": {
                   Row: {
-                    "bill_id": string | null,"charge_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"reason": string,"refund_id": string | null,"reversal_date": string,"subcontractor_id": string | null,"supplier_id": string | null,"target_id": string | null
+                    "bill_id": string | null,"charge_id": string | null,"company_id": string,"created_at": string,"created_by": string | null,"credit_id": string | null,"crew_id": string | null,"expense_id": string | null,"id": string,"labour_cost_id": string | null,"opening_balance_id": string | null,"party_id": string | null,"payee_id": string | null,"payment_id": string | null,"posted_at": string,"reason": string,"refund_id": string | null,"reversal_date": string,"subcontractor_id": string | null,"supplier_id": string | null,"target_id": string | null,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason": string,"refund_id"?: string | null,"reversal_date": string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never
+                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id": string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason": string,"refund_id"?: string | null,"reversal_date": string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never,"worker_id"?: string | null
                   }
                   Update: {
-                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason"?: string,"refund_id"?: string | null,"reversal_date"?: string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never
+                    "bill_id"?: string | null,"charge_id"?: string | null,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"credit_id"?: string | null,"crew_id"?: string | null,"expense_id"?: string | null,"id"?: string,"labour_cost_id"?: string | null,"opening_balance_id"?: string | null,"party_id"?: never,"payee_id"?: string | null,"payment_id"?: string | null,"posted_at"?: string,"reason"?: string,"refund_id"?: string | null,"reversal_date"?: string,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"target_id"?: never,"worker_id"?: string | null
                   }
                   Relationships: [
                     {
@@ -1882,6 +1924,12 @@ isOneToOne: false
       columns: ["company_id","supplier_id"]
 isOneToOne: false
       referencedRelation: "suppliers"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "reversals_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
       referencedColumns: ["company_id","id"]
     }
                   ]
@@ -2337,6 +2385,26 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"workers": {
+                  Row: {
+                    "active": boolean,"company_id": string,"created_at": string,"created_by": string | null,"id": string,"name": string,"notes": string | null,"phone": string | null,"rate_kind": string,"rate_paisa": number,"updated_at": string,"work_type": string | null
+                  }
+                  ComputedFields: never
+                  Insert: {
+                    "active"?: boolean,"company_id": string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name": string,"notes"?: string | null,"phone"?: string | null,"rate_kind": string,"rate_paisa": number,"updated_at"?: string,"work_type"?: string | null
+                  }
+                  Update: {
+                    "active"?: boolean,"company_id"?: string,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"phone"?: string | null,"rate_kind"?: string,"rate_paisa"?: number,"updated_at"?: string,"work_type"?: string | null
+                  }
+                  Relationships: [
+                    {
+      foreignKeyName: "workers_company_id_fkey"
+      columns: ["company_id"]
+isOneToOne: false
+      referencedRelation: "companies"
+      referencedColumns: ["id"]
+    }
+                  ]
                 }
           }
           Views: {
@@ -2476,14 +2544,14 @@ isOneToOne: false
                   ]
                 },"labour_cost_summaries": {
                   Row: {
-                    "amount_paisa": number | null,"batch_id": string | null,"company_id": string | null,"created_at": string | null,"created_by": string | null,"crew_id": string | null,"description": string | null,"headcount": number | null,"heading_id": string | null,"id": string | null,"person_days": number | null,"posted_at": string | null,"project_id": string | null,"rate_paisa": number | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"work_date": string | null,"work_type": string | null
+                    "amount_paisa": number | null,"batch_id": string | null,"company_id": string | null,"created_at": string | null,"created_by": string | null,"crew_id": string | null,"description": string | null,"headcount": number | null,"heading_id": string | null,"id": string | null,"person_days": number | null,"posted_at": string | null,"project_id": string | null,"rate_paisa": number | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"work_date": string | null,"work_type": string | null,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                           "amount_paisa"?: number | null,"batch_id"?: string | null,"company_id"?: string | null,"created_at"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string | null,"id"?: string | null,"person_days"?: number | null,"posted_at"?: string | null,"project_id"?: string | null,"rate_paisa"?: number | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"work_date"?: string | null,"work_type"?: string | null
+                           "amount_paisa"?: number | null,"batch_id"?: string | null,"company_id"?: string | null,"created_at"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string | null,"id"?: string | null,"person_days"?: number | null,"posted_at"?: string | null,"project_id"?: string | null,"rate_paisa"?: number | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"work_date"?: string | null,"work_type"?: string | null,"worker_id"?: string | null
                          }
                         Update: {
-                           "amount_paisa"?: number | null,"batch_id"?: string | null,"company_id"?: string | null,"created_at"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string | null,"id"?: string | null,"person_days"?: number | null,"posted_at"?: string | null,"project_id"?: string | null,"rate_paisa"?: number | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"work_date"?: string | null,"work_type"?: string | null
+                           "amount_paisa"?: number | null,"batch_id"?: string | null,"company_id"?: string | null,"created_at"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"description"?: string | null,"headcount"?: number | null,"heading_id"?: string | null,"id"?: string | null,"person_days"?: number | null,"posted_at"?: string | null,"project_id"?: string | null,"rate_paisa"?: number | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"work_date"?: string | null,"work_type"?: string | null,"worker_id"?: string | null
                          }
                         Relationships: [
                     {
@@ -2515,6 +2583,12 @@ isOneToOne: false
       columns: ["company_id","project_id"]
 isOneToOne: false
       referencedRelation: "projects"
+      referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "labour_costs_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
       referencedColumns: ["company_id","id"]
     }
                   ]
@@ -2578,14 +2652,14 @@ isOneToOne: false
                   ]
                 },"payment_summaries": {
                   Row: {
-                    "allocated_paisa": number | null,"amount_paisa": number | null,"company_id": string | null,"created_by": string | null,"crew_id": string | null,"id": string | null,"is_peski": boolean | null,"method": Database["public"]['Enums']["payment_method"] | null,"notes": string | null,"number": string | null,"paid_for": string | null,"party_id": string | null,"payee_id": string | null,"payment_date": string | null,"posted_at": string | null,"project_ids": (string)[] | null,"reference": string | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"subcontractor_id": string | null,"supplier_id": string | null,"work_package_id": string | null
+                    "allocated_paisa": number | null,"amount_paisa": number | null,"company_id": string | null,"created_by": string | null,"crew_id": string | null,"id": string | null,"is_peski": boolean | null,"method": Database["public"]['Enums']["payment_method"] | null,"notes": string | null,"number": string | null,"paid_for": string | null,"party_id": string | null,"payee_id": string | null,"payment_date": string | null,"posted_at": string | null,"project_ids": (string)[] | null,"reference": string | null,"settled_paisa": number | null,"status": Database["public"]['Enums']["doc_status"] | null,"subcontractor_id": string | null,"supplier_id": string | null,"work_package_id": string | null,"worker_id": string | null
                   }
                   ComputedFields: never
                   Insert: {
-                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"is_peski"?: boolean | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"paid_for"?: never,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
+                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"is_peski"?: boolean | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"paid_for"?: never,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null,"worker_id"?: string | null
                          }
                         Update: {
-                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"is_peski"?: boolean | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"paid_for"?: never,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null
+                           "allocated_paisa"?: never,"amount_paisa"?: number | null,"company_id"?: string | null,"created_by"?: string | null,"crew_id"?: string | null,"id"?: string | null,"is_peski"?: boolean | null,"method"?: Database["public"]['Enums']["payment_method"] | null,"notes"?: string | null,"number"?: string | null,"paid_for"?: never,"party_id"?: string | null,"payee_id"?: string | null,"payment_date"?: string | null,"posted_at"?: string | null,"project_ids"?: never,"reference"?: string | null,"settled_paisa"?: never,"status"?: Database["public"]['Enums']["doc_status"] | null,"subcontractor_id"?: string | null,"supplier_id"?: string | null,"work_package_id"?: string | null,"worker_id"?: string | null
                          }
                         Relationships: [
                     {
@@ -2624,6 +2698,12 @@ isOneToOne: false
 isOneToOne: false
       referencedRelation: "work_packages"
       referencedColumns: ["company_id","id"]
+    },{
+      foreignKeyName: "payments_company_id_worker_id_fkey"
+      columns: ["company_id","worker_id"]
+isOneToOne: false
+      referencedRelation: "workers"
+      referencedColumns: ["company_id","id"]
     }
                   ]
                 },"slip_summaries": {
@@ -2661,6 +2741,9 @@ isOneToOne: false
 "add_contract_revision":
 { Args: { "p_amount_paisa": number,"p_effective_date": string,"p_project": string,"p_reason": string }; Returns: string
                            },
+"add_crew_worker":
+{ Args: { "p_crew": string,"p_worker": Json }; Returns: string
+                           },
 "add_progress_update":
 { Args: { "p_update": Json }; Returns: Json
                            },
@@ -2677,7 +2760,7 @@ isOneToOne: false
                            },
 "attendance_day":
 { Args: { "p_date": string,"p_project": string }; Returns: {
-              "amount_paisa": number,"closed": boolean,"crew_id": string,"member_id": string,"minutes": number,"time_in": string,"time_out": string
+              "amount_paisa": number,"closed": boolean,"crew_id": string,"minutes": number,"time_in": string,"time_out": string,"worker_id": string
             }[]
                            },
 "bill_preview":
@@ -2725,6 +2808,14 @@ isOneToOne: false
                            },
 "create_stages":
 { Args: { "p_names": (string)[],"p_project": string }; Returns: number
+                           },
+"crew_balances":
+{ Args: { "p_as_of"?: string,"p_company": string }; Returns: {
+              "balance_paisa": number,"crew_id": string,"crew_owed_paisa": number,"workers": number,"workers_owed_paisa": number
+            }[]
+                           },
+"crew_month":
+{ Args: { "p_crew": string,"p_from": string,"p_to": string }; Returns: Json
                            },
 "decide_slip":
 { Args: { "p_approve": boolean,"p_reason"?: string,"p_slip": string }; Returns: Database["public"]['Enums']["slip_status"]
@@ -2884,7 +2975,7 @@ isOneToOne: false
                            },
 "report_labour":
 { Args: { "p_company": string,"p_crew"?: string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
-              "amount_paisa": number,"crew": string,"crew_id": string,"daily_report_id": string,"headcount": number,"labour_cost_id": string,"paid_paisa": number,"person_days": number,"project_id": string,"reversed_on": string,"work_date": string,"work_type": string
+              "amount_paisa": number,"crew": string,"crew_id": string,"daily_report_id": string,"headcount": number,"labour_cost_id": string,"paid_paisa": number,"person_days": number,"project_id": string,"reversed_on": string,"work_date": string,"work_type": string,"worker": string,"worker_id": string
             }[]
                            },
 "report_material_purchases":
@@ -3004,7 +3095,7 @@ isOneToOne: false
             }[]
                            },
 "worker_month":
-{ Args: { "p_from": string,"p_member": string,"p_to": string }; Returns: Json
+{ Args: { "p_from": string,"p_to": string,"p_worker": string }; Returns: Json
                            }
           }
           Enums: {

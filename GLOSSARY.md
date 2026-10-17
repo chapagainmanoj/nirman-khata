@@ -11,13 +11,13 @@ What a person sees when no project is chosen in Working on: lists show every pro
 - **Aliases to avoid:** "No project chosen", "No project (see everything)".
 
 ## Attendance (Hajiri)
-One Crew Member's time on one project on one work date: in, out and minutes worked. Used only when the company setting "Labour by" is Attendance; the default, Day total, records one amount per crew per day instead.
+One Worker's time on one project on one work date: in, out and minutes worked. Used only when the company setting "Labour by" is Attendance; the default, Day total, records one amount per crew per day instead.
 
 - **Not:** a labour cost. Attendance is priced and turned into a labour cost only when the day is closed (see Close day).
-- **States:** open (can be set, changed or unset) → closed (locked, priced) → open again if that labour cost is reversed.
-- **Relations:** belongs to one Crew Member, one project and the Crew owed for that project (which may not be the member's own crew).
-- **In code:** `attendance`; written only by `set_attendance` (minutes 0 unsets); `attendance_day`, `project_workers`.
-- **Notes:** A worker can split a day between projects by times that do not overlap, never more than 24 h in total.
+- **States:** open (can be set, changed or unset) → closed (locked, priced) → open again if that labour cost is reversed. Each worker's day closes on its own.
+- **Relations:** belongs to one Worker, one project and the Crew it was marked on (usually the worker's crew on that project).
+- **In code:** `attendance` (`worker_id`); written only by `set_attendance` (minutes 0 unsets) and `split_attendance`; `project_workers`, `crew_month`, `worker_month`. Marked in one place: the Crew's page (`CrewBoard.tsx`), with "Everyone in" for a whole crew's day; the old day roster address `/labour/attendance` redirects there.
+- **Notes:** A worker can split a day between projects by times that do not overlap, never more than 24 h in total. (2026-10-17: one flow. The day roster and the worker's time card were removed: days are entered and seen only on the Crew's page; a Worker's page links to their crews.)
 
 ## Cash payee
 The one built-in Payee per company that an Other Expense on a project is filed under when it is paid now and nobody is named: khaja, fuel, small cash on site. Named "Cash (not named)".
@@ -27,11 +27,11 @@ The one built-in Payee per company that an Other Expense on a project is filed u
 - **Notes:** An unpaid Other Expense must still name who is owed it. Someone without payment rights cannot mark it paid, so always names a payee.
 
 ## Close day
-Turning a crew's open Attendance for a project and a date (or range of dates) into labour costs: one labour cost per work date, owed to that Crew, optionally paid now.
+Turning open Attendance into labour costs: one labour cost per Worker per work date, on the project worked, owed to that Worker, optionally paid now (one payment per worker).
 
 - **Not:** Closed (project).
-- **In code:** `close_labour_day` (the day roster: one crew, one project) and `close_worker_days` (the Time Card: each open crew-day the worker is on, for the crew owed there), both through `private.close_crew_days`, which prices each row (daily rate × minutes ÷ the standard day, or hourly rate × hours) and posts through the same labour writer as day totals.
-- **Notes:** The rate is copied onto each row at close, so a later rate change does not alter past days. Reverse the labour cost to reopen the day. A day always closes for the whole crew, since the labour cost is the crew's: closing one worker's month also closes their crew-mates on those days.
+- **In code:** `close_labour_day` (a crew on a project, a date or range: the crew page's "Close days") and `close_worker_days` (one worker: Pay on the crew page, which closes every open day up to today on that project first), both through `private.close_crew_days`, which prices each row (daily rate × minutes ÷ the standard day, or hourly rate × hours) and posts through the same labour writer as day totals.
+- **Notes:** The rate is copied onto each row at close, so a later rate change does not alter past days. Reverse the labour cost to reopen that worker's day. Days closed before workers became parties (2026-10-17) stay owed to their crew.
 
 ## Closed (project)
 A project whose books are final: work is done (see Completed) and its money has been reconciled. No new financial entries are allowed until an authorized user reopens it.
@@ -65,17 +65,18 @@ What is left of a project's contract after everything the client has paid: contr
 - **Notes:** Client receipts include any TDS or retention the client kept back, so this is less than the cash still to come.
 
 ## Crew
-A lightweight Party for the company's own labour ("Ram's crew", "Site crew"). The crew, never a single worker, is the one owed and paid for labour.
+The group of the company's own labour on one project ("Site crew", "Ram's crew"). With Day total, the crew is the Party owed and paid for labour. With Attendance, the crew's page is where its Workers' days are marked; each Worker is owed and paid on their own, and the crew only groups them.
 
-- **Relations:** usually tied to one project; has many labour costs and payments; with attendance, has many Crew Members.
-- **In code:** `crews`.
+- **Relations:** tied to one project. With Attendance a new crew must choose one, since its page is that project's calendar; with Day total it may be "Any project" (a gang hired on several sites, entered per project). Older crews without a project keep working. Every project gets a "Site crew"; has many Crew Members; labour costs keep their crew for reports.
+- **In code:** `crews`; with attendance the crew page is `labour/CrewBoard.tsx` (`crew_month`).
+- **Notes:** Changed 2026-10-17 (product owner): workers are paid per worker, so the crew stopped being the one paid when the company works by attendance.
 
 ## Crew Member
-A worker listed under a Crew so their Attendance can be marked: a name, the kind of work, and a rate by the day or by the hour.
+A Worker's place on a Crew: which workers are on a project's crew, and whether they still are.
 
-- **Not:** a Party. Members are never paid directly; their days are owed to a Crew.
-- **Relations:** belongs to one Crew at a time. A worker who works a day on another project is owed through that project's crew; a worker who moves for good is moved to the other crew, and earlier days stay with the old one.
-- **In code:** `crew_members` (no delete; set inactive to remove from the crew).
+- **Not:** the Worker. The person, their rate and their khata belong to the Worker; a crew member is only the link.
+- **Relations:** one Worker on one Crew; a worker can be on the crews of several projects. A worker brought in for a day on a crew they are not on is marked there without becoming a member.
+- **In code:** `crew_members` (`crew_id`, `worker_id`, `active`; no delete; set inactive to take them off the crew). Added with `add_crew_worker`.
 
 ## Expense (Kharcha)
 Everyday word for any spending on a project: materials, labour, subcontract work and everything else. Not a record type in the app.
@@ -134,10 +135,10 @@ Money paid to a party beyond what is due, without being agreed as Peski. The par
 - **Notes:** Kept apart from Peski so reports of "peski given" show only agreed advances. Deducting it from later bills is normal practice while work continues. Only what is left at Hisab Milan must come back. Example: Rs. 15,000 Overpayment from finished Project A is deducted from Shree Hardware's next Project B bill.
 
 ## Party
-A supplier, subcontractor, crew or worker the company pays. A party deals with the company as a whole: one account and one balance, never one per project.
+A supplier, subcontractor, crew, worker or payee the company pays. A party deals with the company as a whole: one account and one balance, never one per project.
 
-- **Relations:** has many bills, work charges, payments, Peski and Overpayment across any number of projects.
-- **In code:** "party" in SQL comments and functions; separate tables `suppliers`, `subcontractors`, `crews`, `payees`.
+- **Relations:** has many bills, work charges, labour costs, payments, Peski and Overpayment across any number of projects.
+- **In code:** "party" in SQL comments and functions; separate tables `suppliers`, `subcontractors`, `crews`, `payees`, `workers`; exactly one of their ids on each payment, ledger row and event (`party_id`).
 - **Notes:** Splitting by project is how the company tracks its own costs. Parties never need to see it.
 
 ## Payee
@@ -197,15 +198,6 @@ To match a payment (or Credit) to a specific bill or work charge, so that bill s
 - **In code:** `settlement_events`; "bill settlement status" in `docs/requirements-v1.1.md` §12.
 - **Aliases to avoid:** "settled" for a party or project; say Hisab Milan done or project closed.
 
-## Time Card
-One Crew Member's Attendance for a whole month (BS or AD, as the company shows dates), across every project: a line per day with in, out, hours and a tick.
-
-- **Not:** the day roster, which is one project's crew on one day. Both edit the same Attendance.
-- **Relations:** shows one Crew Member; a day may hold several projects (a split day). Days on projects the user cannot see show only as time taken.
-- **In code:** `TimeCardPage.tsx` at `/labour/worker/:id`; `worker_month`, `split_attendance`, `close_worker_days`.
-- **Notes:** The tick marks a full day on the worker's usual project, the one their Crew belongs to.
-  Splitting a day gives the other project the second half of its hours, inside the same in and out; both projects are saved together or not at all.
-
 ## Tirnu parne / Tireko / Baki
 The three figures in a Party's Khata. **Tirnu parne** (to be paid) is everything that raised what the company owes the party: bills, approved work charges, labour costs, expenses and the opening balance, less Credits and reversals. **Tireko** (paid) is the money paid to them. **Baki** (remaining) is Tirnu parne minus Tireko.
 
@@ -214,6 +206,15 @@ The three figures in a Party's Khata. **Tirnu parne** (to be paid) is everything
 - **In code:** `charged_paisa`, `paid_paisa`, `balance_paisa` (`party_balances`); the Khata report columns `charged`, `paid`, `balance`. UI labels are the Nepali words: the balance card ("Tirnu parne (bills)", "Tireko") and the Khata report columns.
 - **Aliases to avoid:** "Charged" (reads as if the company charged the party), "Bought" (does not fit crews, payees, an opening balance or a reversal), "Jamma/Naam" (the formal bookkeeping words; *jamma* reads as "deposit" in everyday use).
 - **Notes:** Chosen 2026-10-14 because it is how contractors say it out loud ("kati tirnu parne, kati tireko, kati baki"), it never reads backwards, and it matches "Baki / Tirna Baki" in `docs/requirements-v1.1.md` §3.1.
+
+## Worker
+One person in the company's own labour, added once for the company with the kind of work and a rate by the day or by the hour. When the company works by Attendance, a worker is a Party: the days they work are owed to them, they are paid one by one, and they can be given Peski.
+
+- **Not:** a Crew (the group on a project) or a Crew Member (the worker's place on a crew). Not a subcontractor (paid for agreed work, not by the day).
+- **Relations:** on the Crews of one or more projects; has many Attendance rows, labour costs and payments; one Khata across projects.
+- **In code:** `workers` (same ids as the crew members they replaced); `PARTY.worker`, `/workers/:id`; `worker_id` on payments, ledger and labour costs.
+- **Aliases to avoid:** "member", "labourer" in the UI.
+- **Notes:** Product owner, 2026-10-17: a worker is added from Labour crews, put on a project's crew, and "payment is done per worker basis".
 
 ## Working on
 The project a person is working on right now, chosen once in the sidebar or top bar. New records start on it when their link names no project, lists open filtered to it, and Calendar and Reports start on it. Choosing nothing means All projects.

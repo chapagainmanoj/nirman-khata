@@ -1,6 +1,9 @@
-// One subcontractor, crew or payee: call them, balance, khata, payments, matching, and what is
-// particular to the kind (work packages, labour entry). Contact details (and, for a payee,
-// becoming a supplier) are on their own page (PartyInfoPage), linked under the name.
+// One subcontractor, crew, worker or payee: call them, balance, khata, payments, matching, and what
+// is particular to the kind (work packages, labour entry). Contact details (and, for a payee,
+// becoming a supplier) are on their own page (PartyInfoPage), linked under the name. When the
+// company works by attendance, a crew's page is its workers' calendar (CrewBoard); each worker
+// has their own page: the crews they are on (attendance is marked there, and only there), then
+// their khata.
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
@@ -14,8 +17,12 @@ import { rpc } from '../supply/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permissions'
 import { PARTY, partyCrumbs, type PartyKind } from './kinds'
 import { PartyForm, subtitleOf, usePartyRows } from './PartiesPage'
-import { labourPath } from '../labour/api'
-import { MembersCard } from '../labour/MembersCard'
+import { usePartyBalances } from './api'
+import { labourPath, rateText } from '../labour/api'
+import { CrewBoard } from '../labour/CrewBoard'
+import { WorkerCrews } from '../labour/WorkerCrews'
+import { WorkerForm } from '../labour/WorkerForm'
+import { formatNPR } from '../../lib/money'
 import { BalanceCard, ContactRow, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
 
 type Tab = 'khata' | 'payments'
@@ -26,6 +33,11 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   const rows = usePartyRows(kind)
   const projects = useProjects(auth.companyId)
   const [tab, setTab] = useState<Tab>('khata')
+  const byAttendance = auth.company.labour_mode === 'attendance'
+  const board = kind === 'crew' && byAttendance && canEnter(auth)
+  // A crew paid as a crew before workers were paid one by one keeps its khata.
+  const crewMoney = usePartyBalances(auth.companyId, 'crew', board && auth.canSeeFinance).data?.find((b) => b.party_id === partyId)
+  const crewHasMoney = !board || !!crewMoney?.charged_paisa || !!crewMoney?.paid_paisa
 
   if (rows.isPending) return <Spinner />
   if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
@@ -35,7 +47,6 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   }
   const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
   const sub = subtitleOf(kind, r, code)
-  const showMembers = kind === 'crew' && auth.company.labour_mode === 'attendance' && canEnter(auth)
 
   return (
     <>
@@ -48,31 +59,25 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
             {kind === 'subcontractor' && canManageSuppliers(auth) && (
               <ButtonLink variant="secondary" to={`/work/new?subcontractor=${r.id}`}>New work package</ButtonLink>
             )}
-            {kind === 'crew' && canEnter(auth) && (
-              <ButtonLink variant="secondary" to={labourPath(auth.company, { crew: r.id, project: r.project_id })}>
-                {auth.company.labour_mode === 'attendance' ? 'Attendance' : 'Enter labour'}
-              </ButtonLink>
+            {kind === 'crew' && canEnter(auth) && !byAttendance && (
+              <ButtonLink variant="secondary" to={labourPath(auth.company, { crew: r.id, project: r.project_id })}>Enter labour</ButtonLink>
             )}
-            {canRecordPayments(auth) && <ButtonLink to={`/payments/new?${kind}=${r.id}`}>Record payment</ButtonLink>}
+            {canRecordPayments(auth) && crewHasMoney && <ButtonLink to={`/payments/new?${kind}=${r.id}`}>Record payment</ButtonLink>}
           </div>
         }
       />
       <ContactRow phone={r.phone} links={[[`${PARTY[kind].path}/${r.id}/details`, 'Details']]} />
-      {/* Money on the left (it decides what to do next), the crew's members on the right. Each
-          column stacks on its own, so a short card never leaves a hole beside a tall one. */}
-      {(auth.canSeeFinance || showMembers) && (
-        <div className={`grid items-start gap-4 ${auth.canSeeFinance && showMembers ? 'lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]' : ''}`}>
-          {auth.canSeeFinance && (
-            <div className="grid min-w-0 gap-4">
-              <BalanceCard kind={kind} partyId={r.id} />
-              {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
-            </div>
-          )}
-          {showMembers && <div className="grid min-w-0 gap-4"><MembersCard crewId={r.id} projectId={r.project_id ?? null} /></div>}
+      {board && <CrewBoard crewId={r.id} projectId={r.project_id ?? null} />}
+      {kind === 'worker' && byAttendance && canEnter(auth) && <WorkerCrews workerId={r.id} />}
+      {auth.canSeeFinance && crewHasMoney && (
+        <div className={`grid items-start gap-4 ${board ? 'mt-6' : ''}`}>
+          {board && <h2 className="text-base font-semibold text-ink">Paid to the crew before</h2>}
+          <BalanceCard kind={kind} partyId={r.id} />
+          {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
         </div>
       )}
 
-      {auth.canSeeFinance && (
+      {auth.canSeeFinance && crewHasMoney && (
         <Tabs tabs={[['khata', 'Khata'], ['payments', 'Payments']]} value={tab} onChange={setTab} label={`${PARTY[kind].one} records`}>
           {tab === 'khata' && <Khata kind={kind} partyId={r.id} />}
           {tab === 'payments' && <PaymentList kind={kind} partyId={r.id} />}
@@ -97,7 +102,7 @@ export function PartyInfoPage({ kind }: { kind: PartyKind }) {
   const r = rows.data.find((x) => x.id === partyId)
   if (!r) return <PartyNotFound kind={kind} />
   const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
-  const empty = [r.phone, r.notes, 'contact_person' in r && r.contact_person, 'address' in r && r.address, 'pan_vat' in r && r.pan_vat].every((f) => !f)
+  const empty = kind !== 'worker' && [r.phone, r.notes, 'contact_person' in r && r.contact_person, 'address' in r && r.address, 'pan_vat' in r && r.pan_vat].every((f) => !f)
   return (
     <>
       <PageHeader title="Details" crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }]} />
@@ -121,7 +126,12 @@ export function PartyEditPage({ kind }: { kind: PartyKind }) {
     <>
       <PageHeader title={`Edit ${PARTY[kind].one.toLowerCase()}`}
         crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }, { to: details, label: 'Details' }]} />
-      <PartyForm kind={kind} party={r} onDone={() => navigate(details, { replace: true })} />
+      {kind === 'worker' ? (
+        <WorkerForm member={{ ...r, work_type: r.work_type ?? null, rate_kind: r.rate_kind ?? 'daily', rate_paisa: r.rate_paisa ?? 0 }}
+          onDone={() => navigate(details, { replace: true })} />
+      ) : (
+        <PartyForm kind={kind} party={r} onDone={() => navigate(details, { replace: true })} />
+      )}
     </>
   )
 }
@@ -143,6 +153,8 @@ function PartyDetails({ kind, party: r, code, empty, edit }: {
       {kind === 'subcontractor' && <Detail label="Address">{r.address}</Detail>}
       {kind === 'subcontractor' && <Detail label="PAN">{r.pan_vat}</Detail>}
       {kind === 'crew' && <Detail label="Project">{r.project_id ? code(r.project_id) : 'Any project'}</Detail>}
+      {kind === 'worker' && <Detail label="Work">{r.work_type}</Detail>}
+      {kind === 'worker' && r.rate_paisa != null && <Detail label="Rate">{rateText({ rate_kind: r.rate_kind ?? 'daily', rate_paisa: r.rate_paisa }, formatNPR)}</Detail>}
       <Detail label="Notes">{r.notes}</Detail>
       {empty && kind !== 'crew' && <p className="text-sm text-subtle">No contact details yet.</p>}
       {kind === 'payee' && <PromotePayee payeeId={r.id} supplierId={r.promoted_supplier_id ?? null} />}

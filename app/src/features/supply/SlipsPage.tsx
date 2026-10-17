@@ -7,6 +7,7 @@ import { Badge, ButtonLink, EmptyState, ErrorBanner, PageHeader, Spinner } from 
 import { friendlyError } from '../../lib/errors'
 import { ShowMore } from '../../components/ShowMore'
 import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
+import { useListFilters } from '../lists/ListFilters'
 import { useProjectFilter } from '../lists/ProjectFilter'
 import { useProjects } from '../projects/api'
 import { useSlipCount, useSlips } from './api'
@@ -36,7 +37,8 @@ export function SlipsPage() {
   const code = (id: string) => projects.data?.find((p) => p.id === id)?.code
   const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
   const scope = { companyId: auth.companyId, projectId }
-  const slips = useSlips({ ...scope, tab: filter })
+  const search = useListFilters({ placeholder: 'Search slip number or supplier' })
+  const slips = useSlips({ ...scope, ...search.filter, tab: filter })
   const list = slips.data
   const counts = { pending: useSlipCount({ ...scope, tab: 'pending' }).data, draft: useSlipCount({ ...scope, tab: 'draft' }).data }
   const th = 'py-2 pr-3 font-medium'
@@ -46,6 +48,7 @@ export function SlipsPage() {
     <>
       <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/slips/new?project=${recordProject}` : '/slips/new'}>New order slip</ButtonLink>} />
       {chip}
+      {search.bar}
       <div className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="group" aria-label="Show order slips">
         {FILTERS.map(([key, label]) => {
           const n = key === 'pending' || key === 'draft' ? count(key) : 0
@@ -59,7 +62,15 @@ export function SlipsPage() {
       </div>
       {slips.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void slips.refetch()}>{slips.error && friendlyError(slips.error)}</ErrorBanner>
-      {list?.length === 0 && empty(WHAT[filter], (
+      {list?.length === 0 && search.active && (
+        <p className="text-sm text-subtle">
+          No {WHAT[filter]} match.{' '}
+          {/* A search usually means one slip, which may have left this tab already. */}
+          {filter !== 'all' && <button type="button" onClick={() => setFilter('all')} className="font-medium text-slate underline underline-offset-4">Search all order slips</button>}
+          {filter === 'all' && <button type="button" onClick={search.clear} className="font-medium text-slate underline underline-offset-4">Clear search</button>}
+        </p>
+      )}
+      {list?.length === 0 && !search.active && empty(WHAT[filter], (
         <EmptyState title={`No ${WHAT[filter]}`}>{howSlipsGetHere(filter, auth.company.slip_approval_required)}</EmptyState>
       ))}
       {list && list.length > 0 && (
@@ -109,7 +120,8 @@ export function SlipsPage() {
           </table>
         </div>
       )}
-      <ShowMore list={slips} total={filter === 'all' || filter === 'open' ? null : count(filter)} />
+      {/* The tab counts ignore the search, so they are no total for a searched list. */}
+      <ShowMore list={slips} total={filter === 'all' || filter === 'open' || search.active ? null : count(filter)} />
     </>
   )
 }

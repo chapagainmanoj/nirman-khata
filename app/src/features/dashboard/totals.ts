@@ -21,8 +21,6 @@ export function runningTotals(projects: Project[]) {
     spent: running.reduce((s, p) => s + cost(p), 0),
     budget,
     left: budget - spentBudgeted,
-    /** Share of the budget used, for the bar; null with no budget at all. */
-    usedPct: budget ? (spentBudgeted / budget) * 100 : null,
     noBudget: running.filter((p) => !p.budget_paisa).map((p) => p.code),
     /** Where the money went, the same lines as "spent"; null when the amounts are hidden. */
     bySource: running.length && running.every((p) => p.by_source)

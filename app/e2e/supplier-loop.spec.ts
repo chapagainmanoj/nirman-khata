@@ -85,6 +85,8 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.getByRole('link', { name: /Ward 5 school building/ }).click()
   // Delivered but not billed is listed under Spent, not added in.
   await expect(page.getByRole('region', { name: 'Summary' })).toContainText('1 delivered item with no bill yet')
+  // The to-do sits on the Activity tab and opens the project's deliveries.
+  await page.getByRole('tab', { name: 'Activity' }).click()
   await page.getByRole('button', { name: 'Enter bills' }).click()
   await page.getByRole('link', { name: 'Enter bill for this' }).click()
   await expect(page.getByLabel('Quantity')).toHaveValue('60')
@@ -102,6 +104,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByText('Posted', { exact: true })).toBeVisible()
   await expect(page.getByText('Unpaid', { exact: true })).toBeVisible()
   await page.screenshot(shots('m2-06-bill-posted'))
+  const billUrl = page.url()
   // The delivery list now shows it billed, so there is no bill to enter; its page says how much,
   // and a billed delivery cannot be deleted.
   await page.goto('/deliveries')
@@ -109,6 +112,20 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(delivery).toContainText('60 bag')
   await expect(delivery).toContainText('Billed')
   await expect(delivery.getByRole('link', { name: 'Enter bill for this' })).toHaveCount(0)
+  // Search finds the challan by number or supplier; the date filter and a miss show the way back.
+  const search = page.getByRole('searchbox', { name: 'Search' })
+  await search.fill('zz-none')
+  await expect(page.getByText('No deliveries match “zz-none”.')).toBeVisible()
+  await page.getByRole('button', { name: 'Clear search' }).click()
+  await expect(delivery).toBeVisible()
+  await search.fill('shrestha')
+  await expect(delivery).toBeVisible()
+  await page.getByRole('combobox', { name: 'When' }).selectOption('last-month')
+  await expect(page.getByText(/No deliveries match “shrestha” in these dates/)).toBeVisible()
+  await page.getByRole('combobox', { name: 'When' }).selectOption('this-month')
+  await search.fill('CH-501')
+  await expect(delivery).toBeVisible()
+  await expect(page).toHaveURL(/q=CH-501/)
   await page.screenshot(shots('m2-06b-deliveries'))
   await delivery.getByRole('link', { name: 'Shrestha Suppliers' }).click()
   await expect(page.getByRole('heading', { name: 'Challan CH-501' })).toBeVisible()
@@ -116,8 +133,19 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Return items' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0)
   await page.screenshot(shots('m2-06c-delivery'))
+  // Back to the list keeps the search.
   await page.goBack()
-  await page.goBack()
+  await expect(page.getByRole('searchbox', { name: 'Search' })).toHaveValue('CH-501')
+  await expect(delivery).toBeVisible()
+  // Order slips: a search that misses on Open offers All, where a finished slip may be.
+  await page.goto('/slips')
+  await page.getByRole('searchbox', { name: 'Search' }).fill('OS-9999')
+  await expect(page.getByText('No open order slips match.')).toBeVisible()
+  await page.getByRole('button', { name: 'Search all order slips' }).click()
+  await expect(page.getByText('No order slips match.')).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search' }).fill('OS-0001')
+  await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
+  await page.goto(billUrl)
 
   // The supplier page answers what a contractor asks: what is unpaid (and pay it from there), what
   // is still to come, and the supplier's latest rates. Nothing to match yet, so no Match card.

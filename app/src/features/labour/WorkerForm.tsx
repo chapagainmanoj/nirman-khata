@@ -1,24 +1,33 @@
-// Add or edit a crew member: a name and a rate, by the day or by the hour. Members are only for
-// attendance; the crew is still the one paid (GLOSSARY: Crew Member).
+// Add or edit a worker: a name and a rate, by the day or by the hour (GLOSSARY: Worker). With a
+// crew, a new worker is put on it too; without one, they are added to the company only.
 import { useState } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { MoneyInput } from '../../components/MoneyInput'
 import { Button, ErrorBanner, Field, Input, Select } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { WORK_TYPES } from '../../lib/labels'
+import { newId } from '../../lib/ids'
 import { paisaToInput, parseNPR } from '../../lib/money'
-import { useSaveMember } from './api'
+import { useAddCrewWorker, useSaveWorker } from './api'
 
-type Member = { id: string; name: string; work_type: string | null; rate_kind: string; rate_paisa: number; phone: string | null }
+type Editable = { id: string; name: string; work_type: string | null; rate_kind: string; rate_paisa: number; phone: string | null; notes?: string | null; active?: boolean }
 
-export function MemberForm({ crewId, member, onDone }: { crewId: string; member?: Member; onDone: () => void }) {
+export function WorkerForm({ crewId, member, onDone, onAdded }: {
+  crewId?: string; member?: Editable; onDone: () => void; onAdded?: (id: string) => void
+}) {
   const auth = useCompany()
-  const save = useSaveMember()
+  const update = useSaveWorker()
+  const add = useAddCrewWorker()
+  const save = member || !crewId ? update : add
+  // One id per new worker, kept across retries.
+  const [newWorkerId] = useState(newId)
   const [name, setName] = useState(member?.name ?? '')
   const [workType, setWorkType] = useState(member?.work_type ?? 'Jyami')
   const [kind, setKind] = useState<'daily' | 'hourly'>((member?.rate_kind as 'daily' | 'hourly') ?? 'daily')
   const [rate, setRate] = useState(member ? paisaToInput(member.rate_paisa) : '')
   const [phone, setPhone] = useState(member?.phone ?? '')
+  const [notes, setNotes] = useState(member?.notes ?? '')
+  const [active, setActive] = useState(member?.active ?? true)
   const [problem, setProblem] = useState('')
   const id = member?.id ?? 'new'
 
@@ -27,10 +36,16 @@ export function MemberForm({ crewId, member, onDone }: { crewId: string; member?
     const p = !name.trim() ? 'Enter the worker\'s name.' : !paisa || paisa <= 0 ? 'Enter the rate.' : ''
     setProblem(p)
     if (p) return
-    save.mutate(
-      { id: member?.id, companyId: auth.companyId, values: { crew_id: crewId, name: name.trim(), work_type: workType || null, rate_kind: kind, rate_paisa: paisa!, phone: phone.trim() || null } },
-      { onSuccess: onDone },
-    )
+    const values = { name: name.trim(), work_type: workType || null, rate_kind: kind, rate_paisa: paisa!, phone: phone.trim() || null }
+    if (!member && crewId) {
+      // Awaited rather than a mutate callback: refreshed lists can unmount this form before it fires.
+      add.mutateAsync({ crewId, worker: { ...values, id: newWorkerId } }).then((id) => { onAdded?.(id); onDone() }, () => {})
+    } else {
+      update.mutate(
+        { id: member?.id, companyId: auth.companyId, values: member ? { ...values, notes: notes.trim() || null, active } : values },
+        { onSuccess: onDone },
+      )
+    }
   }
 
   return (
@@ -60,6 +75,17 @@ export function MemberForm({ crewId, member, onDone }: { crewId: string; member?
         </Field>
         <Field label="Phone" htmlFor={`mf-phone-${id}`} hint="Optional"><Input id={`mf-phone-${id}`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
       </div>
+      {member && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Notes" htmlFor={`mf-notes-${id}`}><Input id={`mf-notes-${id}`} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+          <Field label="Status" htmlFor={`mf-active-${id}`}>
+            <Select id={`mf-active-${id}`} value={active ? 'yes' : 'no'} onChange={(e) => setActive(e.target.value === 'yes')}>
+              <option value="yes">Working</option>
+              <option value="no">Left (kept in history)</option>
+            </Select>
+          </Field>
+        </div>
+      )}
       <ErrorBanner>{problem || (save.error && friendlyError(save.error))}</ErrorBanner>
       <div className="flex flex-wrap gap-2">
         <Button type="submit" busy={save.isPending}>{member ? 'Save worker' : 'Add worker'}</Button>

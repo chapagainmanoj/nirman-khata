@@ -222,10 +222,10 @@ q -c "update public.companies set labour_mode = 'attendance' where id = '$COMPAN
 PROJECT2=$(q -c "$(as_user "select public.create_project('$COMPANY', 'R2', 'Race project 2', 100000000);")" | tail -1)
 CREW1=$(q -c "select id from public.crews where project_id = '$PROJECT' and is_default")
 CREW2=$(q -c "select id from public.crews where project_id = '$PROJECT2' and is_default")
-WORKER=$(q -c "$(as_user "insert into public.crew_members (company_id, crew_id, name, rate_kind, rate_paisa)
-  values ('$COMPANY', '$CREW1', 'Race Worker', 'daily', 120000) returning id;")" | tail -1)
+WORKER=$(q -c "$(as_user "select public.add_crew_worker('$CREW1', jsonb_build_object('id', gen_random_uuid(),
+  'name', 'Race Worker', 'rate_kind', 'daily', 'rate_paisa', 120000));")" | tail -1)
 mark() { # project, crew
-  echo "select public.set_attendance(jsonb_build_object('project_id', '$1', 'crew_id', '$2', 'member_id', '$WORKER',
+  echo "select public.set_attendance(jsonb_build_object('project_id', '$1', 'crew_id', '$2', 'worker_id', '$WORKER',
     'work_date', '2026-05-04', 'time_in', '08:00', 'time_out', '17:00', 'minutes', 480));"
 }
 race "$(mark "$PROJECT" "$CREW1")" "$(mark "$PROJECT2" "$CREW2")"
@@ -233,17 +233,17 @@ check "Attendance: the first mark succeeds" yes "$(succeeded "$RACE_A")"
 check "Attendance: the concurrent mark on another project is refused" no "$(succeeded "$RACE_B")"
 check "Attendance: refused as an overlap" yes "$(mentions "$RACE_B" attendance_overlap)"
 check "Attendance: the worker has one day, not two" 1 \
-  "$(q -c "select count(*) from public.attendance where member_id = '$WORKER' and work_date = '2026-05-04'")"
+  "$(q -c "select count(*) from public.attendance where worker_id = '$WORKER' and work_date = '2026-05-04'")"
 
 # A split and a change to the same worker's day at the same moment -> the change waits, then sees the split.
 split() { # worker, date, from project, to project, to crew
-  echo "select public.split_attendance(jsonb_build_object('member_id', '$1', 'work_date', '$2',
+  echo "select public.split_attendance(jsonb_build_object('worker_id', '$1', 'work_date', '$2',
     'from_project', '$3', 'to_project', '$4', 'to_crew', '$5'));"
 }
 mark_day() { # worker, date, project, crew, in, out, minutes
   local times="null, 'time_out', null"
   [ -n "$5" ] && times="'$5', 'time_out', '$6'"
-  echo "select public.set_attendance(jsonb_build_object('project_id', '$3', 'crew_id', '$4', 'member_id', '$1',
+  echo "select public.set_attendance(jsonb_build_object('project_id', '$3', 'crew_id', '$4', 'worker_id', '$1',
     'work_date', '$2', 'time_in', $times, 'minutes', $7));"
 }
 q -c "$(as_user "$(mark_day "$WORKER" 2026-05-06 "$PROJECT" "$CREW1" 08:00 17:00 480)")" >/dev/null
@@ -252,24 +252,33 @@ check "Split: the split succeeds" yes "$(succeeded "$RACE_A")"
 check "Split: a full day marked again at the same moment is refused" no "$(succeeded "$RACE_B")"
 check "Split: refused as an overlap with the afternoon" yes "$(mentions "$RACE_B" attendance_overlap)"
 check "Split: the day still adds up to 8 hours" 480 \
-  "$(q -c "select sum(minutes) from public.attendance where member_id = '$WORKER' and work_date = '2026-05-06'")"
+  "$(q -c "select sum(minutes) from public.attendance where worker_id = '$WORKER' and work_date = '2026-05-06'")"
 
 # Two splits between the same two crews in opposite directions at the same moment -> both succeed, no deadlock.
-WORKER2=$(q -c "$(as_user "insert into public.crew_members (company_id, crew_id, name, rate_kind, rate_paisa)
-  values ('$COMPANY', '$CREW2', 'Race Worker 2', 'daily', 120000) returning id;")" | tail -1)
+WORKER2=$(q -c "$(as_user "select public.add_crew_worker('$CREW2', jsonb_build_object('id', gen_random_uuid(),
+  'name', 'Race Worker 2', 'rate_kind', 'daily', 'rate_paisa', 120000));")" | tail -1)
 q -c "$(as_user "$(mark_day "$WORKER" 2026-05-07 "$PROJECT" "$CREW1" 08:00 17:00 480)
   $(mark_day "$WORKER2" 2026-05-07 "$PROJECT2" "$CREW2" 08:00 17:00 480)")" >/dev/null
 race "$(split "$WORKER" 2026-05-07 "$PROJECT" "$PROJECT2" "$CREW2")" "$(split "$WORKER2" 2026-05-07 "$PROJECT2" "$PROJECT" "$CREW1")"
 check "Split: opposite splits both succeed" "yes yes" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
 check "Split: neither hit a deadlock" no "$(mentions "$RACE_A$RACE_B" deadlock)"
 check "Split: each worker has two parts" "2 2" \
-  "$(q -c "select count(*) from public.attendance where member_id = '$WORKER' and work_date = '2026-05-07'") $(q -c "select count(*) from public.attendance where member_id = '$WORKER2' and work_date = '2026-05-07'")"
+  "$(q -c "select count(*) from public.attendance where worker_id = '$WORKER' and work_date = '2026-05-07'") $(q -c "select count(*) from public.attendance where worker_id = '$WORKER2' and work_date = '2026-05-07'")"
 
 # Hours without times on two projects at the same moment -> never more than 24 hours in a day.
 race "$(mark_day "$WORKER" 2026-05-08 "$PROJECT" "$CREW1" "" "" 800)" "$(mark_day "$WORKER" 2026-05-08 "$PROJECT2" "$CREW2" "" "" 800)"
 check "24 h: the first succeeds" yes "$(succeeded "$RACE_A")"
 check "24 h: the concurrent second is refused" no "$(succeeded "$RACE_B")"
 check "24 h: refused as more than 24 hours" yes "$(mentions "$RACE_B" "more than 24 hours")"
+
+# Closing a worker's day while their hours are changed -> the close prices whichever hours won.
+q -c "$(as_user "$(mark_day "$WORKER" 2026-05-09 "$PROJECT" "$CREW1" "" "" 480)")" >/dev/null
+race "select public.close_labour_day(gen_random_uuid(), jsonb_build_object('project_id', '$PROJECT', 'crew_id', '$CREW1', 'from_date', '2026-05-09'));" \
+  "$(mark_day "$WORKER" 2026-05-09 "$PROJECT" "$CREW1" "" "" 240)"
+check "Close: the close succeeds" yes "$(succeeded "$RACE_A")"
+check "Close: the labour cost matches the hours kept" t \
+  "$(q -c "select l.amount_paisa = round(120000 * a.minutes / 480.0) from public.attendance a
+    join public.labour_costs l on l.id = a.labour_cost_id where a.worker_id = '$WORKER' and a.work_date = '2026-05-09'")"
 
 # Closing a project while a bill posts or a client receipt is recorded -> the posting waits and is refused.
 BILL3=$(new_bill)

@@ -1,6 +1,6 @@
 // Contract and budget revision history, plus admin forms to add a revision (req §6).
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
@@ -23,9 +23,15 @@ type Row = {
   lines?: Array<{ heading_id: string; amount_paisa: number }>
 }
 
-export function RevisionsCard({ projectId, members }: { projectId: string; members: Member[] }) {
+/** `scrollTo`: opened from "See changes", so scroll here once the history has loaded (and the page is tall enough). */
+export function RevisionsCard({ projectId, members, scrollTo }: { projectId: string; members: Member[]; scrollTo?: boolean }) {
   const auth = useCompany()
   const revisions = useRevisions(projectId, true)
+  const box = useRef<HTMLDivElement>(null)
+  const loaded = !revisions.isPending
+  useEffect(() => {
+    if (scrollTo && loaded) box.current?.scrollIntoView({ block: 'start' })
+  }, [scrollTo, loaded])
   const headings = useHeadings(auth.companyId)
   const [form, setForm] = useState<'contract' | 'budget' | null>(null)
 
@@ -43,40 +49,42 @@ export function RevisionsCard({ projectId, members }: { projectId: string; membe
   const headingName = (id: string) => headings.data?.find((h) => h.id === id)?.name ?? 'Heading'
 
   return (
-    <Card
-      title={t('project.revisions')}
-      className="lg:col-span-2"
-      actions={auth.isAdmin && !form && (
-        <div className="flex gap-1">
-          <Button variant="ghost" onClick={() => setForm('contract')}>Revise contract</Button>
-          <Button variant="ghost" onClick={() => setForm('budget')}>Revise budget</Button>
-        </div>
-      )}
-    >
-      {form && <RevisionForm kind={form} projectId={projectId} onDone={() => setForm(null)} />}
-      {revisions.isPending && <Spinner />}
-      <ErrorBanner onRetry={() => void revisions.refetch()}>{revisions.error && friendlyError(revisions.error)}</ErrorBanner>
-      <ul>
-        {rows.map((r) => (
-          <li key={r.id} className="border-b border-line py-3 last:border-0">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <Badge tone="neutral">{r.kind}</Badge>
-                <span className="font-semibold text-ink tabular-nums">{formatNPR(r.amount)}</span>
+    <div ref={box} className="scroll-mt-4">
+      <Card
+        title={t('project.revisions')}
+        className="lg:col-span-2"
+        actions={auth.isAdmin && !form && (
+          <div className="flex gap-1">
+            <Button variant="ghost" onClick={() => setForm('contract')}>Revise contract</Button>
+            <Button variant="ghost" onClick={() => setForm('budget')}>Revise budget</Button>
+          </div>
+        )}
+      >
+        {form && <RevisionForm kind={form} projectId={projectId} onDone={() => setForm(null)} />}
+        {revisions.isPending && <Spinner />}
+        <ErrorBanner onRetry={() => void revisions.refetch()}>{revisions.error && friendlyError(revisions.error)}</ErrorBanner>
+        <ul>
+          {rows.map((r) => (
+            <li key={r.id} className="border-b border-line py-3 last:border-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <Badge tone="neutral">{r.kind}</Badge>
+                  <span className="font-semibold text-ink tabular-nums">{formatNPR(r.amount)}</span>
+                </div>
+                <span className="text-sm text-subtle">from <DateText value={r.effective_date} display={auth.dateDisplay} dual /></span>
               </div>
-              <span className="text-sm text-subtle">from <DateText value={r.effective_date} display={auth.dateDisplay} dual /></span>
-            </div>
-            <div className="mt-1 break-words text-sm text-ink">{r.reason}</div>
-            {r.lines && r.lines.length > 0 && (
-              <ul className="mt-1 text-xs text-subtle">
-                {r.lines.map((l) => <li key={l.heading_id}>{headingName(l.heading_id)}: {formatNPR(l.amount_paisa)}</li>)}
-              </ul>
-            )}
-            <div className="mt-1 text-xs text-subtle">By {memberName(members, r.created_by)}</div>
-          </li>
-        ))}
-      </ul>
-    </Card>
+              <div className="mt-1 break-words text-sm text-ink">{r.reason}</div>
+              {r.lines && r.lines.length > 0 && (
+                <ul className="mt-1 text-xs text-subtle">
+                  {r.lines.map((l) => <li key={l.heading_id}>{headingName(l.heading_id)}: {formatNPR(l.amount_paisa)}</li>)}
+                </ul>
+              )}
+              <div className="mt-1 text-xs text-subtle">By {memberName(members, r.created_by)}</div>
+            </li>
+          ))}
+        </ul>
+      </Card>
+    </div>
   )
 }
 

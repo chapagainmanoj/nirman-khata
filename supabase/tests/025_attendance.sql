@@ -1,9 +1,10 @@
--- Attendance (req §14, GLOSSARY: Crew Member, Attendance, Close day): members with hourly or daily
--- rates, in/out per member per day, a worker brought in on another project, and closing a day into
--- one labour cost through the labour writer (ledger, pay now, near-duplicates, reversal).
+-- Attendance (req §14, GLOSSARY: Worker, Crew Member, Attendance, Close day): workers with hourly or
+-- daily rates on a project's crew, in/out per worker per day, a worker brought in on another
+-- project, and closing days into each worker's labour cost through the labour writer (ledger, pay
+-- now, near-duplicates, reversal).
 begin;
 \ir helpers/helpers.psql
-select plan(31);
+select plan(34);
 
 select tests.create_user('owner') as owner \gset
 select tests.create_user('acct') as acct \gset
@@ -25,9 +26,9 @@ select tests.assign(:'co', :'pa', :'viewer');
 select id as crew_a from public.crews where project_id = :'pa' and is_default \gset
 select id as crew_b from public.crews where project_id = :'pb' and is_default \gset
 
-create function tests.mark(p_project uuid, p_crew uuid, p_member uuid, p_date text, p_in text, p_out text, p_minutes int)
+create function tests.mark(p_project uuid, p_crew uuid, p_worker uuid, p_date text, p_in text, p_out text, p_minutes int)
 returns jsonb language sql as $$
-  select public.set_attendance(jsonb_build_object('project_id', p_project, 'crew_id', p_crew, 'member_id', p_member,
+  select public.set_attendance(jsonb_build_object('project_id', p_project, 'crew_id', p_crew, 'worker_id', p_worker,
     'work_date', p_date, 'time_in', p_in, 'time_out', p_out, 'minutes', p_minutes))
 $$;
 create function tests.close(p_project uuid, p_crew uuid, p_from text, p_to text default null, p_pay boolean default false,
@@ -39,21 +40,21 @@ returns jsonb language sql as $$
 $$;
 grant execute on all functions in schema tests to authenticated;
 
--- Members: staff who work on the crew's project add them; others do not see their rates.
+-- Workers: staff who work on the crew's project add them; others do not see their rates.
 select tests.login(:'site');
-insert into public.crew_members (company_id, crew_id, name, work_type, rate_kind, rate_paisa)
-values (:'co', :'crew_a', 'Ram Bahadur', 'Dakarmi', 'daily', 120000) returning id as ram \gset
-insert into public.crew_members (company_id, crew_id, name, work_type, rate_kind, rate_paisa)
-values (:'co', :'crew_a', 'Gopal Rai', 'Helper', 'hourly', 15000) returning id as gopal \gset
-select is((select count(*) from public.crew_members), 2::bigint, 'site staff add workers to their project''s crew');
+select public.add_crew_worker(:'crew_a', jsonb_build_object('id', gen_random_uuid(), 'name', 'Ram Bahadur',
+  'work_type', 'Dakarmi', 'rate_kind', 'daily', 'rate_paisa', 120000)) as ram \gset
+select public.add_crew_worker(:'crew_a', jsonb_build_object('id', gen_random_uuid(), 'name', 'Gopal Rai',
+  'work_type', 'Helper', 'rate_kind', 'hourly', 'rate_paisa', 15000)) as gopal \gset
+select is((select count(*) from public.workers), 2::bigint, 'site staff add workers to their project''s crew');
 select tests.login(:'site2');
-select throws_ok($$insert into public.crew_members (company_id, crew_id, name, rate_kind, rate_paisa)
-  values ('$$ || :'co' || $$', '$$ || :'crew_a' || $$', 'Hari', 'daily', 90000)$$, '42501', null,
+select throws_ok($$select public.add_crew_worker('$$ || :'crew_a' || $$', jsonb_build_object('id', gen_random_uuid(),
+  'name', 'Hari', 'rate_kind', 'daily', 'rate_paisa', 90000))$$, '42501', null,
   'staff of another project cannot add to this crew');
-select is((select count(*) from public.crew_members), 0::bigint, '... and do not see its workers'' rates');
+select is((select count(*) from public.workers), 0::bigint, '... and do not see its workers'' rates');
 select tests.login(:'owner');
-insert into public.crew_members (company_id, crew_id, name, work_type, rate_kind, rate_paisa)
-values (:'co', :'crew_b', 'Bishnu Karki', 'Dakarmi', 'daily', 125000) returning id as bishnu \gset
+select public.add_crew_worker(:'crew_b', jsonb_build_object('id', gen_random_uuid(), 'name', 'Bishnu Karki',
+  'work_type', 'Dakarmi', 'rate_kind', 'daily', 'rate_paisa', 125000)) as bishnu \gset
 
 -- The company still works by day totals: attendance is refused.
 select tests.login(:'site');
@@ -66,7 +67,7 @@ update public.companies set labour_mode = 'attendance' where id = :'co';
 select tests.login(:'site');
 select tests.mark(:'pa', :'crew_a', :'ram', '2026-05-04', '08:00', '12:00', 240);
 select tests.mark(:'pa', :'crew_a', :'gopal', '2026-05-04', '08:00', '18:00', 540);
-select is((select minutes from public.attendance where member_id = :'gopal'), 540, 'in, out and hours are saved');
+select is((select minutes from public.attendance where worker_id = :'gopal'), 540, 'in, out and hours are saved');
 select throws_ok($$select tests.mark('$$ || :'pa' || $$', '$$ || :'crew_a' || $$', '$$ || :'gopal' || $$', '2026-05-04', '17:00', '08:00', 60)$$,
   '23514', null, 'out before in is refused');
 select throws_ok($$select tests.mark('$$ || :'pa' || $$', '$$ || :'crew_a' || $$', '$$ || :'gopal' || $$', '2026-05-04', '08:00', '10:00', 300)$$,
@@ -87,7 +88,7 @@ select throws_like($$select tests.mark('$$ || :'pb' || $$', '$$ || :'crew_b' || 
 select tests.mark(:'pb', :'crew_b', :'ram', '2026-05-04', '13:00', '17:00', 240);
 select is((select count(*) from public.attendance), 1::bigint, 'Lakeside staff see only Lakeside''s rows');
 select tests.logout();
-select is((select count(*) from public.attendance where member_id = :'ram' and work_date = '2026-05-04'), 2::bigint,
+select is((select count(*) from public.attendance where worker_id = :'ram' and work_date = '2026-05-04'), 2::bigint,
   'a day split between two projects is two rows');
 select tests.login(:'site2');
 select throws_ok($$select * from public.project_workers('$$ || :'pa' || $$')$$, '42501', null,
@@ -100,9 +101,13 @@ select throws_ok($$select tests.close('$$ || :'pa' || $$', '$$ || :'crew_a' || $
 select tests.close(:'pa', :'crew_a', '2026-05-04') ->> 'labour_cost_ids' as ids_a \gset
 select tests.logout();
 select is(tests.project_cost(:'pa'), 195000::bigint, 'closing posts the day''s cost to the project');
-select is(tests.ledger(:'crew_a', :'pa', 'balance_paisa'), 195000::bigint, '... owed to the Bhandari crew');
-select results_eq($$select headcount, person_days, amount_paisa from public.labour_costs where project_id = '$$ || :'pa' || $$'$$,
-  $$values (2, 1.63::numeric(8,2), 195000::bigint)$$, 'one labour cost: 2 workers, 1.63 person-days');
+select is(tests.ledger(:'ram', :'pa', 'balance_paisa'), 60000::bigint, '... owed to each worker: Ram 600');
+select is(tests.ledger(:'gopal', :'pa', 'balance_paisa'), 135000::bigint, '... and Gopal 1,350');
+select is(tests.ledger(:'crew_a', :'pa', 'balance_paisa'), 0::bigint, '... not to the crew');
+select results_eq($$select worker_id, headcount, person_days, amount_paisa from public.labour_costs
+    where project_id = '$$ || :'pa' || $$' order by amount_paisa$$,
+  $$values ('$$ || :'ram' || $$'::uuid, 1, 0.50::numeric(8,2), 60000::bigint), ('$$ || :'gopal' || $$'::uuid, 1, 1.13::numeric(8,2), 135000::bigint)$$,
+  'one labour cost per worker for the day, with their share of a day');
 select is((select sum(amount_paisa) from public.attendance where project_id = :'pa'), 195000::numeric,
   'each row keeps its priced amount');
 
@@ -116,11 +121,13 @@ select tests.login(:'owner');
 select tests.close(:'pb', :'crew_b', '2026-05-04', null, true);
 select tests.logout();
 select is(tests.project_cost(:'pb'), 60000::bigint, 'a brought-in worker''s hours cost the project they worked on');
-select is(tests.ledger(:'crew_b', :'pb', 'balance_paisa'), 0::bigint, '... owed to that project''s crew and paid now');
+select is(tests.ledger(:'ram', :'pb', 'balance_paisa'), 0::bigint, '... owed to the worker and paid now');
+select is((select count(*) from public.payments where worker_id = :'ram'), 1::bigint, '... with a payment to the worker');
 
--- Reverse the Bhandari cost: the day opens again and closes again with the change.
+-- Reverse Gopal's cost: his day opens again (Ram's stays closed) and closes again with the change.
 select tests.login(:'acct');
-select public.reverse_cost_entry(gen_random_uuid(), (:'ids_a'::jsonb ->> 0)::uuid, '2026-05-05', 'Gopal left early');
+select public.reverse_cost_entry(gen_random_uuid(),
+  (select id from public.labour_costs where worker_id = :'gopal' and project_id = :'pa'), '2026-05-05', 'Gopal left early');
 select tests.login(:'site');
 select tests.mark(:'pa', :'crew_a', :'gopal', '2026-05-04', '08:00', '12:00', 240);
 select tests.close(:'pa', :'crew_a', '2026-05-04');
@@ -150,7 +157,7 @@ select is((select count(*) from public.attendance where project_id = :'pa'), 5::
 select tests.login(:'viewer');
 select is((select count(*) from public.attendance), 0::bigint, 'a viewer does not');
 select tests.login(:'site');
-select throws_ok($$insert into public.attendance (company_id, project_id, crew_id, member_id, work_date, minutes)
+select throws_ok($$insert into public.attendance (company_id, project_id, crew_id, worker_id, work_date, minutes)
   values ('$$ || :'co' || $$', '$$ || :'pa' || $$', '$$ || :'crew_a' || $$', '$$ || :'ram' || $$', '2026-05-09', 60)$$,
   '42501', null, 'attendance is written only through set_attendance');
 

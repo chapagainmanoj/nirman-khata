@@ -80,11 +80,10 @@ export const HELP_SECTIONS: HelpSection[] = [
     show: (r) => r.labourEnabled && canEnter(r),
     items: [
       'Crew ko Jyala haalne: ek din wa dherai din, din ma kati manche, rate, jamma; aahile tirne wa pachhi.',
-      'Hajiri (attendance, Settings ma on gare): pratyek kaamdar lai Full day, ghanta wa Not here.',
-      'Kaamdar thapne, arko crew bata kaamdar lyaune.',
-      'Close day: din ko Hajiri lai Jyala ma badalne.',
-      'Kaamdar ko Time Card (mahina bhari): din arko project sanga split garne, khulla din close garne.',
-      'Crew ko Workers: naam, phone, kaam, kasari tirne.',
+      'Hajiri (attendance, Settings ma on gare): Labour crews > Workers ma kaamdar ek patak thapne, din wa ghanta ko rate sanga.',
+      'Project ko crew ma kaamdar thapne. Hajiri crew ko page ma matra: baya kaamdar, daya mahina ko calendar.',
+      'Calendar ko din thichne: Full day, Half day, Not here, ghanta; arko project sanga split. "Everyone in" le sabai lai ek patak.',
+      'Close days: Hajiri lai Jyala ma badalne. Pay: pratyek kaamdar lai chhuttai tirne.',
     ],
   },
   {

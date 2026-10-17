@@ -42,8 +42,8 @@ const SupplierInfoPage = page(() => import('./features/supply/SupplierDetailPage
 const SuppliersPage = page(() => import('./features/supply/SuppliersPage'), 'SuppliersPage')
 const ExpenseNewPage = page(() => import('./features/costs/ExpenseNewPage'), 'ExpenseNewPage')
 const LabourNewPage = page(() => import('./features/costs/LabourNewPage'), 'LabourNewPage')
-const AttendancePage = page(() => import('./features/labour/AttendancePage'), 'AttendancePage')
-const TimeCardPage = page(() => import('./features/labour/TimeCardPage'), 'TimeCardPage')
+const TimeCardRedirect = page(() => import('./features/labour/CrewRedirect'), 'TimeCardRedirect')
+const CrewRedirect = page(() => import('./features/labour/CrewRedirect'), 'CrewRedirect')
 const PartiesPage = page(() => import('./features/parties/PartiesPage'), 'PartiesPage')
 const PartyEditPage = page(() => import('./features/parties/PartyDetailPage'), 'PartyEditPage')
 const PartyInfoPage = page(() => import('./features/parties/PartyDetailPage'), 'PartyInfoPage')
@@ -115,6 +115,10 @@ export function App() {
           <Route path="/crews/:partyId" element={<PartyDetailPage key="crew" kind="crew" />} />
           <Route path="/crews/:partyId/details" element={<PartyInfoPage key="crew" kind="crew" />} />
           <Route path="/crews/:partyId/edit" element={<PartyEditPage key="crew" kind="crew" />} />
+          <Route path="/workers" element={<PartiesPage key="worker" kind="worker" />} />
+          <Route path="/workers/:partyId" element={<PartyDetailPage key="worker" kind="worker" />} />
+          <Route path="/workers/:partyId/details" element={<PartyInfoPage key="worker" kind="worker" />} />
+          <Route path="/workers/:partyId/edit" element={<PartyEditPage key="worker" kind="worker" />} />
           <Route path="/payees" element={<PartiesPage key="payee" kind="payee" />} />
           <Route path="/payees/:partyId" element={<PartyDetailPage key="payee" kind="payee" />} />
           <Route path="/payees/:partyId/details" element={<PartyInfoPage key="payee" kind="payee" />} />
@@ -123,8 +127,9 @@ export function App() {
           <Route path="/work/:packageId" element={<WorkPackageDetailPage />} />
           <Route path="/work/:packageId/edit" element={<WorkPackageEditPage />} />
           <Route path="/labour/new" element={<LabourNewPage />} />
-          <Route path="/labour/attendance" element={<AttendancePage />} />
-          <Route path="/labour/worker/:id" element={<TimeCardPage />} />
+          <Route path="/labour/attendance" element={<CrewRedirect />} />
+          <Route path="/labour/crew" element={<CrewRedirect />} />
+          <Route path="/labour/worker/:id" element={<TimeCardRedirect />} />
           <Route path="/expenses/new" element={<ExpenseNewPage />} />
           <Route path="/daily/new" element={<DailyReportPage />} />
           <Route path="/daily/:reportId" element={<ReportDetailPage />} />

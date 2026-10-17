@@ -289,7 +289,7 @@ All are `security_invoker` views or RPC functions.
   crew owed for that project, not necessarily the member's crew. Written only by `set_attendance`
   (checks future dates, the crew fits the project, no overlapping times across projects, ≤ 24 h).
   Readable by anyone who works on the project or sees its money. Rates and day amounts are shown on
-  the roster to those who mark it; the posted `labour_costs` keep the X2 rule (3.5).
+  the crew page to those who mark it; the posted `labour_costs` keep the X2 rule (3.5).
 - `close_labour_day(op_key, {project_id, crew_id, from_date, to_date, pay_now, confirm_duplicate})`:
   locks the crew, prices open rows (rate snapshot), and calls `private.post_labour` with one day per
   work date, so ledger, pay now and near-duplicate checks are shared with day totals. Rows store
@@ -307,6 +307,31 @@ All are `security_invoker` views or RPC functions.
   stay open.
 - The client chooses the crew owed when marking: the crew already on that day, else the member's own
   crew if it may work on the project, else the project's default crew.
+
+### 4.8 Workers (`20261103000100_workers.sql`, revises 4.6 and 4.7)
+- `workers`: company-wide person and rate (`rate_kind`, `rate_paisa`), a fifth party kind. Filled
+  from the old `crew_members` with the same ids. RLS: party managers, staff on a project whose crew
+  they are on (`private.can_edit_worker`), and finance read; party managers insert; editors update.
+- `crew_members` is now only the link (`crew_id`, `worker_id`, `active`, unique per crew).
+  `add_crew_worker(crew, {worker_id} | {id, name, rate…})` adds an existing or new worker to a crew.
+- `attendance.member_id` became `worker_id`. `worker_id` is a party column on `payments`,
+  `party_opening_balances`, `reversals`, `posting_events`, `ledger_entries`, `refunds` (in the
+  generated `party_id` and the exactly-one checks) and on `labour_costs`, whose party is
+  `coalesce(worker_id, crew_id)`; `crew_id` stays for grouping and reports.
+- Closing makes one labour cost per attendance row, owed to its worker, through `post_labour`
+  (`worker_id` in the entry). Locks: `set_attendance` takes the worker `for no key update`; closing
+  takes each worker `for update` in id order (via `lock_party`), so a day cannot change mid-close and
+  closes sharing workers do not deadlock. A worker's day is closed when its own row is; the old
+  "whole crew-day" rule is gone. Near-duplicate: the worker's own posted day, or a day total typed
+  for their crew.
+- `close_worker_days` takes an optional `project_id`, and without `from_date` closes every open day up
+  to `to_date` (Pay on the crew page). Pay now makes one payment per worker per project.
+- `crew_month(crew, from, to)` (≤ 42 days) for the crew page: each worker on the crew (or marked on
+  it in the range) with rows, minutes and, for those who see the project's money, open days priced at
+  the current rate, paid in the range and the posted balance on the project; the company-wide
+  balance only for Accounts/Admin (3.4).
+- Dashboards, reports and the calendar count worker labour as labour (`crew_id or worker_id`);
+  `payable_by_kind.crew` includes workers.
 
 ---
 
