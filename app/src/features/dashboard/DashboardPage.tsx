@@ -82,8 +82,8 @@ export function DashboardPage() {
     })),
     // The action word only for someone who may do it; the database checks again.
     ...(d.counts.slips_to_approve ? [{
-      key: 'approve', text: `${count(d.counts.slips_to_approve, 'slip', 'slips')} waiting for approval`,
-      action: auth.isAdmin || auth.membership?.can_approve_slips ? 'Approve' : 'See slips', to: '/slips',
+      key: 'approve', text: `${count(d.counts.slips_to_approve, 'order slip', 'order slips')} waiting for approval`,
+      action: auth.isAdmin || auth.membership?.can_approve_slips ? 'Approve' : 'See order slips', to: '/slips',
     }] : []),
     ...(d.counts.bills_to_post ? [{
       key: 'post', text: `${count(d.counts.bills_to_post, 'bill', 'bills')} sent to Accounts to post`,
@@ -114,7 +114,7 @@ export function DashboardPage() {
       key: 'unallocated', text: `${formatNPR(d.unallocated_paisa!)} paid but not given to a project yet`,
       action: canRecordPayments(auth) ? 'Assign' : 'See payments', to: '/payments',
     }] : []),
-    ...(d.counts.slips_waiting ? [{ key: 'waiting', text: `${count(d.counts.slips_waiting, 'approved slip', 'approved slips')} still to be delivered`, action: 'See list', to: '/reports/pending' }] : []),
+    ...(d.counts.slips_waiting ? [{ key: 'waiting', text: `${count(d.counts.slips_waiting, 'approved order slip', 'approved order slips')} still to be delivered`, action: 'See list', to: '/reports/pending' }] : []),
   ]
   // A dashboard from before the supplier list came with only the count.
   if (!d.unbilled_by_supplier && d.counts.unbilled_lines) {

@@ -72,10 +72,21 @@ The running account between the company and one Party: every bill, work charge, 
 - **In code:** `ledger_entries`; "Ledger" in UI and `docs/requirements-v1.1.md` §3.1.
 - **Notes:** Regular suppliers simply run on the Khata: they bill, the company pays, and any difference carries forward. Peski belongs to new deals, not to this running account.
 
+## Order Slip (Maag Slip)
+A request to one Supplier for materials, numbered per company (`OS-0012`). Each line names its own project, so one Order Slip can order for several projects. It is shared with the supplier and tracks what has arrived against it.
+
+- **Not:** a Bill or a cost. An Order Slip never creates project cost or anything owed to the supplier; only a posted Bill does.
+- **Not:** a challan (the supplier's delivery note, recorded as a Delivery).
+- **States:** approval: draft → pending approval → approved or rejected (cancelled from any open state); approval off means submit goes straight to approved. Delivery: not received → partly received → fully received, or closed short with a reason.
+- **Relations:** one Supplier; many lines, each for one project; many Deliveries. A Delivery may also come without an Order Slip, with a reason.
+- **In code:** `order_slips`, `order_slip_lines`, enum `slip_status`; routes `/slips`; "Material Order Slip" in `docs/requirements-v1.1.md` §9.
+- **Aliases to avoid:** "Slip" on its own in UI and docs, "Demand Slip", "Order" (on its own), "PO".
+- **Notes:** "Order Slip" is the full domain word (product owner, 2026-10-17); a bare "slip" could be any slip on site. Short code names (`slip`, `slipId`, `/slips`) are fine. The phone bottom bar alone says "Slips" for space (`nav.slips.short`).
+
 ## Other Expense
 A project cost recorded directly, without a supplier bill: equipment hire, transport, fuel, khaja, permits, small site purchases. It has one project, one Cost Heading, a date, an amount, a description and a Payee. It counts as project cost when entered, and may be unpaid or paid on the spot.
 
-- **Not:** a supplier Bill (goes through order slip, delivery and posting) or Labour Cost (wages for own crew).
+- **Not:** a supplier Bill (goes through Order Slip, Delivery and posting) or Labour Cost (wages for own crew).
 - **Not:** the "Site Expenses" cost heading. An Other Expense can be filed under any heading (e.g. JCB hire under Equipment), and a Bill line can be filed under Site Expenses.
 - **Relations:** belongs to one project and one heading; owed to one Payee; settled by that payee's payments.
 - **In code:** `expenses` table; `ExpenseNewPage.tsx`; "Enter other expense" in the menu and form. Requirements call it "Other Project Expense" (`docs/requirements-v1.1.md` §15).
@@ -101,7 +112,7 @@ A supplier, subcontractor, crew or worker the company pays. A party deals with t
 ## Payee
 A lightweight Party paid through Other Expenses: name, optional phone and a kind such as JCB owner, transporter or shop. Company-wide and reusable; can be promoted to a Supplier later.
 
-- **Not:** a Supplier, which has order slips, deliveries and bills.
+- **Not:** a Supplier, which has Order Slips, deliveries and bills.
 - **In code:** `payees` table (`promoted_supplier_id` for promotion).
 
 ## Peski (Advance)

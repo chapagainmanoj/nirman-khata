@@ -54,7 +54,7 @@ export function SlipEditPage() {
   if (slipId && existing.error) return <ErrorBanner onRetry={() => void existing.refetch()}>{friendlyError(existing.error)}</ErrorBanner>
   const data = slipId ? existing.data : null
   if (slipId && (!data || !data.perms?.can_edit)) {
-    return <ErrorBanner>This slip cannot be edited.</ErrorBanner>
+    return <ErrorBanner>This order slip cannot be edited.</ErrorBanner>
   }
   const initial: SlipValues | undefined = data
     ? {
@@ -74,7 +74,7 @@ export function SlipEditPage() {
 
 function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }) {
   const crumbs: Crumb[] = initial
-    ? [{ to: '/slips', label: 'Order slips' }, { to: `/slips/${initial.id}`, label: number ?? 'Slip' }]
+    ? [{ to: '/slips', label: 'Order slips' }, { to: `/slips/${initial.id}`, label: number ?? 'Order slip' }]
     : [{ to: '/slips', label: 'Order slips' }]
   const auth = useCompany()
   const navigate = useNavigate()
@@ -193,8 +193,8 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
 
   return (
     <>
-      <PageHeader title={initial ? 'Edit slip' : 'New order slip'} crumbs={crumbs} subtitle="One supplier. Each line says which project it is for." />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved slip.</Notice></div>}
+      <PageHeader title={initial ? 'Edit order slip' : 'New order slip'} crumbs={crumbs} subtitle="One supplier. Each line says which project it is for." />
+      {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved order slip.</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); run(true) }} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">

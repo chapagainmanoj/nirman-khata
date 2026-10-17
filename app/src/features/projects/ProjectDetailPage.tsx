@@ -75,7 +75,7 @@ export function ProjectDetailPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             {canEnter(auth) && <ButtonLink to={`/daily/new?project=${p.id}`}>Daily report</ButtonLink>}
-            {canEnter(auth) && <ButtonLink variant="secondary" to={`/slips/new?project=${p.id}`}>New slip</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant="secondary" to={`/slips/new?project=${p.id}`}>New order slip</ButtonLink>}
             <ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>Calendar</ButtonLink>
           </div>
         }
@@ -98,8 +98,8 @@ export function ProjectDetailPage() {
         {tab === 'deliveries' && (
           <section>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-subtle">Record deliveries from the slip. Use this only for a purchase without one.</p>
-              {canEnter(auth) && <ButtonLink variant="secondary" to={`/deliveries/new?project=${p.id}`}>Delivery without slip</ButtonLink>}
+              <p className="text-sm text-subtle">Record deliveries from the order slip. Use this only for a purchase without one.</p>
+              {canEnter(auth) && <ButtonLink variant="secondary" to={`/deliveries/new?project=${p.id}`}>Delivery without order slip</ButtonLink>}
             </div>
             <DeliveryList filter={{ projectId: p.id }} />
           </section>
@@ -246,7 +246,7 @@ function Activity({ project: p, canEdit, onShowDeliveries }: { project: Tables<'
       : { key: `slip-${s.id}`, title: 'Waiting for delivery', detail: what, to: `/slips/${s.id}` })
   }
   if (waiting.length > ACTIVITY_ROWS) {
-    todo.push({ key: 'more-slips', title: `${plural(waiting.length - ACTIVITY_ROWS, 'more slip')} waiting`, to: '/slips' })
+    todo.push({ key: 'more-slips', title: `${plural(waiting.length - ACTIVITY_ROWS, 'more order slip')} waiting`, to: '/slips' })
   }
   if (unbilledCount > 0 && canEnter(auth)) {
     const estimate = f?.money_visible && f.unbilled_estimate_paisa ? ` · about ${formatNPR(f.unbilled_estimate_paisa)}` : ''

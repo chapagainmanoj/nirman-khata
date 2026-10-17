@@ -309,7 +309,7 @@ function HowYouWorkCard({ company }: { company: Tables<'companies'> }) {
         </div>
         <div className="border-t border-line pt-3">
           <Checkbox label="Order slips need approval" disabled={save.isPending}
-            hint={v.slip_approval_required ? 'A submitted slip waits under "To approve" until someone who may approve it does.' : 'Off: a submitted slip is approved straight away.'}
+            hint={v.slip_approval_required ? 'A submitted order slip waits under "To approve" until someone who may approve it does.' : 'Off: a submitted order slip is approved straight away.'}
             checked={v.slip_approval_required} onChange={(e) => set({ slip_approval_required: e.target.checked })} />
         </div>
         <div className="border-t border-line pt-3">
@@ -419,7 +419,7 @@ function BillsVatCard({ company }: { company: Tables<'companies'> }) {
           </fieldset>
         )}
         <Field label="Rate difference warning" htmlFor="co-tolerance"
-          hint={`Warn when a bill's rate is more than ${pct}% away from the order slip rate. E.g. slip Rs 850 a bag: a bill above Rs ${example} is flagged.`}>
+          hint={`Warn when a bill's rate is more than ${pct}% away from the order slip rate. E.g. order slip Rs 850 a bag: a bill above Rs ${example} is flagged.`}>
           <div className="flex w-32 items-center gap-2">
             <Input id="co-tolerance" type="number" min={0} step="0.5" value={pct}
               onChange={(e) => set('rate_variance_tolerance_pct', Number(e.target.value))} />

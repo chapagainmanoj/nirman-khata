@@ -57,7 +57,7 @@ test('daily report, progress and calendar on a phone', async ({ page }) => {
   await expect(page.getByRole('link', { name: /Pokhara Cement Traders/ })).toBeVisible()
   await page.goto(`/deliveries/new?project=${projectId}`)
   await page.getByLabel('Supplier').selectOption({ label: 'Pokhara Cement Traders' })
-  await page.getByLabel('Why no slip?').fill('Urgent for the footing')
+  await page.getByLabel('Why no order slip?').fill('Urgent for the footing')
   await page.getByLabel('Material', { exact: true }).selectOption({ label: 'Cement' })
   await page.getByRole('textbox', { name: 'Received', exact: true }).fill('60')
   await page.getByRole('button', { name: 'Save delivery' }).click()

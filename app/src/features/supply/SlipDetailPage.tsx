@@ -42,7 +42,7 @@ export function SlipDetailPage() {
 
   if (slip.isPending) return <Spinner />
   if (slip.error) return <ErrorBanner onRetry={() => void slip.refetch()}>{friendlyError(slip.error)}</ErrorBanner>
-  if (!slip.data) return <EmptyState title="Slip not found"><Link className="text-slate" to="/slips">Back to slips</Link></EmptyState>
+  if (!slip.data) return <EmptyState title="Order slip not found"><Link className="text-slate" to="/slips">Back to order slips</Link></EmptyState>
 
   const { slip: s, lines, perms } = slip.data
   const [statusLabel, statusTone] = SLIP_STATUS[s.status]
@@ -84,7 +84,7 @@ export function SlipDetailPage() {
     ].filter((x): x is string => typeof x === 'string').join('\n')
     const result = await platform.share({ title: `Order slip ${s.number}`, text })
     if (result === 'cancelled') return
-    if (result === 'unsupported') return setShareNote('Sharing is not available on this device. Copy the slip and send it yourself.')
+    if (result === 'unsupported') return setShareNote('Sharing is not available on this device. Copy the order slip and send it yourself.')
     setShareNote(result === 'copied' ? 'Copied. Paste it into WhatsApp or Viber.' : '')
     act.mutate(() => rpc('mark_slip_sent', { p_slip: s.id, p_via: result === 'copied' ? 'copied' : 'share' }))
   }
@@ -110,7 +110,7 @@ export function SlipDetailPage() {
         }
         after={facts && <p className="mt-1 text-sm font-medium text-ink">{facts}</p>}
       />
-      {alreadySent && <div className="mb-4"><Notice>This slip had already been sent; it was not sent twice.</Notice></div>}
+      {alreadySent && <div className="mb-4"><Notice>This order slip had already been sent; it was not sent twice.</Notice></div>}
       {s.status === 'rejected' && s.rejected_reason && <div className="mb-4"><Notice>Rejected: {s.rejected_reason}</Notice></div>}
       {s.closed_short_reason && <div className="mb-4"><Notice>Closed short: {s.closed_short_reason}</Notice></div>}
 
@@ -133,7 +133,7 @@ export function SlipDetailPage() {
           </ConfirmButton>
         )}
         {perms?.can_approve && (
-          <ReasonButton title="Reject this slip" confirmLabel="Reject" variant="danger" busy={act.isPending} error={err}
+          <ReasonButton title="Reject this order slip" confirmLabel="Reject" variant="danger" busy={act.isPending} error={err}
             onConfirm={(reason) => act.mutate(() => rpc('decide_slip', { p_slip: s.id, p_approve: false, p_reason: reason }))}>
             Reject
           </ReasonButton>
@@ -142,14 +142,14 @@ export function SlipDetailPage() {
           <Button variant="ghost" aria-expanded={false} onClick={() => setMoreActions(true)}>More actions</Button>
         )}
         {perms?.can_close_short && moreActions && (
-          <ReasonButton title="Close short" hint="e.g. Supplier out of stock, remaining not needed" confirmLabel="Close slip"
+          <ReasonButton title="Close short" hint="e.g. Supplier out of stock, remaining not needed" confirmLabel="Close order slip"
             busy={act.isPending} error={err}
             onConfirm={(reason) => act.mutate(() => rpc('close_slip_short', { p_slip: s.id, p_reason: reason }))}>
             Close short
           </ReasonButton>
         )}
         {perms?.can_cancel && moreActions && (
-          <ReasonButton title="Cancel this slip" confirmLabel="Cancel slip" variant="danger" busy={act.isPending} error={err}
+          <ReasonButton title="Cancel this order slip" confirmLabel="Cancel order slip" variant="danger" busy={act.isPending} error={err}
             onConfirm={(reason) => act.mutate(() => rpc('cancel_slip', { p_slip: s.id, p_reason: reason }))}>
             Cancel slip
           </ReasonButton>
@@ -193,7 +193,7 @@ export function SlipDetailPage() {
             </ul>
           </Card>
         ))}
-        <Card title="Slip">
+        <Card title="Order slip">
           <Detail label="Requested"><DateText value={s.request_date} display={auth.dateDisplay} dual /></Detail>
           <Detail label="Needed by">{s.required_date && <DateText value={s.required_date} display={auth.dateDisplay} dual />}</Detail>
           <Detail label="Requested by">{memberName(members.data, s.created_by)}</Detail>

@@ -174,7 +174,7 @@ function BarLink({ navKey, active, count }: { navKey: NavKey; active: boolean; c
   return (
     <NavLink to={item.to} aria-current={active ? 'page' : undefined}
       className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium active:bg-muted ${active ? 'font-semibold text-brand' : 'text-subtle'}`}>
-      <Icon />{t(item.label)}
+      <Icon />{t(item.short ?? item.label)}
       {!!count && (
         <span className="absolute top-1 left-1/2 ml-2 min-w-4 rounded-full bg-brand px-1 text-center text-[10px] leading-4 font-bold text-white"
           aria-label={countLabel(navKey, count)}>{count}</span>

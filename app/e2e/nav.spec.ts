@@ -104,12 +104,12 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await expect(shown.getByRole('button', { name: 'P-2 · Private house Pokhara' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
   await switchTo('P-1 · Ward 5 school building')
-  await expect(page.getByText('No slips to approve on P-1 yet.')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'New slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`)
+  await expect(page.getByText('No order slips to approve on P-1 yet.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'New order slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`)
   await shown.getByRole('button', { name: 'All projects' }).click()
   await expect(shown.getByRole('button', { name: 'All projects' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'New slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`) // still the sidebar project
+  await expect(page.getByRole('link', { name: 'New order slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`) // still the sidebar project
   await page.screenshot(shots('nav-04-slips-all-projects'))
   await switchTo('P-2 · Private house Pokhara') // a new current project starts filtered again
   await expect(shown.getByRole('button', { name: 'P-2 · Private house Pokhara' })).toHaveAttribute('aria-pressed', 'true')
@@ -121,12 +121,12 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   const side = page.getByRole('navigation', { name: 'Main' })
   await expect(side.getByLabel('1 to approve')).toBeVisible()
   await page.screenshot(shots('nav-02-desktop-sidebar'))
-  await side.getByRole('link', { name: /Slips/ }).click()
+  await side.getByRole('link', { name: /Order slips/ }).click()
   await page.getByRole('button', { name: 'To approve (1)' }).click()
   await page.getByRole('link', { name: /OS-0001/ }).click()
   // Wait for the slip itself: menus close on navigation, so one opened mid-navigation shuts again.
   await expect(page).toHaveURL(/\/slips\/[0-9a-f-]{36}$/)
-  await expect(side.getByRole('link', { name: /Slips/ })).toHaveAttribute('aria-current', 'page')
+  await expect(side.getByRole('link', { name: /Order slips/ })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('heading', { name: /OS-0001/ })).toBeVisible()
 
   const record = page.getByRole('button', { name: 'Record', exact: true })

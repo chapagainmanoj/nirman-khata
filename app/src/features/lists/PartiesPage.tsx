@@ -4,7 +4,7 @@ import { PageHeader } from '../../components/ui'
 import { PARTY, PARTY_KINDS } from '../parties/kinds'
 
 const HINT: Record<string, string> = {
-  supplier: 'Shops and dealers: slips, deliveries, bills',
+  supplier: 'Shops and dealers: order slips, deliveries, bills',
   subcontractor: 'Thekedars: work packages and claims',
   crew: 'Labour crews: daily and piece-rate wages',
   payee: 'Anyone else paid for site expenses',

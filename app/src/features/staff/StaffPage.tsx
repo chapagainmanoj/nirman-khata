@@ -66,7 +66,7 @@ function PermissionPicker({ value, onChange, roles }: { value: Permissions; onCh
       />
       <Checkbox
         label="Can approve order slips"
-        hint="Project managers need this to approve slips for their projects."
+        hint="Project managers need this to approve order slips for their projects."
         checked={value.can_approve_slips}
         onChange={(e) => onChange({ ...value, can_approve_slips: e.target.checked })}
       />
@@ -193,7 +193,7 @@ function MemberCard({ member: m, isSelf }: { member: Member; isSelf: boolean }) 
             {!m.active && <Badge tone="bad">Inactive</Badge>}
             {m.can_view_finance && <Badge>Sees amounts</Badge>}
             {m.can_record_payments && <Badge>Records payments</Badge>}
-            {m.can_approve_slips && <Badge>Approves slips</Badge>}
+            {m.can_approve_slips && <Badge>Approves order slips</Badge>}
           </div>
         </div>
         {mode === 'view' && (

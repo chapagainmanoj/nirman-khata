@@ -39,7 +39,7 @@ export function NotificationsPage() {
       <PageHeader title="Notifications" />
       {list.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void list.refetch()}>{list.error && friendlyError(list.error)}</ErrorBanner>
-      {list.data?.length === 0 && <EmptyState title="Nothing new">Slip approvals and decisions show up here.</EmptyState>}
+      {list.data?.length === 0 && <EmptyState title="Nothing new">Order slip approvals and decisions show up here.</EmptyState>}
       <ul className="flex flex-col gap-2">
         {list.data?.map((n) => (
           <li key={n.id}>

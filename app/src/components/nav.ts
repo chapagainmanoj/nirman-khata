@@ -25,6 +25,8 @@ export type NavItem = {
   key: NavKey
   to: string
   label: MessageKey
+  /** A shorter label for the phone bottom bar, where space is tight. */
+  short?: MessageKey
   /** Route prefixes that belong to this section, so detail pages light up their parent. */
   match: string[]
 }
@@ -37,7 +39,7 @@ const ITEMS: Record<NavKey, NavItem> = {
   dashboard: { key: 'dashboard', to: '/dashboard', label: 'nav.dashboard', match: ['/dashboard'] },
   projects: { key: 'projects', to: '/projects', label: 'nav.projects', match: ['/projects', '/labour', '/expenses', '/daily'] },
   calendar: { key: 'calendar', to: '/calendar', label: 'nav.calendar', match: ['/calendar'] },
-  slips: { key: 'slips', to: '/slips', label: 'nav.slips', match: ['/slips'] },
+  slips: { key: 'slips', to: '/slips', label: 'nav.slips', short: 'nav.slips.short', match: ['/slips'] },
   deliveries: { key: 'deliveries', to: '/deliveries', label: 'nav.deliveries', match: ['/deliveries'] },
   reports: { key: 'reports', to: '/reports', label: 'nav.reports', match: ['/reports'] },
   bills: { key: 'bills', to: '/bills', label: 'nav.bills', match: ['/bills'] },
