@@ -18,11 +18,7 @@ export type NavRole = {
 }
 
 export type NavKey =
-<<<<<<< HEAD
-  | 'dashboard' | 'projects' | 'calendar' | 'slips' | 'deliveries' | 'reports' | 'bills' | 'payments' | 'parties'
-=======
   | 'dashboard' | 'projects' | 'calendar' | 'slips' | 'deliveries' | 'reports' | 'bills' | 'payments' | 'expenses' | 'parties'
->>>>>>> develop
   | 'suppliers' | 'subcontractors' | 'crews' | 'payees' | 'staff' | 'catalog' | 'settings'
 
 export type NavItem = {
@@ -49,14 +45,6 @@ const ITEMS: Record<NavKey, NavItem> = {
   reports: { key: 'reports', to: '/reports', label: 'nav.reports', match: ['/reports'] },
   bills: { key: 'bills', to: '/bills', label: 'nav.bills', match: ['/bills'] },
   payments: { key: 'payments', to: '/payments', label: 'nav.payments', match: ['/payments'] },
-<<<<<<< HEAD
-  // The hub of the four kinds: the tablet strip's single link and the breadcrumbs' first step.
-  parties: { key: 'parties', to: '/parties', label: 'nav.parties', match: ['/parties'] },
-  suppliers: { key: 'suppliers', to: '/suppliers', label: 'nav.suppliers', match: ['/suppliers'] },
-  subcontractors: { key: 'subcontractors', to: '/subcontractors', label: 'nav.subcontractors', match: ['/subcontractors', '/work'] },
-  crews: { key: 'crews', to: '/crews', label: 'nav.crews', match: ['/crews'] },
-  payees: { key: 'payees', to: '/payees', label: 'nav.payees', match: ['/payees'] },
-=======
   expenses: { key: 'expenses', to: '/expenses', label: 'nav.expenses', match: ['/expenses'] },
   // The hub of the four kinds: the tablet strip's single link and the breadcrumbs' first step.
   parties: { key: 'parties', to: '/parties', label: 'nav.parties', match: ['/parties'] },
@@ -65,7 +53,6 @@ const ITEMS: Record<NavKey, NavItem> = {
   subcontractors: { key: 'subcontractors', to: '/subcontractors', label: 'nav.subcontractors', match: ['/subcontractors', '/work'] },
   crews: { key: 'crews', to: '/crews', label: 'nav.crews', match: ['/crews'] },
   payees: { key: 'payees', to: '/payees', label: 'nav.payees', match: [] },
->>>>>>> develop
   staff: { key: 'staff', to: '/staff', label: 'nav.staff', match: ['/staff'] },
   catalog: { key: 'catalog', to: '/catalog', label: 'nav.catalog', match: ['/catalog'] },
   settings: { key: 'settings', to: '/settings', label: 'nav.settings', match: ['/settings'] },
@@ -91,12 +78,8 @@ export function sectionsFor(r: NavRole): NavGroup[] {
     suppliers: true,
     subcontractors: true,
     crews: r.labourEnabled,
-<<<<<<< HEAD
-    payees: true,
-=======
     // Reached from the Suppliers page instead (product owner, 2026-10-17).
     payees: false,
->>>>>>> develop
     staff: r.isAdmin,
     catalog: true,
     settings: true,
@@ -104,11 +87,7 @@ export function sectionsFor(r: NavRole): NavGroup[] {
   const groups: NavGroup[] = [
     { key: 'dashboard', label: null, items: [ITEMS.dashboard] },
     { key: 'site', label: 'nav.group.site', items: [ITEMS.projects, ITEMS.calendar, ITEMS.slips, ITEMS.deliveries, ITEMS.reports] },
-<<<<<<< HEAD
-    { key: 'money', label: 'nav.group.money', items: [ITEMS.bills, ITEMS.payments] },
-=======
     { key: 'money', label: 'nav.group.money', items: [ITEMS.bills, ITEMS.payments, ITEMS.expenses] },
->>>>>>> develop
     { key: 'parties', label: 'nav.parties', items: [ITEMS.suppliers, ITEMS.subcontractors, ITEMS.crews, ITEMS.payees] },
     { key: 'setup', label: 'nav.group.setup', items: [ITEMS.staff, ITEMS.catalog, ITEMS.settings] },
   ]

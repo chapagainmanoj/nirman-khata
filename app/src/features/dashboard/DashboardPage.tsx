@@ -32,11 +32,7 @@ type Dashboard = {
   unbilled_by_supplier?: Array<{ supplier_id: string; name: string; lines: number; first_item: string; oldest_date: string }>
 }
 
-<<<<<<< HEAD
-const OWED_LABEL = { supplier: 'Suppliers', subcontractor: 'Subcontractors', crew: 'Labour crews', payee: 'Other payees' } as const
-=======
 const OWED_LABEL = { supplier: 'Suppliers', subcontractor: 'Subcontractors', crew: 'Labour crews', payee: 'Other services' } as const
->>>>>>> develop
 
 export function DashboardPage() {
   const auth = useCompany()

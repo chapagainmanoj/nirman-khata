@@ -151,15 +151,12 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await expect(shown.getByRole('button', { name: 'All projects' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: /^To approve/ }).click()
   await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
-<<<<<<< HEAD
-=======
   // "Enter bill" from a supplier's page names no project: a new line starts on Working on (P-1).
   await page.goto('/suppliers')
   await page.getByRole('link', { name: /Shrestha Suppliers/ }).click()
   await page.getByRole('link', { name: 'Enter bill' }).first().click()
   await page.getByRole('button', { name: 'Add material line' }).click()
   await expect(page.locator('#bl0-p')).toHaveValue(p1)
->>>>>>> develop
   await switchTo('P-2 · Private house Pokhara')
   await side.getByRole('link', { name: /Order slips/ }).click()
   await page.getByRole('button', { name: 'To approve (1)' }).click()

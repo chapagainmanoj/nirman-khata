@@ -105,20 +105,6 @@ The running account between the company and one Party: every bill, work charge, 
 
 ## Order Slip (Maag Slip)
 A request to one Supplier for materials, numbered per company (`OS-0012`). Each line names its own project, so one Order Slip can order for several projects. It is shared with the supplier and tracks what has arrived against it.
-<<<<<<< HEAD
-
-- **Not:** a Bill or a cost. An Order Slip never creates project cost or anything owed to the supplier; only a posted Bill does.
-- **Not:** a challan (the supplier's delivery note, recorded as a Delivery).
-- **States:** approval: draft → pending approval → approved or rejected (cancelled from any open state); approval off means submit goes straight to approved. Delivery: not received → partly received → fully received, or closed short with a reason.
-- **Relations:** one Supplier; many lines, each for one project; many Deliveries. A Delivery may also come without an Order Slip, with a reason.
-- **In code:** `order_slips`, `order_slip_lines`, enum `slip_status`; routes `/slips`; "Material Order Slip" in `docs/requirements-v1.1.md` §9.
-- **Aliases to avoid:** "Slip" on its own in UI and docs, "Demand Slip", "Order" (on its own), "PO".
-- **Notes:** "Order Slip" is the full domain word (product owner, 2026-10-17); a bare "slip" could be any slip on site. Short code names (`slip`, `slipId`, `/slips`) are fine. The phone bottom bar alone says "Slips" for space (`nav.slips.short`).
-
-## Other Expense
-A project cost recorded directly, without a supplier bill: equipment hire, transport, fuel, khaja, permits, small site purchases. It has one project, one Cost Heading, a date, an amount, a description and a Payee. It counts as project cost when entered, and may be unpaid or paid on the spot.
-
-=======
 
 - **Not:** a Bill or a cost. An Order Slip never creates project cost or anything owed to the supplier; only a posted Bill does.
 - **Not:** a challan (the supplier's delivery note, recorded as a Delivery).
@@ -131,7 +117,6 @@ A project cost recorded directly, without a supplier bill: equipment hire, trans
 ## Other Expense
 Spending recorded directly, without a supplier bill: equipment hire, transport, fuel, khaja, permits, small purchases. Usually on a project: then it has one project, one Cost Heading, a date, an amount, a description and a Payee, counts as project cost when entered, and may be unpaid or paid on the spot. Without a project it is a Company Expense (record only).
 
->>>>>>> develop
 - **Not:** a supplier Bill (goes through Order Slip, Delivery and posting) or Labour Cost (wages for own crew).
 - **Not:** the "Site Expenses" cost heading. An Other Expense can be filed under any heading (e.g. JCB hire under Equipment), and a Bill line can be filed under Site Expenses.
 - **Relations:** on a project: one project and one heading; owed to one Payee (the Cash payee when paid now with no name); settled by that payee's payments.
@@ -159,13 +144,9 @@ A supplier, subcontractor, crew or worker the company pays. A party deals with t
 A lightweight Party paid through Other Expenses: name, optional phone and a type of service such as JCB owner, tanker or transporter. Company-wide and reusable; can be promoted to a Supplier later. People see it as **Other service**.
 
 - **Not:** a Supplier, which has Order Slips, deliveries and bills.
-<<<<<<< HEAD
-- **In code:** `payees` table (`promoted_supplier_id` for promotion).
-=======
 - **In code:** `payees` table (`promoted_supplier_id` for promotion), routes `/payees`. One is the Cash payee (`is_cash`). UI label "Other service(s)" (`PARTY.payee`, `nav.payees`).
 - **Aliases to avoid:** "Payee" in the UI; "Other payees".
 - **Notes:** Not in the nav (product owner, 2026-10-17): reached from a link at the foot of the Suppliers page, and its pages light up Suppliers. Kept apart from Supplier for now; merging the two (one person, one khata) is a possible later change.
->>>>>>> develop
 
 ## Peski (Advance)
 A partial amount paid upfront to a supplier, subcontractor or worker when booking a service, ordering goods or agreeing a contract, before any bill, charge or wages for it exist. It stays with that party until Farchhyaut deducts it from what they are next owed, before any further cash is paid.

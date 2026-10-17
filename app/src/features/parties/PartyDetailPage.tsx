@@ -175,11 +175,7 @@ function PromotePayee({ payeeId, supplierId }: { payeeId: string; supplierId: st
       <ConfirmButton confirmLabel="Make supplier" onConfirm={() => promote.mutate()} disabled={promote.isPending}>
         Make this a supplier
       </ConfirmButton>
-<<<<<<< HEAD
-      <p className="mt-1 text-xs text-subtle">For a payee you now order from with order slips and bills. Earlier expenses stay with the payee.</p>
-=======
       <p className="mt-1 text-xs text-subtle">Once you order from them with order slips and bills. Earlier expenses stay here.</p>
->>>>>>> develop
       <ErrorBanner>{promote.error && friendlyError(promote.error)}</ErrorBanner>
     </div>
   )
