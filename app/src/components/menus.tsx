@@ -1,4 +1,5 @@
-// Nav menus: "+ Record", the current-project switcher and the account menu.
+// Nav menus: "+ Record", the current-project switcher and the account menu (on desktop also
+// Staff, Catalog and Settings, which are needed only once in a while).
 // Desktop uses a small disclosure panel; the phone "+" opens a bottom sheet (<dialog>, which
 // traps focus and closes on Escape by itself).
 import { useEffect, useId, useRef, useState, type ComponentType, type ReactNode } from 'react'
@@ -9,9 +10,10 @@ import { useCurrentProject } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import { ROLE_LABELS } from '../lib/labels'
 import {
-  BillIcon, ChevronDownIcon, DailyReportIcon, DeliveryIcon, ExpenseIcon, LabourIcon, PaymentIcon, PlusIcon, ReceiptInIcon, SlipIcon,
+  BillIcon, CatalogIcon, ChevronDownIcon, DailyReportIcon, DeliveryIcon, ExpenseIcon, LabourIcon, PaymentIcon, PlatformIcon, PlusIcon, ReceiptInIcon,
+  SettingsIcon, SignOutIcon, SlipIcon, StaffIcon,
 } from './icons'
-import { recordActionsFor, recordHref, sectionsFor, type NavRole, type RecordKey } from './nav'
+import { recordActionsFor, recordHref, sectionsFor, type NavItem, type NavRole, type RecordKey } from './nav'
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
 
@@ -189,7 +191,15 @@ export function ProjectSwitcher({ className, caption = 'always' }: { className?:
  * Company and name; opens to roles and Sign out. `up` (sidebar foot) opens above the button and
  * leads with the person, since the brand above already names the company.
  */
-export function AccountMenu({ className, alignRight, up }: { className?: string; alignRight?: boolean; up?: boolean }) {
+export function AccountMenu({ className, alignRight, up, setup, current }: {
+  className?: string
+  alignRight?: boolean
+  up?: boolean
+  /** Setup sections to list in the menu (desktop sidebar). Settings is the menu's own link. */
+  setup?: NavItem[]
+  /** One of those sections is open: the button shows where you are. */
+  current?: boolean
+}) {
   const auth = useCompany()
   const navigate = useNavigate()
   const roles = auth.membership?.roles.map((r) => ROLE_LABELS[r]).join(', ')
@@ -197,7 +207,7 @@ export function AccountMenu({ className, alignRight, up }: { className?: string;
   return (
     <Disclosure ariaLabel={`${t('nav.account')}: ${auth.company.name}`}
       panelClass={cx(alignRight && 'right-0', up && 'bottom-full mb-1')}
-      buttonClass={cx('flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted', className)}
+      buttonClass={cx('flex min-h-11 w-full min-w-0 items-center gap-2 rounded-lg px-2 text-left hover:bg-muted', current && 'bg-brand-soft', className)}
       label={
         <>
           <span className="min-w-0 flex-1">
@@ -209,16 +219,48 @@ export function AccountMenu({ className, alignRight, up }: { className?: string;
       }>
       {() => (
         <>
-          <div className="border-b border-line px-4 py-2 text-xs text-subtle">{roles}</div>
-          <Link to="/settings" className={cx(rowClass, 'text-sm font-medium text-ink')}>{t('nav.myAccount')}</Link>
-          {isPlatformAdmin && <Link to="/platform" className={cx(rowClass, 'text-sm font-medium text-ink')}>{t('nav.platform')}</Link>}
-          <button type="button" className={cx(rowClass, 'text-sm font-medium text-ink')}
-            onClick={async () => { if (await auth.signOut()) navigate('/login') }}>
-            {t('nav.signOut')}
-          </button>
+          {/* What the button does not already say: the company here, the role on the tablet. */}
+          <div className="px-4 pt-1.5 pb-2">
+            <div className="truncate text-sm font-semibold text-ink">{auth.company.name}</div>
+            {!up && <div className="truncate text-xs text-subtle">{roles}</div>}
+          </div>
+          <MenuGroup>
+            {setup?.filter((i) => i.key !== 'settings').map((i) => (
+              <MenuLink key={i.key} to={i.to} icon={SETUP_ICONS[i.key]}>{t(i.label)}</MenuLink>
+            ))}
+            <MenuLink to="/settings" icon={SettingsIcon}>{t('nav.myAccount')}</MenuLink>
+          </MenuGroup>
+          {isPlatformAdmin && <MenuGroup><MenuLink to="/platform" icon={PlatformIcon}>{t('nav.platform')}</MenuLink></MenuGroup>}
+          <MenuGroup>
+            <button type="button" className={menuRow('text-subtle hover:text-ink')}
+              onClick={async () => { if (await auth.signOut()) navigate('/login') }}>
+              <SignOutIcon size={20} />{t('nav.signOut')}
+            </button>
+          </MenuGroup>
         </>
       )}
     </Disclosure>
+  )
+}
+
+const SETUP_ICONS: Partial<Record<string, ComponentType<{ size?: number }>>> = { staff: StaffIcon, catalog: CatalogIcon }
+
+/** Account menu rows: an icon and a label, shorter with a mouse (like the sidebar). */
+const menuRow = (extra?: string) =>
+  cx('flex min-h-11 w-full items-center gap-3 px-4 text-left text-sm font-medium hover:bg-muted active:bg-line [@media(pointer:fine)]:min-h-9', extra)
+
+function MenuGroup({ children }: { children: ReactNode }) {
+  return <div className="border-t border-line py-1">{children}</div>
+}
+
+function MenuLink({ to, icon: Icon, children }: { to: string; icon?: ComponentType<{ size?: number }>; children: ReactNode }) {
+  const { pathname } = useLocation()
+  const here = pathname === to || pathname.startsWith(`${to}/`)
+  return (
+    <Link to={to} aria-current={here ? 'page' : undefined}
+      className={menuRow(here ? 'bg-brand-soft text-brand-dark' : 'text-ink')}>
+      {Icon && <Icon size={20} />}{children}
+    </Link>
   )
 }
 

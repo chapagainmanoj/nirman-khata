@@ -167,8 +167,19 @@ test.describe('desktop with a mouse', () => {
     // The account menu opens upward from the foot.
     await page.getByRole('button', { name: /^Account:/ }).click()
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeInViewport()
+    // Setup lives in the account menu, not the sidebar.
+    for (const name of ['Staff', 'Catalog', 'Settings']) await expect(page.locator('aside').getByRole('link', { name, exact: true })).toBeVisible()
     await page.screenshot(shots('nav-06-account-up'))
     await page.keyboard.press('Escape')
+    const side = page.getByRole('navigation', { name: 'Main' })
+    await expect(side.getByRole('link', { name: 'Staff', exact: true })).toHaveCount(0)
+    await expect(side.getByRole('link', { name: 'Suppliers' })).toBeVisible()
+
+    // Reports opens from the Dashboard and keeps the Dashboard lit.
+    await page.goto('/dashboard')
+    await page.getByRole('main').getByRole('link', { name: 'Reports' }).click()
+    await expect(page).toHaveURL(/\/reports$/)
+    await expect(side.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
 
     // Forms carry a trail back to where they were started.
     await page.goto('/suppliers')

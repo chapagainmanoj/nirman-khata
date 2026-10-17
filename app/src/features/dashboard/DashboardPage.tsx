@@ -7,7 +7,7 @@ import { type ReactNode, useState } from 'react'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { ArrowRightIcon } from '../../components/icons'
-import { Badge, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
+import { Badge, ButtonLink, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { fiscalYear, fiscalYearRange, formatDate, relativeDay, todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
@@ -123,7 +123,8 @@ export function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" subtitle={`${auth.company.name} · as of ${formatDate(today, auth.dateDisplay)}`} />
+      <PageHeader title="Dashboard" subtitle={`${auth.company.name} · as of ${formatDate(today, auth.dateDisplay)}`}
+        actions={<ButtonLink variant="secondary" to="/reports">Reports</ButtonLink>} />
       <div className="mb-4 flex gap-1 rounded-lg bg-muted p-1 sm:w-fit" role="radiogroup" aria-label="Period">
         {([['month', 'This month'], ['year', 'This fiscal year'], ['all', 'All time']] as const).map(([k, label]) => (
           <button key={k} type="button" role="radio" aria-checked={period === k} onClick={() => setPeriod(k)}

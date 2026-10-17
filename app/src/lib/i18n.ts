@@ -26,7 +26,7 @@ const en = {
   'nav.parties': 'Parties',
   'nav.account': 'Account',
   'nav.home': 'home',
-  'nav.myAccount': 'My account and settings',
+  'nav.myAccount': 'Settings',
   'nav.record': 'Record',
   'nav.group.site': 'Site work',
   'nav.group.money': 'Money',

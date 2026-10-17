@@ -3,8 +3,8 @@
 // Decorative by default (aria-hidden): the text next to an icon names the action.
 import {
   ArrowRight, Banknote, Bell, Building2, CalendarDays, Camera, ChartColumn, Check, ChevronDown, ChevronLeft, ChevronRight,
-  ClipboardList, Ellipsis, HandCoins, Handshake, HardHat, Info, LayoutDashboard, Lock, NotebookPen, Package, Plus, Receipt, Share2,
-  SlidersHorizontal, Trash2, TriangleAlert, Truck, Users, Wallet, type LucideIcon, type LucideProps,
+  ClipboardList, Ellipsis, Hammer, HandCoins, Handshake, HardHat, Info, LayoutDashboard, Lock, LogOut, NotebookPen, Package, Plus, Receipt, Share2, ShieldCheck,
+  SlidersHorizontal, Store, Trash2, TriangleAlert, Truck, Users, Wallet, type LucideIcon, type LucideProps,
 } from 'lucide-react'
 
 export type IconProps = Omit<LucideProps, 'ref'>
@@ -29,11 +29,18 @@ export const PaymentIcon = icon(Banknote, 'PaymentIcon')
 export const ReceiptInIcon = icon(HandCoins, 'ReceiptInIcon')
 /** Suppliers, subcontractors, crews and payees: the people the company deals with. */
 export const PartiesIcon = icon(Handshake, 'PartiesIcon')
+export const SupplierIcon = icon(Store, 'SupplierIcon')
+export const SubcontractorIcon = icon(Hammer, 'SubcontractorIcon')
+/** Same marks as "Enter labour" and "Enter other expense": crews are paid for labour, payees for expenses. */
+export const CrewIcon = icon(HardHat, 'CrewIcon')
+export const PayeeIcon = icon(Wallet, 'PayeeIcon')
 export const StaffIcon = icon(Users, 'StaffIcon')
 export const CatalogIcon = icon(Package, 'CatalogIcon')
 export const SettingsIcon = icon(SlidersHorizontal, 'SettingsIcon')
 export const BellIcon = icon(Bell, 'BellIcon')
 export const MoreIcon = icon(Ellipsis, 'MoreIcon')
+export const PlatformIcon = icon(ShieldCheck, 'PlatformIcon')
+export const SignOutIcon = icon(LogOut, 'SignOutIcon')
 
 // Records ("+ Record")
 export const DailyReportIcon = icon(NotebookPen, 'DailyReportIcon')
