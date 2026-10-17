@@ -138,6 +138,42 @@ export function SourceList({ figures: f }: { figures: ProjectFigures }) {
   return <SourceRows bySource={f.by_source} total={Number(f.cost_paisa) || 0} />
 }
 
+const SOURCE_KINDS = [
+  ['materials', 'Materials', 'bg-bar'], ['subcontract', 'Subcontract', 'bg-bar-2'],
+  ['labour', 'Own labour', 'bg-bar-3'], ['other', 'Other expenses', 'bg-bar-4'],
+] as const
+
+/**
+ * Where the money went, at a glance: one split bar (darkest = the first kind) and a legend of the
+ * kinds that have money; the empty ones share one quiet line. Grey, not coloured: nothing to act on.
+ */
+export function SourceBar({ bySource: s, total }: { bySource: NonNullable<ProjectFigures['by_source']>; total: number }) {
+  if (!total) return <p className="text-sm text-subtle">Nothing spent yet.</p>
+  const kinds = SOURCE_KINDS.map(([k, label, shade]) => ({ k, label, shade, n: Number(s[k]) }))
+  const used = kinds.filter((x) => x.n > 0)
+  const empty = kinds.filter((x) => x.n <= 0)
+  return (
+    <>
+      <span className="flex h-3 gap-px overflow-hidden rounded-full" aria-hidden>
+        {used.map((x) => <span key={x.k} className={x.shade} style={{ width: `${(x.n / total) * 100}%` }} />)}
+      </span>
+      <ul className="mt-3 flex flex-wrap gap-x-6 gap-y-2 text-sm">
+        {used.map((x) => (
+          <li key={x.k} className="flex items-center gap-2">
+            <span className={`size-2.5 shrink-0 rounded-sm ${x.shade}`} aria-hidden />
+            <span className="text-subtle">{x.label}</span>
+            <span className="font-semibold text-ink tabular-nums">{formatNPR(x.n, { whole: true })}</span>
+            <span className="text-xs text-subtle tabular-nums">{percent(x.n, total)}</span>
+          </li>
+        ))}
+      </ul>
+      {empty.length > 0 && (
+        <p className="mt-1.5 text-xs text-subtle">Nothing yet on {empty.map((x) => x.label.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' or $1')}.</p>
+      )}
+    </>
+  )
+}
+
 /** Where the money went: one row per kind of cost, with its share. `whole` drops paisa. */
 export function SourceRows({ bySource: s, total, whole }: {
   bySource: NonNullable<ProjectFigures['by_source']>; total: number; whole?: boolean

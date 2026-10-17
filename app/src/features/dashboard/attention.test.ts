@@ -58,17 +58,17 @@ describe('attentionRows', () => {
 })
 
 describe('foldAttention', () => {
-  it('shows every decision and the first three records', () => {
+  it('shows every decision and folds all the records', () => {
     const fold = foldAttention(attentionRows(busy, can, today))
     expect(fold.decide).toHaveLength(3)
-    expect(fold.record.map((r) => r.key)).toEqual(['unbilled:s1', 'unbilled:s2', 'post'])
-    expect(fold.hidden.map((r) => r.key)).toEqual(['unallocated', 'overpaid:c1', 'waiting'])
+    expect(fold.moreDecide).toHaveLength(0)
+    expect(fold.record.map((r) => r.key)).toEqual(['unbilled:s1', 'unbilled:s2', 'post', 'unallocated', 'overpaid:c1', 'waiting'])
   })
 
   it('caps decisions at five, folding the rest', () => {
     const many = { ...empty, projects: Array.from({ length: 7 }, (_, i) => project(`p${i}`, 500, 400)) }
     const fold = foldAttention(attentionRows(many, can, today))
     expect(fold.decide).toHaveLength(5)
-    expect(fold.hidden).toHaveLength(2)
+    expect(fold.moreDecide).toHaveLength(2)
   })
 })

@@ -30,4 +30,15 @@ describe('runningTotals', () => {
     expect(runningTotals([p('P-1', 'active', 600, null)]).usedPct).toBeNull()
     expect(runningTotals([]).count).toBe(0)
   })
+
+  it('adds up where the money went over the running projects only', () => {
+    const src = (materials: number, labour: number) => ({ materials, subcontract: 0, labour, other: 0 })
+    const t = runningTotals([
+      { ...p('P-1', 'active', 600, 1000), by_source: src(500, 100) },
+      { ...p('P-2', 'on_hold', 100, 500), by_source: src(0, 100) },
+      { ...p('P-3', 'completed', 800, 800), by_source: src(800, 0) },
+    ])
+    expect(t.bySource).toEqual({ materials: 500, subcontract: 0, labour: 200, other: 0 })
+    expect(runningTotals([{ ...p('P-1', 'active', 600, 1000), by_source: null }]).bySource).toBeNull()
+  })
 })

@@ -188,7 +188,7 @@ test.describe('desktop with a mouse', () => {
 
     // Reports opens from the Dashboard and keeps the Dashboard lit.
     await page.goto('/dashboard')
-    await page.getByRole('main').getByRole('link', { name: 'Reports' }).click()
+    await page.getByRole('main').getByRole('link', { name: 'View detailed reports' }).click()
     await expect(page).toHaveURL(/\/reports$/)
     await expect(side.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
 

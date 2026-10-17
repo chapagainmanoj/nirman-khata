@@ -33,6 +33,11 @@
   --color-side: #faf9f6;
   /* Progress bars: neutral, so only "over budget" carries colour. */
   --color-bar: #6b625d;
+  /* Lighter steps of the same grey, for a split bar (where the money went): kinds are told
+     apart by order and their legend, not by hue. */
+  --color-bar-2: #9c918a;
+  --color-bar-3: #c9c0b8;
+  --color-bar-4: #e6e0d8;
 
   --color-good-ink: #1f5a2e;
   --color-good-soft: #e1efd8;

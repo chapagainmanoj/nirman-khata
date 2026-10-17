@@ -1,6 +1,6 @@
 // "Needs attention" rows (req §18.1), pure so the order can be tested. Two kinds:
 //   decide: the owner acts (approve, deal with an over-budget project), always shown first
-//   record: the books are incomplete (no bill yet, not posted, money not placed), folded after three
+//   record: the books are incomplete (no bill yet, not posted, money not placed), folded behind a count
 // Company-wide counts open their lists on "All projects" (?all=1): the sidebar's "Working on"
 // project must not hide the very item the count is about.
 import { relativeDay } from '../../lib/dates'
@@ -87,15 +87,16 @@ export function attentionRows(d: AttentionData, can: AttentionPerms, today: stri
 }
 
 export const DECIDE_SHOWN = 5
-export const RECORD_SHOWN = 3
 
-/** The short list: every decision (up to five) and the first three records; the rest wait behind "Show more". */
+/**
+ * The short list: decisions shown (up to five, the rest behind "Show more"); records folded
+ * behind one "N records to complete" line until opened.
+ */
 export function foldAttention(rows: AttentionRow[]) {
   const decide = rows.filter((r) => r.kind === 'decide')
-  const record = rows.filter((r) => r.kind === 'record')
   return {
     decide: decide.slice(0, DECIDE_SHOWN),
-    record: record.slice(0, RECORD_SHOWN),
-    hidden: [...decide.slice(DECIDE_SHOWN), ...record.slice(RECORD_SHOWN)],
+    moreDecide: decide.slice(DECIDE_SHOWN),
+    record: rows.filter((r) => r.kind === 'record'),
   }
 }
