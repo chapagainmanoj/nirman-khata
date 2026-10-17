@@ -161,7 +161,7 @@ export function ProjectSwitcher({ className, caption = 'always' }: { className?:
   const current = useCurrentProject()
   // Nothing to switch between: one project, or none to work on.
   if (current.choices.length < 2) return null
-  const label = current.project ? `${current.project.code} · ${current.project.name}` : t('nav.project.none')
+  const label = current.project ? `${current.project.code} · ${current.project.name}` : t('nav.project.all')
   return (
     <div>
       {/* A visible caption so this reads as your context, not a filter; the button keeps its own sr-only name. */}
@@ -171,7 +171,7 @@ export function ProjectSwitcher({ className, caption = 'always' }: { className?:
         label={<><span className="min-w-0 flex-1 truncate"><span className="sr-only">{t('nav.project.choose')}: </span>{label}</span><ChevronDownIcon /></>}>
         {(close) => (
           <ul className="max-h-80 overflow-y-auto">
-            {[{ id: null, text: t('nav.project.noneOption') }, ...current.choices.map((p) => ({ id: p.id, text: `${p.code} · ${p.name}` }))].map((o) => (
+            {[{ id: null, text: t('nav.project.all') }, ...current.choices.map((p) => ({ id: p.id, text: `${p.code} · ${p.name}` }))].map((o) => (
               <li key={o.id ?? 'all'}>
                 <button type="button" aria-current={o.id === current.projectId || undefined}
                   onClick={() => { current.setProjectId(o.id); close() }}

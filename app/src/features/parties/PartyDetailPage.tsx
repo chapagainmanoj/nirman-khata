@@ -11,7 +11,7 @@ import { useProjects } from '../projects/api'
 import { useWorkPackages } from '../subcontract/api'
 import { rpc } from '../supply/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permissions'
-import { PARTY, type PartyKind } from './kinds'
+import { PARTY, partyCrumbs, type PartyKind } from './kinds'
 import { PartyForm, subtitleOf, usePartyRows } from './PartiesPage'
 import { labourPath } from '../labour/api'
 import { MembersCard } from '../labour/MembersCard'
@@ -43,7 +43,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
     <>
       <PageHeader
         title={r.name}
-        crumbs={[{ to: '/parties', label: 'Parties' }, { to: PARTY[kind].path, label: PARTY[kind].many }]}
+        crumbs={partyCrumbs(kind)}
         subtitle={<span className="flex flex-wrap items-center gap-2">{sub}{!r.active && <Badge>Inactive</Badge>}</span>}
         after={noDetails && !editing && canManageSuppliers(auth) && (
           <button type="button" onClick={() => setEditing(true)}
@@ -175,7 +175,11 @@ function PromotePayee({ payeeId, supplierId }: { payeeId: string; supplierId: st
       <ConfirmButton confirmLabel="Make supplier" onConfirm={() => promote.mutate()} disabled={promote.isPending}>
         Make this a supplier
       </ConfirmButton>
+<<<<<<< HEAD
       <p className="mt-1 text-xs text-subtle">For a payee you now order from with order slips and bills. Earlier expenses stay with the payee.</p>
+=======
+      <p className="mt-1 text-xs text-subtle">Once you order from them with order slips and bills. Earlier expenses stay here.</p>
+>>>>>>> develop
       <ErrorBanner>{promote.error && friendlyError(promote.error)}</ErrorBanner>
     </div>
   )

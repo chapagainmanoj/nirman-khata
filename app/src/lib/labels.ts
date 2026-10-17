@@ -9,14 +9,21 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   viewer: 'Viewer',
 }
 
+// Planned is retired (new projects start Active); its label stays for old audit rows.
 export const STATUS_LABELS: Record<ProjectStatus, string> = {
   planned: 'Planned',
   active: 'Active',
   on_hold: 'On Hold',
   completed: 'Completed',
-  closed: 'Closed',
+  closed: 'Books closed',
   cancelled: 'Cancelled',
 }
+
+/**
+ * The statuses a person picks (GLOSSARY: Project status). Books closed and Cancelled are set by
+ * the "Close books" and "Cancel project" actions on the project page, never from the list.
+ */
+export const PICK_STATUSES = ['active', 'on_hold', 'completed'] as const satisfies readonly ProjectStatus[]
 
 export const STATUS_TONE: Record<ProjectStatus, 'neutral' | 'good' | 'warn' | 'bad' | 'info'> = {
   planned: 'info',

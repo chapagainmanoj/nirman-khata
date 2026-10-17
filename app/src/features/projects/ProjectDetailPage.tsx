@@ -341,26 +341,6 @@ const EDIT_FIELDS = ['actual_start', 'planned_end'] as const
 function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projects'>; members: Member[]; canEdit: boolean }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
-  // Closing warns, never blocks (GLOSSARY: Closed): draft bills and money parties still hold here.
-  const dash = useProjectDashboard(p.id)
-  const [closeWarning, setCloseWarning] = useState<string[] | null>(null)
-  const looseEnds = (() => {
-    const f = dash.data
-    if (!f) return []
-    return [
-      f.draft_bills ? `${f.draft_bills} draft bill${f.draft_bills === 1 ? '' : 's'} not posted` : '',
-      f.peski_paisa ? `${formatNPR(f.peski_paisa)} peski not yet used` : '',
-      f.overpaid_paisa ? `${formatNPR(f.overpaid_paisa)} overpaid, owed back` : '',
-    ].filter(Boolean)
-  })()
-  function onSave(v: DetailsValues, confirmed = false) {
-    if (!confirmed && v.status === 'closed' && p.status !== 'closed' && looseEnds.length) {
-      setCloseWarning(looseEnds)
-      return
-    }
-    setCloseWarning(null)
-    save.mutate(v)
-  }
   const [params, setParams] = useSearchParams()
   // A to-do opens the form at the field it is about: "?edit=actual_start".
   const focusField = EDIT_FIELDS.find((f) => f === params.get('edit'))
@@ -405,16 +385,8 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
   if (editing) {
     return (
       <Card title={t('project.details')} className="lg:col-span-2">
-        <form onSubmit={form.handleSubmit((v) => onSave(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
+        <form onSubmit={form.handleSubmit((v) => save.mutate(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
           <ProjectDetailsFields form={form} members={members} display={auth.dateDisplay} showActualDates />
-          {closeWarning && (
-            <Notice>
-              <span className="block font-semibold">This project still has:</span>
-              <ul className="list-disc pl-5">{closeWarning.map((w) => <li key={w}>{w}</li>)}</ul>
-              <span className="block">You can close it anyway. Overpaid or peski money can still be moved to another project after reopening.</span>
-              <Button type="button" variant="secondary" className="mt-2" onClick={() => onSave(form.getValues(), true)}>Close anyway</Button>
-            </Notice>
-          )}
           <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
           <div className="flex gap-2">
             <Button type="submit" busy={save.isPending}>{t('common.save')}</Button>
@@ -438,7 +410,94 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
       <Detail label="Planned completion">{p.planned_end && <DateText value={p.planned_end} display={d} dual />}</Detail>
       <Detail label="Actual start">{p.actual_start && <DateText value={p.actual_start} display={d} dual />}</Detail>
       <Detail label="Actual completion">{p.actual_end && <DateText value={p.actual_end} display={d} dual />}</Detail>
+      {canEdit && <StatusActions project={p} />}
     </Card>
+  )
+}
+
+/**
+ * The two status steps kept out of the status list (GLOSSARY: Project status): "Close books" on a
+ * Completed project (no new bills or payments until reopened) and "Cancel project" for one that
+ * never went ahead. Both can be undone. Closing warns, never blocks (GLOSSARY: Closed): draft
+ * bills and money with parties may still sit on the project.
+ */
+function StatusActions({ project: p }: { project: Tables<'projects'> }) {
+  const queryClient = useQueryClient()
+  const dash = useProjectDashboard(p.id)
+  const [closing, setClosing] = useState(false)
+  const setStatus = useMutation({
+    mutationFn: async (status: Tables<'projects'>['status']) => {
+      const { data, error } = await supabase.from('projects').update({ status }).eq('id', p.id).select('id')
+      if (error) throw error
+      if (!data?.length) throw new Error('You do not have permission to change this project.')
+    },
+    onSuccess: async () => {
+      setClosing(false)
+      await queryClient.invalidateQueries({ queryKey: ['project', p.id] })
+      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+  const f = dash.data
+  const looseEnds = f ? [
+    f.draft_bills ? `${f.draft_bills} draft bill${f.draft_bills === 1 ? '' : 's'} not posted` : '',
+    f.peski_paisa ? `${formatNPR(f.peski_paisa)} peski not yet used` : '',
+    f.overpaid_paisa ? `${formatNPR(f.overpaid_paisa)} overpaid, owed back` : '',
+  ].filter(Boolean) : []
+
+  const note = 'mt-4 border-t border-line pt-3'
+  const error = <ErrorBanner>{setStatus.error && friendlyError(setStatus.error)}</ErrorBanner>
+  if (p.status === 'completed') {
+    return (
+      <div className={note}>
+        <p className="text-sm text-subtle">Work is done. Final bills and payments can still be entered until you close the books.</p>
+        {closing ? (
+          <Notice>
+            {looseEnds.length > 0 && (
+              <>
+                <span className="block font-semibold">This project still has:</span>
+                <ul className="list-disc pl-5">{looseEnds.map((w) => <li key={w}>{w}</li>)}</ul>
+              </>
+            )}
+            <span className="block">No new bills, costs or payments can be entered until the books are reopened.{looseEnds.length > 0 && ' Overpaid or peski money can still be moved to another project after reopening.'}</span>
+            <span className="mt-2 flex gap-2">
+              <Button type="button" busy={setStatus.isPending} onClick={() => setStatus.mutate('closed')}>{looseEnds.length ? 'Close anyway' : 'Close books'}</Button>
+              <Button type="button" variant="secondary" onClick={() => setClosing(false)}>{t('common.cancel')}</Button>
+            </span>
+          </Notice>
+        ) : (
+          <Button type="button" variant="secondary" className="mt-2" onClick={() => setClosing(true)}>Close books</Button>
+        )}
+        {error}
+      </div>
+    )
+  }
+  if (p.status === 'closed') {
+    return (
+      <div className={note}>
+        <p className="text-sm text-subtle">Books closed: no new bills, costs or payments.</p>
+        <Button type="button" variant="secondary" className="mt-2" busy={setStatus.isPending} onClick={() => setStatus.mutate('completed')}>Reopen books</Button>
+        {error}
+      </div>
+    )
+  }
+  if (p.status === 'cancelled') {
+    return (
+      <div className={note}>
+        <p className="text-sm text-subtle">Cancelled: left out of the dashboard and reports. Nothing was deleted.</p>
+        <Button type="button" variant="secondary" className="mt-2" busy={setStatus.isPending} onClick={() => setStatus.mutate('active')}>Restore project</Button>
+        {error}
+      </div>
+    )
+  }
+  return (
+    <div className={note}>
+      <ConfirmButton confirmLabel="Yes, cancel project" disabled={setStatus.isPending} onConfirm={() => setStatus.mutate('cancelled')}>
+        Cancel project
+      </ConfirmButton>
+      <p className="mt-1 text-xs text-subtle">For a project that will not go ahead. It leaves the dashboard and reports; nothing is deleted, and it can be restored.</p>
+      {error}
+    </div>
   )
 }
 

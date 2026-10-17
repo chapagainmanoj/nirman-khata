@@ -3,6 +3,13 @@
 Shared language for NirmanKhata. Terms are the ones we use in conversation, docs, code and UI.
 Trade terms and their English labels start from `docs/requirements-v1.1.md` §3.1; this file sharpens them.
 
+## All projects
+What a person sees when no project is chosen in Working on: lists show every project they may see, and new records start with "Choose project". Also the list toggle that shows every project while one is chosen.
+
+- **Not:** a permission. Nobody sees more than their assigned projects either way.
+- **In code:** `nav.project.all`; Working on's "none" (`setProjectId(null)`); the list toggle in `lists/ProjectFilter.tsx`.
+- **Aliases to avoid:** "No project chosen", "No project (see everything)".
+
 ## Attendance (Hajiri)
 One Crew Member's time on one project on one work date: in, out and minutes worked. Used only when the company setting "Labour by" is Attendance; the default, Day total, records one amount per crew per day instead.
 
@@ -11,6 +18,13 @@ One Crew Member's time on one project on one work date: in, out and minutes work
 - **Relations:** belongs to one Crew Member, one project and the Crew owed for that project (which may not be the member's own crew).
 - **In code:** `attendance`; written only by `set_attendance` (minutes 0 unsets); `attendance_day`, `project_workers`.
 - **Notes:** A worker can split a day between projects by times that do not overlap, never more than 24 h in total.
+
+## Cash payee
+The one built-in Payee per company that an Other Expense on a project is filed under when it is paid now and nobody is named: khaja, fuel, small cash on site. Named "Cash (not named)".
+
+- **Not:** a real party. Its khata always nets to zero, since every expense filed there is paid when entered.
+- **In code:** `payees.is_cash` (one per company), made on first use by `private.cash_payee`; hidden from the "Paid to" suggestions.
+- **Notes:** An unpaid Other Expense must still name who is owed it. Someone without payment rights cannot mark it paid, so always names a payee.
 
 ## Close day
 Turning a crew's open Attendance for a project and a date (or range of dates) into labour costs: one labour cost per work date, owed to that Crew, optionally paid now.
@@ -23,9 +37,18 @@ Turning a crew's open Attendance for a project and a date (or range of dates) in
 A project whose books are final: work is done (see Completed) and its money has been reconciled. No new financial entries are allowed until an authorized user reopens it.
 
 - **Not:** Completed (work done, bills may still arrive). Not Hisab Milan (with a Party); a project can close while its parties' accounts stay open.
-- **States:** Planned → Active ⇄ On Hold → Completed → Closed (Cancelled from any open state).
-- **In code:** project status `closed`; rules in `docs/requirements-v1.1.md` §4.2, §20. The project details form warns before closing (`ProjectDetailPage.tsx`, `DetailsCard`).
+- **States:** see Project status. Reached only by "Close books" on a Completed project; "Reopen books" takes it back to Completed.
+- **In code:** project status `closed`, labelled "Books closed"; rules in `docs/requirements-v1.1.md` §4.2, §20. The action and its warning are in `ProjectDetailPage.tsx`, `StatusActions`.
+- **Aliases to avoid:** "Closed" as a status to pick from the list; say "close books".
 - **Notes:** Closing warns, but does not block, if the project still has Draft bills or Peski/Overpayment allocated to it. The owner decides when the books are final enough; anything left can still be Reallocated after reopening.
+
+## Company Expense
+An Other Expense for the company as a whole, on no project: sabal, a measuring tape, office costs. A record only: already paid when entered, owed to no one, and not part of any project cost, report or khata.
+
+- **Not:** a project cost or overhead accounting. Company-wide costs in project figures (staff salaries, equipment ownership) are out of v1 (`docs/requirements-v1.1.md` §26–27).
+- **Relations:** one Cost Heading; no project, no Payee, no payment; says how it was paid (cash, bank, wallet).
+- **In code:** an `expenses` row with no `project_id` and no `payee_id`, with `paid_method`; saved by `save_expense` with `company_id`, reversed by `reverse_company_expense` (`company_expense_reversals`); the "Company" tab on `/expenses`.
+- **Notes:** Chosen explicitly on the form ("For: Company"), never because no project was picked, so a site cost cannot drop out of project cost by mistake. Seen by its creator for 7 days (like X2) and by Admin and Accounts.
 
 ## Completed (project)
 A project whose construction work is done. Final bills, payments and Reallocations can still be recorded. Final profit/loss is shown from this point.
@@ -82,6 +105,7 @@ The running account between the company and one Party: every bill, work charge, 
 
 ## Order Slip (Maag Slip)
 A request to one Supplier for materials, numbered per company (`OS-0012`). Each line names its own project, so one Order Slip can order for several projects. It is shared with the supplier and tracks what has arrived against it.
+<<<<<<< HEAD
 
 - **Not:** a Bill or a cost. An Order Slip never creates project cost or anything owed to the supplier; only a posted Bill does.
 - **Not:** a challan (the supplier's delivery note, recorded as a Delivery).
@@ -94,10 +118,24 @@ A request to one Supplier for materials, numbered per company (`OS-0012`). Each 
 ## Other Expense
 A project cost recorded directly, without a supplier bill: equipment hire, transport, fuel, khaja, permits, small site purchases. It has one project, one Cost Heading, a date, an amount, a description and a Payee. It counts as project cost when entered, and may be unpaid or paid on the spot.
 
+=======
+
+- **Not:** a Bill or a cost. An Order Slip never creates project cost or anything owed to the supplier; only a posted Bill does.
+- **Not:** a challan (the supplier's delivery note, recorded as a Delivery).
+- **States:** approval: draft → pending approval → approved or rejected (cancelled from any open state); approval off means submit goes straight to approved. Delivery: not received → partly received → fully received, or closed short with a reason.
+- **Relations:** one Supplier; many lines, each for one project; many Deliveries. A Delivery may also come without an Order Slip, with a reason.
+- **In code:** `order_slips`, `order_slip_lines`, enum `slip_status`; routes `/slips`; "Material Order Slip" in `docs/requirements-v1.1.md` §9.
+- **Aliases to avoid:** "Slip" on its own in UI and docs, "Demand Slip", "Order" (on its own), "PO".
+- **Notes:** "Order Slip" is the full domain word (product owner, 2026-10-17); a bare "slip" could be any slip on site. Short code names (`slip`, `slipId`, `/slips`) are fine. The phone bottom bar alone says "Slips" for space (`nav.slips.short`).
+
+## Other Expense
+Spending recorded directly, without a supplier bill: equipment hire, transport, fuel, khaja, permits, small purchases. Usually on a project: then it has one project, one Cost Heading, a date, an amount, a description and a Payee, counts as project cost when entered, and may be unpaid or paid on the spot. Without a project it is a Company Expense (record only).
+
+>>>>>>> develop
 - **Not:** a supplier Bill (goes through Order Slip, Delivery and posting) or Labour Cost (wages for own crew).
 - **Not:** the "Site Expenses" cost heading. An Other Expense can be filed under any heading (e.g. JCB hire under Equipment), and a Bill line can be filed under Site Expenses.
-- **Relations:** belongs to one project and one heading; owed to one Payee; settled by that payee's payments.
-- **In code:** `expenses` table; `ExpenseNewPage.tsx`; "Enter other expense" in the menu and form. Requirements call it "Other Project Expense" (`docs/requirements-v1.1.md` §15).
+- **Relations:** on a project: one project and one heading; owed to one Payee (the Cash payee when paid now with no name); settled by that payee's payments.
+- **In code:** `expenses` table; `ExpenseNewPage.tsx`; "Enter other expense" in the menu and form; the list at `/expenses` ("Other expenses" under Money). Requirements: `docs/requirements-v1.1.md` §15.
 - **Aliases to avoid:** "Expense" on its own for this record; that word means all spending.
 - **Notes:** One of the four things that create project cost, with posted bills, approved work charges and labour costs (`docs/requirements-v1.1.md:525`). Corrected only by reversal. Guideline, not a hard rule: a regular, billed source (weekly sand transporter, monthly JCB owner) is usually a Supplier with Bills; one-off or casual spending is an Other Expense.
 
@@ -118,10 +156,16 @@ A supplier, subcontractor, crew or worker the company pays. A party deals with t
 - **Notes:** Splitting by project is how the company tracks its own costs. Parties never need to see it.
 
 ## Payee
-A lightweight Party paid through Other Expenses: name, optional phone and a kind such as JCB owner, transporter or shop. Company-wide and reusable; can be promoted to a Supplier later.
+A lightweight Party paid through Other Expenses: name, optional phone and a type of service such as JCB owner, tanker or transporter. Company-wide and reusable; can be promoted to a Supplier later. People see it as **Other service**.
 
 - **Not:** a Supplier, which has Order Slips, deliveries and bills.
+<<<<<<< HEAD
 - **In code:** `payees` table (`promoted_supplier_id` for promotion).
+=======
+- **In code:** `payees` table (`promoted_supplier_id` for promotion), routes `/payees`. One is the Cash payee (`is_cash`). UI label "Other service(s)" (`PARTY.payee`, `nav.payees`).
+- **Aliases to avoid:** "Payee" in the UI; "Other payees".
+- **Notes:** Not in the nav (product owner, 2026-10-17): reached from a link at the foot of the Suppliers page, and its pages light up Suppliers. Kept apart from Supplier for now; merging the two (one person, one khata) is a possible later change.
+>>>>>>> develop
 
 ## Peski (Advance)
 A partial amount paid upfront to a supplier, subcontractor or worker when booking a service, ordering goods or agreeing a contract, before any bill, charge or wages for it exist. It stays with that party until Farchhyaut deducts it from what they are next owed, before any further cash is paid.
@@ -140,6 +184,15 @@ Unused Peski that a party gives back, for example when the work or order it was 
 - **Not:** Refund. A Refund returns Overpayment; Peski Returned closes out an agreed advance.
 - **In code:** `refunds` row with `kind = 'peski_returned'`, capped at the Peski held (`peski_returned_exceeds_peski`).
 - **Notes:** Example: Rs. 50,000 Peski to Ram Bahadur for plaster, work cancelled before starting, he returns Rs. 50,000.
+
+## Project status
+Where a project stands. A person picks one of three: **Active** (the default for a new project), **On hold** or **Completed**. Two more are set only by their own actions on the project page: **Books closed** ("Close books" on a Completed project; see Closed) and **Cancelled** ("Cancel project", for one that never went ahead; it leaves the dashboard and reports).
+
+- **States:** Active ⇄ On hold → Completed ⇄ Books closed. Cancelled from Active or On hold; "Restore project" takes it back to Active.
+- **Relations:** forms for site work (order slip, daily report, delivery, attendance, work package) list Active and On hold projects; forms for money (bill, labour, other expense, payment, client receipt) also list Completed. The server refuses money on Books closed and Cancelled projects.
+- **In code:** enum `project_status`; the picker uses `PICK_STATUSES` (`lib/labels.ts`). `planned` is retired: kept in the enum, barred by `projects_status_not_planned`, and `create_project` turns it into `active`.
+- **Aliases to avoid:** "Planned" (retired; a project not yet started is simply Active), "Closed" as a pick.
+- **Notes:** Decided 2026-10-17: six statuses in one list were confusing for a small contractor. Completed and Books closed stay apart because final bills and retention arrive after the work ends; locking at Completed would mean reopening for every late bill.
 
 ## Reallocation
 Moving a Party's money from one project to another inside the company, e.g. Rs. 15,000 Overpayment on finished Project A is moved to Project B so it can be deducted from Project B's bills. The party's balance does not change; only the company's project split does.
@@ -180,6 +233,14 @@ The three figures in a Party's Khata. **Tirnu parne** (to be paid) is everything
 - **In code:** `charged_paisa`, `paid_paisa`, `balance_paisa` (`party_balances`); the Khata report columns `charged`, `paid`, `balance`. UI labels are the Nepali words: the balance card ("Tirnu parne (bills)", "Tireko") and the Khata report columns.
 - **Aliases to avoid:** "Charged" (reads as if the company charged the party), "Bought" (does not fit crews, payees, an opening balance or a reversal), "Jamma/Naam" (the formal bookkeeping words; *jamma* reads as "deposit" in everyday use).
 - **Notes:** Chosen 2026-10-14 because it is how contractors say it out loud ("kati tirnu parne, kati tireko, kati baki"), it never reads backwards, and it matches "Baki / Tirna Baki" in `docs/requirements-v1.1.md` §3.1.
+
+## Working on
+The project a person is working on right now, chosen once in the sidebar or top bar. New records start on it when their link names no project, lists open filtered to it, and Calendar and Reports start on it. Choosing nothing means All projects.
+
+- **Not:** a permission or a server setting. It is remembered on the device only, per person and company.
+- **Relations:** one of the site-work projects (Active or On hold; see Project status). With exactly one such project it is chosen automatically.
+- **In code:** `features/projects/current.tsx` (`useCurrentProject`, `useWorkingOnDefault`); forms read their list from `projectChoices(projects, 'site' | 'money')`.
+- **Notes:** A new form takes its project from, in order: the link (`?project=`), the record it comes from (an order slip, a delivery, the record being edited), Working on, else "Choose project". Payment is the exception: it never takes Working on, because a payment with no project is normal and a guess could put it on the wrong one.
 
 ---
 

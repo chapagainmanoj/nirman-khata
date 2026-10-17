@@ -1,8 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
+import { runId } from './helpers'
 
 // Settings in one column: each card saves on its own; "How you work" saves on tap; VAT choices show
 // only with VAT on; the password can be changed while signed in, after the current one is checked.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 
 function trackErrors(page: Page) {

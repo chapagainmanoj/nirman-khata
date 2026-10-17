@@ -21,7 +21,7 @@ import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { useUnits } from '../catalog/api'
 import { useCrews } from '../costs/api'
-import { useCurrentProject } from '../projects/current'
+import { projectChoices, useWorkingOnDefault, useWorkingOnId } from '../projects/current'
 import { useProjects } from '../projects/api'
 import { projectCrumbs } from '../projects/crumbs'
 import { rpc } from '../supply/api'
@@ -61,7 +61,6 @@ export function DailyReportPage() {
   const auth = useCompany()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const current = useCurrentProject()
   const projects = useProjects(auth.companyId)
   const units = useUnits(auth.companyId)
   // With attendance on, the day's labour comes from the roster, so the report does not take an amount.
@@ -75,7 +74,8 @@ export function DailyReportPage() {
   const [saved, setSaved] = useState<Saved | null>(null)
   const today = todayKathmandu()
 
-  const fresh = (projectId = params.get('project') ?? current.projectId ?? ''): Values => ({
+  const workingOn = useWorkingOnId()
+  const fresh = (projectId = params.get('project') ?? workingOn): Values => ({
     id: newId(), op_key: newId(), project_id: projectId, work_date: today, photos: [], work_done: '', stage_id: '',
     headcount: '', area: '', lines: [], equipment: '', issues: '', weather: '', labour_note: '',
     add_labour: false, crew_id: '', amount: '', pay_now: mayPay, method: 'cash',
@@ -83,6 +83,8 @@ export function DailyReportPage() {
   const form = useForm<Values>({ defaultValues: fresh() })
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: 'daily-report' })
   const { register, control, watch, setValue, getValues } = form
+  // A refresh straight onto the form: fill the Working on project once the list arrives.
+  useWorkingOnDefault(watch('project_id'), (id) => setValue('project_id', id), params.has('project'))
   const v = watch()
   const stages = useStages(v.project_id)
   const day = useReportDay(v.project_id, v.work_date)
@@ -180,7 +182,7 @@ export function DailyReportPage() {
             <Field label="Project" htmlFor="dr-project">
               <Select id="dr-project" value={v.project_id} onChange={(e) => setValue('project_id', e.target.value, { shouldDirty: true })}>
                 <option value="">Choose project</option>
-                {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                {projectChoices(projects.data, 'site').map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
             <Field label="Date" htmlFor="dr-date">

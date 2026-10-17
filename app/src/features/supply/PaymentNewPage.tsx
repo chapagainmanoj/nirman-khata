@@ -25,6 +25,7 @@ import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
 import { useParties, usePartyHeld, usePartyOpenItems } from '../parties/api'
 import { DOC_WORD, PARTY, PARTY_KINDS, partyFromParams, type PartyKind } from '../parties/kinds'
 import { useProjects } from '../projects/api'
+import { projectChoices } from '../projects/current'
 import { useCharges, useWorkPackage } from '../subcontract/api'
 import { rpc, useRefreshMoney } from './api'
 import { canPost } from './permissions'
@@ -91,7 +92,9 @@ export function PaymentNewPage() {
   const party = parties.data?.find((p) => p.id === v.party_id)
   const kindLabel = PARTY[v.party_kind].one
   const pkgProject = pkg.data?.project_id ?? ''
-  const visible = projects.data ?? []
+  // Money: Active, On hold and Completed. No Working on default here: a payment with no project
+  // is normal (split later), so a guess could put it on the wrong one.
+  const visible = projectChoices(projects.data, 'money')
   // A new split row starts on the current project, unless it is already listed.
   const firstFree = () => {
     const used = new Set(getValues('allocations').map((a) => a.project_id))

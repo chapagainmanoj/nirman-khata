@@ -77,7 +77,7 @@ select is(
    where n.nspname = 'private'
      and p.proname in ('begin_op', 'finish_op', 'new_event', 'add_ledger', 'negate_events', 'lock_supplier', 'lock_party',
                        'lock_docs', 'settle_one', 'unsettle_where', 'reverse_with_event', 'post_payment', 'pay_now',
-                       'post_labour', 'notify')
+                       'post_labour', 'notify', 'cash_payee')
      and has_function_privilege('authenticated', p.oid, 'EXECUTE')),
   null,
   'no internal writer (milestones 2 and 3) is callable by signed-in users'

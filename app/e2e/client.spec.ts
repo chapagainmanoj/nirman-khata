@@ -1,8 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
+import { runId } from './helpers'
 
 // Money in from the client: record Rs 1,00,000 from the project's Client tab, see it as Received and
 // Contract balance against the contract (never as cost or paid), then reverse it and the totals go back.
+<<<<<<< HEAD
 const run = Date.now().toString().slice(-7)
+=======
+const run = runId()
+>>>>>>> develop
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 
 function trackErrors(page: Page) {

@@ -5,7 +5,7 @@ import { useSimpleForms } from '../../auth/useSimpleForms'
 import { More } from '../../components/More'
 import { Field, Input, Select } from '../../components/ui'
 import type { DateDisplay } from '../../lib/dates'
-import { ROLE_LABELS, STATUS_LABELS } from '../../lib/labels'
+import { PICK_STATUSES, ROLE_LABELS, STATUS_LABELS } from '../../lib/labels'
 import type { Member } from './api'
 import type { DetailsValues } from './projectDetails'
 
@@ -19,11 +19,19 @@ export function ProjectDetailsFields<T extends DetailsValues>({
   const managers = members.filter((m) => m.active && (m.roles.includes('project_manager') || m.roles.includes('admin')))
 
   // Simple forms keep the status up with the main fields; Detailed keeps the original order.
-  const statusField = (
+  // Only Active, On hold and Completed are picked here. Books closed and Cancelled come from their
+  // own actions on the project page, so they show as text. (An old draft's Planned is created Active.)
+  const status = f.watch('status')
+  const fixed = status === 'closed' || status === 'cancelled'
+  const statusField = fixed ? (
+    <Field label="Status" hint={status === 'closed' ? 'Use “Reopen books” on the project page to change it.' : 'Use “Restore project” on the project page to change it.'}>
+      <p className="py-2 text-sm font-medium text-ink">{STATUS_LABELS[status]}</p>
+    </Field>
+  ) : (
     <Field label="Status" htmlFor="status">
       <Select id="status" {...register('status')}>
-        {Object.entries(STATUS_LABELS).map(([value, label]) => (
-          <option key={value} value={value}>{label}</option>
+        {PICK_STATUSES.map((value) => (
+          <option key={value} value={value}>{STATUS_LABELS[value]}</option>
         ))}
       </Select>
     </Field>

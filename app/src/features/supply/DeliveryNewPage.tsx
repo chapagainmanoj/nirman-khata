@@ -18,6 +18,7 @@ import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
 import { useMaterials, useUnits } from '../catalog/api'
 import { useProjects } from '../projects/api'
+import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc, useOpenSlips, useSlip, useSuppliers } from './api'
 import { ChevronRightIcon, TrashIcon } from '../../components/icons'
 
@@ -101,6 +102,8 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
     [set('supplierId'), set('projectId'), set('date'), set('challan'), set('reason'), set('note'), set('lines')]
   const setLine = (i: number, patch: Partial<Line>) => setLines(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)))
   const slipProjects = slip ? [...new Set(slip.lines.map((l) => l.project_id))] : []
+  // Without an order slip or a project in the link, start on the Working on project.
+  useWorkingOnDefault(projectId, setProjectId, !!slip || !!projectParam)
 
   const save = useMutation({
     mutationFn: async () => {
@@ -195,7 +198,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
               <Select id="dl-project" value={projectId}
                 onChange={(e) => { setProjectId(e.target.value); if (slip) setLines(slipLines(e.target.value)) }}>
                 <option value="">Choose project</option>
-                {(projects.data ?? []).filter((p) => !slip || slipProjects.includes(p.id)).map((p) => (
+                {(slip ? (projects.data ?? []).filter((p) => slipProjects.includes(p.id)) : projectChoices(projects.data, 'site')).map((p) => (
                   <option key={p.id} value={p.id}>{p.code} · {p.name}</option>
                 ))}
               </Select>

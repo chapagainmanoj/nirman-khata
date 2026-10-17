@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
+import { runId } from './helpers'
 
 // A photo that fails to upload on a weak site network is kept on the phone, survives a reload,
 // and uploads once with "Upload again" (second review #10).
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='
 
 test('a photo that did not upload is kept and can be uploaded again', async ({ page }) => {

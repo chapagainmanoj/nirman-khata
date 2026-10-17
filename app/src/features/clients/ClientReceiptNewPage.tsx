@@ -17,7 +17,7 @@ import { newId } from '../../lib/ids'
 import { CLIENT_RECEIPT_KINDS, PAYMENT_METHODS } from '../../lib/labels'
 import { parseNPR } from '../../lib/money'
 import { useProjects } from '../projects/api'
-import { useCurrentProject } from '../projects/current'
+import { projectChoices, useWorkingOnDefault, useWorkingOnId } from '../projects/current'
 import { rpc } from '../supply/api'
 import { useRefreshClientMoney } from './api'
 
@@ -34,20 +34,22 @@ export function ClientReceiptNewPage() {
   const auth = useCompany()
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const current = useCurrentProject()
+  const workingOn = useWorkingOnId()
   const projects = useProjects(auth.companyId)
   const refresh = useRefreshClientMoney()
-  // A final payment often comes after completion, so only cancelled and closed projects are left out.
-  const choices = (projects.data ?? []).filter((p) => p.status !== 'cancelled' && p.status !== 'closed')
+  // Money: a final payment often comes after completion, so Completed is listed too.
+  const choices = projectChoices(projects.data, 'money')
   const form = useForm<Values>({
     defaultValues: {
-      id: newId(), op_key: newId(), project_id: params.get('project') ?? current.projectId ?? '', amount: '',
+      id: newId(), op_key: newId(), project_id: params.get('project') ?? workingOn, amount: '',
       receipt_date: todayKathmandu(), kind: 'running_bill', method: 'bank_transfer', reference: '', notes: '', photos: [],
     },
   })
   const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: 'client-receipt-new' })
   const { watch, setValue } = form
   const v = watch()
+  // A refresh straight onto the form: fill the Working on project once the list arrives.
+  useWorkingOnDefault(v.project_id, (id) => setValue('project_id', id), params.has('project'))
   const set = <K extends Path<Values>>(k: K) => (value: PathValue<Values, K>) => setValue(k, value, { shouldDirty: true })
   const [problem, setProblem] = useState('')
   const paisa = parseNPR(v.amount) ?? 0

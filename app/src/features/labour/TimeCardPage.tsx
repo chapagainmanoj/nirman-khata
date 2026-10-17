@@ -61,7 +61,7 @@ export function TimeCardPage() {
   const member = card.data?.member
   const rows = card.data?.rows ?? []
   const choices = current.choices
-  const usual = member?.crew_project_id ?? params.get('project') ?? current.projectId ?? ''
+  const usual = member?.crew_project_id ?? params.get('project') ?? current.project?.id ?? ''
   const usualOk = !!usual && choices.some((p) => p.id === usual)
   const projectName = (pid: string | null) => {
     const p = pid && choices.find((x) => x.id === pid)

@@ -17,10 +17,18 @@ export const PARTY: Record<PartyKind, {
     charges: 'approved work charges',
   },
   crew: { one: 'Crew', many: 'Labour crews', path: '/crews', column: 'crew_id', table: 'crews', charges: 'labour costs' },
-  payee: { one: 'Payee', many: 'Payees', path: '/payees', column: 'payee_id', table: 'payees', charges: 'expenses' },
+  // "Payee" in code and SQL; people see "Other service" (GLOSSARY: Payee).
+  payee: { one: 'Other service', many: 'Other services', path: '/payees', column: 'payee_id', table: 'payees', charges: 'expenses' },
 }
 
 export const PARTY_KINDS = Object.keys(PARTY) as PartyKind[]
+
+/** Where a kind's pages sit: other services are reached from Suppliers, not the nav. */
+export function partyCrumbs(kind: PartyKind): Array<{ to: string; label: string }> {
+  return kind === 'payee'
+    ? [{ to: '/suppliers', label: PARTY.supplier.many }, { to: PARTY.payee.path, label: PARTY.payee.many }]
+    : [{ to: '/parties', label: 'Parties' }, { to: PARTY[kind].path, label: PARTY[kind].many }]
+}
 
 /** The party named in a URL like /payments/new?crew=<id>. */
 export function partyFromParams(params: URLSearchParams): { kind: PartyKind; id: string } {

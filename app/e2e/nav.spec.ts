@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
-import { signOut } from './helpers'
+import { runId, signOut } from './helpers'
 
 // Navigation by role (UX review): the phone bar follows the role, "+" starts records on the
 // current project, counts show work waiting, and detail pages light up their section.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const ownerPhone = `983${run}`
 const staffPhone = `984${run}`
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
@@ -113,6 +113,26 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await page.screenshot(shots('nav-04-slips-all-projects'))
   await switchTo('P-2 · Private house Pokhara') // a new current project starts filtered again
   await expect(shown.getByRole('button', { name: 'P-2 · Private house Pokhara' })).toHaveAttribute('aria-pressed', 'true')
+  // A form opened with no project in its link (a supplier page, a refresh) starts on Working on.
+  await page.goto('/slips/new')
+  await expect(page.getByLabel('Project', { exact: true })).toHaveValue(p2)
+  await page.goto('/deliveries/new')
+  await expect(page.getByLabel('Project (site)')).toHaveValue(p2)
+
+  // "All projects": nothing is filled in, and lists show every project with no toggle.
+  await page.goto('/projects')
+  await switchTo('All projects')
+  await expect(page.getByRole('button', { name: /Working on.*All projects/ })).toBeVisible()
+  await page.getByRole('button', { name: 'Record', exact: true }).click()
+  await expect(sheet.getByRole('link', { name: /New order slip/ })).toHaveAttribute('href', '/slips/new')
+  await page.goto('/slips')
+  await page.getByRole('button', { name: /^To approve/ }).click()
+  await expect(shown).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
+  await page.goto('/slips/new')
+  await expect(page.getByLabel('Project', { exact: true })).toHaveValue('')
+  await page.goto('/projects')
+  await switchTo('P-2 · Private house Pokhara')
   await signOut(page)
 
   // Owner on a desktop: sidebar, a count of slips waiting, and the record menu.
@@ -131,6 +151,15 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await expect(shown.getByRole('button', { name: 'All projects' })).toHaveAttribute('aria-pressed', 'true')
   await page.getByRole('button', { name: /^To approve/ }).click()
   await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
+<<<<<<< HEAD
+=======
+  // "Enter bill" from a supplier's page names no project: a new line starts on Working on (P-1).
+  await page.goto('/suppliers')
+  await page.getByRole('link', { name: /Shrestha Suppliers/ }).click()
+  await page.getByRole('link', { name: 'Enter bill' }).first().click()
+  await page.getByRole('button', { name: 'Add material line' }).click()
+  await expect(page.locator('#bl0-p')).toHaveValue(p1)
+>>>>>>> develop
   await switchTo('P-2 · Private house Pokhara')
   await side.getByRole('link', { name: /Order slips/ }).click()
   await page.getByRole('button', { name: 'To approve (1)' }).click()

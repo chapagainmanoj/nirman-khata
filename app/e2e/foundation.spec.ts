@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
-import { signOut } from './helpers'
+import { runId, signOut } from './helpers'
 
 // Milestone 1 walk-through: owner registers, creates projects, adds a site staff
 // member; the staff member sees only the assigned project and no amounts.
-const run = Date.now().toString().slice(-7)
+const run = runId()
 const ownerPhone = `981${run}`
 const staffPhone = `982${run}`
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
@@ -74,6 +74,24 @@ test('owner sets up a company; site staff sees only their project', async ({ pag
   await page.getByLabel('Contract amount (Thekka Rakam)').fill('25,00,000')
   await page.getByRole('button', { name: 'Create project' }).click()
   await expect(page.getByRole('heading', { name: 'Private house Pokhara' })).toBeVisible()
+  // A new project starts Active. Three statuses to pick; closing the books is its own step.
+  await expect(page.getByText('Active', { exact: true }).first()).toBeVisible()
+  await page.getByRole('tab', { name: 'Details' }).click()
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await expect(page.getByLabel('Status').locator('option')).toHaveText(['Active', 'On Hold', 'Completed'])
+  await page.getByLabel('Status').selectOption('Completed')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await page.getByRole('button', { name: 'Close books' }).click()
+  await expect(page.getByText(/No new bills, costs or payments can be entered/)).toBeVisible()
+  await page.getByRole('button', { name: 'Close books' }).click()
+  await expect(page.getByText('Books closed', { exact: true }).first()).toBeVisible()
+  await page.screenshot(shots('03b-books-closed'))
+  await page.getByRole('button', { name: 'Reopen books' }).click()
+  await expect(page.getByRole('button', { name: 'Close books' })).toBeVisible()
+  await page.getByRole('button', { name: 'Edit' }).click()
+  await page.getByLabel('Status').selectOption('Active')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('button', { name: 'Cancel project' })).toBeVisible()
 
   // Add site staff assigned to P-1 only, without money access
   await page.goto('/staff')

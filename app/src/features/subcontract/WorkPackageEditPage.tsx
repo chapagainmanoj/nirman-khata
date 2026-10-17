@@ -14,6 +14,7 @@ import { PACKAGE_STATUS } from '../../lib/labels'
 import { formatNPR, lineAmount, paisaToInput, parseNPR } from '../../lib/money'
 import { useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
+import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc } from '../supply/api'
 import { PARTY } from '../parties/kinds'
 import { useSubcontractors, useWorkPackage } from './api'
@@ -57,6 +58,8 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
     notes: initial?.notes ?? '',
   })
   const set = (k: keyof typeof v) => (e: { target: { value: string } }) => setV({ ...v, [k]: e.target.value })
+  // A new package with no project in the link starts on the Working on project.
+  useWorkingOnDefault(v.project_id, (id) => setV((x) => ({ ...x, project_id: id })), !!initial || params.has('project'))
   const subHeadings = headings.data?.filter((h) => h.kind === 'subcontract' && (h.active || h.id === v.heading_id)) ?? []
   const rate = parseNPR(v.rate)
   const qty = Number(v.quantity)
@@ -125,7 +128,7 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
             <Field label="Project" htmlFor="wp-project">
               <Select id="wp-project" value={v.project_id} onChange={set('project_id')} disabled={!!initial}>
                 <option value="">Choose project</option>
-                {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                {projectChoices(projects.data, 'site', [initial?.project_id]).map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
             <Field label="Subcontractor" htmlFor="wp-sub">
