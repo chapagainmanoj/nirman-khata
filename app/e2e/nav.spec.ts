@@ -104,12 +104,12 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await expect(shown.getByRole('button', { name: 'P-2 · Private house Pokhara' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
   await switchTo('P-1 · Ward 5 school building')
-  await expect(page.getByText('No slips to approve on P-1 yet.')).toBeVisible()
-  await expect(page.getByRole('link', { name: 'New slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`)
+  await expect(page.getByText('No order slips to approve on P-1 yet.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'New order slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`)
   await shown.getByRole('button', { name: 'All projects' }).click()
   await expect(shown.getByRole('button', { name: 'All projects' })).toHaveAttribute('aria-pressed', 'true')
   await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'New slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`) // still the sidebar project
+  await expect(page.getByRole('link', { name: 'New order slip' })).toHaveAttribute('href', `/slips/new?project=${p1}`) // still the sidebar project
   await page.screenshot(shots('nav-04-slips-all-projects'))
   await switchTo('P-2 · Private house Pokhara') // a new current project starts filtered again
   await expect(shown.getByRole('button', { name: 'P-2 · Private house Pokhara' })).toHaveAttribute('aria-pressed', 'true')
@@ -121,12 +121,23 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   const side = page.getByRole('navigation', { name: 'Main' })
   await expect(side.getByLabel('1 to approve')).toBeVisible()
   await page.screenshot(shots('nav-02-desktop-sidebar'))
-  await side.getByRole('link', { name: /Slips/ }).click()
+  // The dashboard's company-wide count opens the list on all projects, even with P-1 chosen:
+  // the P-2 slip it counts must not be hidden by the sidebar project.
+  await switchTo('P-1 · Ward 5 school building')
+  await page.goto('/dashboard')
+  const attention = page.locator('section', { has: page.getByRole('heading', { name: 'Needs attention' }) })
+  await attention.getByRole('link', { name: /1 order slip waiting for approval/ }).click()
+  await expect(page).toHaveURL(/\/slips\?all=1$/)
+  await expect(shown.getByRole('button', { name: 'All projects' })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: /^To approve/ }).click()
+  await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
+  await switchTo('P-2 · Private house Pokhara')
+  await side.getByRole('link', { name: /Order slips/ }).click()
   await page.getByRole('button', { name: 'To approve (1)' }).click()
   await page.getByRole('link', { name: /OS-0001/ }).click()
   // Wait for the slip itself: menus close on navigation, so one opened mid-navigation shuts again.
   await expect(page).toHaveURL(/\/slips\/[0-9a-f-]{36}$/)
-  await expect(side.getByRole('link', { name: /Slips/ })).toHaveAttribute('aria-current', 'page')
+  await expect(side.getByRole('link', { name: /Order slips/ })).toHaveAttribute('aria-current', 'page')
   await expect(page.getByRole('heading', { name: /OS-0001/ })).toBeVisible()
 
   const record = page.getByRole('button', { name: 'Record', exact: true })
@@ -167,8 +178,19 @@ test.describe('desktop with a mouse', () => {
     // The account menu opens upward from the foot.
     await page.getByRole('button', { name: /^Account:/ }).click()
     await expect(page.getByRole('button', { name: 'Sign out' })).toBeInViewport()
+    // Setup lives in the account menu, not the sidebar.
+    for (const name of ['Staff', 'Catalog', 'Settings']) await expect(page.locator('aside').getByRole('link', { name, exact: true })).toBeVisible()
     await page.screenshot(shots('nav-06-account-up'))
     await page.keyboard.press('Escape')
+    const side = page.getByRole('navigation', { name: 'Main' })
+    await expect(side.getByRole('link', { name: 'Staff', exact: true })).toHaveCount(0)
+    await expect(side.getByRole('link', { name: 'Suppliers' })).toBeVisible()
+
+    // Reports opens from the Dashboard and keeps the Dashboard lit.
+    await page.goto('/dashboard')
+    await page.getByRole('main').getByRole('link', { name: 'View detailed reports' }).click()
+    await expect(page).toHaveURL(/\/reports$/)
+    await expect(side.getByRole('link', { name: 'Dashboard' })).toHaveAttribute('aria-current', 'page')
 
     // Forms carry a trail back to where they were started.
     await page.goto('/suppliers')

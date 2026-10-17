@@ -48,7 +48,7 @@ export function SupplierDetailPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             {canRecordPayments(auth) && <ButtonLink variant={payFirst ? 'primary' : 'secondary'} to={`/payments/new?supplier=${s.id}`}>Record payment</ButtonLink>}
-            {canEnter(auth) && <ButtonLink variant={payFirst ? 'secondary' : 'primary'} to={`/slips/new?supplier=${s.id}`}>New slip</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant={payFirst ? 'secondary' : 'primary'} to={`/slips/new?supplier=${s.id}`}>New order slip</ButtonLink>}
             {canEnter(auth) && <ButtonLink variant="secondary" to={`/bills/new?supplier=${s.id}`}>Enter bill</ButtonLink>}
           </div>
         }

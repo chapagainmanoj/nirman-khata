@@ -1,6 +1,6 @@
 // App frame (UX review, nav). Sections come from nav.ts, grouped by job.
 //   desktop (lg+): sidebar with the brand (home), "+ Record", current project, sections and
-//     counts, then the account and bell at the foot
+//     counts, then the account (with Staff, Catalog and Settings) and bell at the foot
 //   tablet (md-lg): top bar with the brand mark, main sections, "+ Record", setup, bell; account below
 //   phone: slim header (brand, bell) and a bottom bar chosen by role, with "+" in the centre;
 //     the account lives in More
@@ -11,18 +11,19 @@ import { PhotosWaitingNotice } from '../features/photos/WaitingPhotosPage'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import {
-  BellIcon, BillIcon, CalendarIcon, CatalogIcon, DashboardIcon, DeliveryIcon, MoreIcon, PartiesIcon, PaymentIcon, ProjectsIcon, ReportIcon, SettingsIcon, SlipIcon, StaffIcon,
+  BellIcon, BillIcon, CalendarIcon, CatalogIcon, CrewIcon, DashboardIcon, DeliveryIcon, MoreIcon, PartiesIcon, PayeeIcon, PaymentIcon, ProjectsIcon,
+  ReportIcon, SettingsIcon, SlipIcon, StaffIcon, SubcontractorIcon, SupplierIcon,
 } from './icons'
 import { CompanyMark } from './CompanyMark'
 import { AccountMenu, ProjectSwitcher, RecordMenu, RecordSheetButton, SetupMenu } from './menus'
-import { activeSection, navItem, phoneBarFor, recordActionsFor, sectionsFor, type NavKey } from './nav'
+import { activeSection, isPartySection, navHighlight, navItem, phoneBarFor, recordActionsFor, sectionsFor, type NavKey } from './nav'
 import { useNavCounts, useUnreadCount } from './navCounts'
 import { Spinner } from './ui'
 import { useNavRole } from './useNavRole'
 
 const ICONS: Record<NavKey, ComponentType> = {
   dashboard: DashboardIcon, projects: ProjectsIcon, calendar: CalendarIcon, reports: ReportIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon,
-  parties: PartiesIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
+  parties: PartiesIcon, suppliers: SupplierIcon, subcontractors: SubcontractorIcon, crews: CrewIcon, payees: PayeeIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
 }
 
 /** Work waiting, in the accent: something to act on. */
@@ -49,12 +50,16 @@ function Frame() {
   const auth = useCompany()
   const role = useNavRole()
   const { pathname } = useLocation()
-  const active = activeSection(pathname)
+  const active = navHighlight(activeSection(pathname), role)
   const groups = sectionsFor(role)
   const counts = useNavCounts(auth.companyId, role)
   const unread = useUnreadCount(auth.userId).data ?? 0
   const work = groups.filter((g) => g.key !== 'setup')
   const setup = groups.find((g) => g.key === 'setup')
+  const onSetup = !!setup?.items.some((i) => i.key === active)
+  // Tablet strip: one Parties link to the hub stands for the four kinds.
+  const stripItems = work.flatMap((g) => (g.key === 'parties' ? [navItem('parties')] : g.items))
+  const stripActive = isPartySection(active) ? 'parties' : active
   const bar = phoneBarFor(role)
   const hasRecord = recordActionsFor(role).length > 0
   const onNotifications = pathname.startsWith('/notifications')
@@ -101,15 +106,14 @@ function Frame() {
           <nav aria-label="Main" className="flex flex-col gap-3">
             {work.map((g) => (
               <div key={g.key}>
-                <div className="px-3 pb-0.5 text-xs font-semibold tracking-wide text-subtle uppercase">{t(g.label)}</div>
+                {g.label && <div className="px-3 pb-0.5 text-xs font-semibold tracking-wide text-subtle uppercase">{t(g.label)}</div>}
                 <div className="flex flex-col gap-0.5">{g.items.map((i) => sideLink(i.key))}</div>
               </div>
             ))}
           </nav>
-          {setup && <div className="mt-auto flex flex-col gap-0.5 border-t border-line pt-3">{setup.items.map((i) => sideLink(i.key))}</div>}
         </div>
         <div className="flex items-center gap-1 border-t border-line pt-3">
-          <div className="min-w-0 flex-1"><AccountMenu up /></div>
+          <div className="min-w-0 flex-1"><AccountMenu up setup={setup?.items} current={onSetup} /></div>
           {bell}
         </div>
       </aside>
@@ -122,9 +126,9 @@ function Frame() {
             <Brand name={auth.company.name} logoPath={auth.company.logo_path} markOnly className="hidden md:inline-flex" />
             {/* Nine sections can be wider than a tablet: the links scroll, the buttons on the right stay. */}
             <nav ref={strip} aria-label="Main" className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] md:flex">
-              {work.flatMap((g) => g.items).map((i) => (
-                <NavLink key={i.key} to={i.to} aria-current={active === i.key ? 'page' : undefined}
-                  className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium ${active === i.key ? 'bg-brand-soft text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
+              {stripItems.map((i) => (
+                <NavLink key={i.key} to={i.to} aria-current={stripActive === i.key ? 'page' : undefined}
+                  className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium ${stripActive === i.key ? 'bg-brand-soft text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
                   {t(i.label)}<Count n={counts[i.key]} label={countLabel(i.key, counts[i.key] ?? 0)} />
                 </NavLink>
               ))}
@@ -174,7 +178,7 @@ function BarLink({ navKey, active, count }: { navKey: NavKey; active: boolean; c
   return (
     <NavLink to={item.to} aria-current={active ? 'page' : undefined}
       className={`relative flex min-h-14 flex-col items-center justify-center gap-0.5 text-xs font-medium active:bg-muted ${active ? 'font-semibold text-brand' : 'text-subtle'}`}>
-      <Icon />{t(item.label)}
+      <Icon />{t(item.short ?? item.label)}
       {!!count && (
         <span className="absolute top-1 left-1/2 ml-2 min-w-4 rounded-full bg-brand px-1 text-center text-[10px] leading-4 font-bold text-white"
           aria-label={countLabel(navKey, count)}>{count}</span>

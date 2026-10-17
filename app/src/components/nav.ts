@@ -19,17 +19,20 @@ export type NavRole = {
 
 export type NavKey =
   | 'dashboard' | 'projects' | 'calendar' | 'slips' | 'deliveries' | 'reports' | 'bills' | 'payments' | 'parties'
-  | 'staff' | 'catalog' | 'settings'
+  | 'suppliers' | 'subcontractors' | 'crews' | 'payees' | 'staff' | 'catalog' | 'settings'
 
 export type NavItem = {
   key: NavKey
   to: string
   label: MessageKey
+  /** A shorter label for the phone bottom bar, where space is tight. */
+  short?: MessageKey
   /** Route prefixes that belong to this section, so detail pages light up their parent. */
   match: string[]
 }
 
-export type NavGroup = { key: 'site' | 'money' | 'setup'; label: MessageKey; items: NavItem[] }
+/** A group without a label shows no heading (Dashboard, which is the whole company, not site work). */
+export type NavGroup = { key: 'dashboard' | 'site' | 'money' | 'parties' | 'setup'; label: MessageKey | null; items: NavItem[] }
 
 const canEnter = (r: NavRole) => r.roles.some((x) => x !== 'viewer')
 
@@ -37,21 +40,23 @@ const ITEMS: Record<NavKey, NavItem> = {
   dashboard: { key: 'dashboard', to: '/dashboard', label: 'nav.dashboard', match: ['/dashboard'] },
   projects: { key: 'projects', to: '/projects', label: 'nav.projects', match: ['/projects', '/labour', '/expenses', '/daily'] },
   calendar: { key: 'calendar', to: '/calendar', label: 'nav.calendar', match: ['/calendar'] },
-  slips: { key: 'slips', to: '/slips', label: 'nav.slips', match: ['/slips'] },
+  slips: { key: 'slips', to: '/slips', label: 'nav.slips', short: 'nav.slips.short', match: ['/slips'] },
   deliveries: { key: 'deliveries', to: '/deliveries', label: 'nav.deliveries', match: ['/deliveries'] },
   reports: { key: 'reports', to: '/reports', label: 'nav.reports', match: ['/reports'] },
   bills: { key: 'bills', to: '/bills', label: 'nav.bills', match: ['/bills'] },
   payments: { key: 'payments', to: '/payments', label: 'nav.payments', match: ['/payments'] },
-  parties: {
-    key: 'parties', to: '/parties', label: 'nav.parties',
-    match: ['/parties', '/suppliers', '/subcontractors', '/crews', '/payees', '/work'],
-  },
+  // The hub of the four kinds: the tablet strip's single link and the breadcrumbs' first step.
+  parties: { key: 'parties', to: '/parties', label: 'nav.parties', match: ['/parties'] },
+  suppliers: { key: 'suppliers', to: '/suppliers', label: 'nav.suppliers', match: ['/suppliers'] },
+  subcontractors: { key: 'subcontractors', to: '/subcontractors', label: 'nav.subcontractors', match: ['/subcontractors', '/work'] },
+  crews: { key: 'crews', to: '/crews', label: 'nav.crews', match: ['/crews'] },
+  payees: { key: 'payees', to: '/payees', label: 'nav.payees', match: ['/payees'] },
   staff: { key: 'staff', to: '/staff', label: 'nav.staff', match: ['/staff'] },
   catalog: { key: 'catalog', to: '/catalog', label: 'nav.catalog', match: ['/catalog'] },
   settings: { key: 'settings', to: '/settings', label: 'nav.settings', match: ['/settings'] },
 }
 
-/** Sections grouped by job: site work, money, setup. Empty groups are dropped. */
+/** Sections grouped by job: dashboard, site work, money, parties, setup. Empty groups are dropped. */
 export function sectionsFor(r: NavRole): NavGroup[] {
   const show: Record<NavKey, boolean> = {
     // Company figures: cost, cash and what is owed across projects.
@@ -60,19 +65,25 @@ export function sectionsFor(r: NavRole): NavGroup[] {
     calendar: true,
     slips: true,
     deliveries: true,
-    // Site reports for everyone; money reports inside only for finance.
-    reports: true,
+    // Rarely a daily stop: finance opens Reports from the Dashboard; those without one keep it here.
+    reports: !r.canSeeFinance,
     // Site staff see their own bill drafts; finance sees posted bills.
     bills: r.canSeeFinance || canEnter(r),
     payments: r.canSeeFinance,
     parties: true,
+    suppliers: true,
+    subcontractors: true,
+    crews: r.labourEnabled,
+    payees: true,
     staff: r.isAdmin,
     catalog: true,
     settings: true,
   }
   const groups: NavGroup[] = [
-    { key: 'site', label: 'nav.group.site', items: [ITEMS.dashboard, ITEMS.projects, ITEMS.calendar, ITEMS.slips, ITEMS.deliveries, ITEMS.reports] },
-    { key: 'money', label: 'nav.group.money', items: [ITEMS.bills, ITEMS.payments, ITEMS.parties] },
+    { key: 'dashboard', label: null, items: [ITEMS.dashboard] },
+    { key: 'site', label: 'nav.group.site', items: [ITEMS.projects, ITEMS.calendar, ITEMS.slips, ITEMS.deliveries, ITEMS.reports] },
+    { key: 'money', label: 'nav.group.money', items: [ITEMS.bills, ITEMS.payments] },
+    { key: 'parties', label: 'nav.parties', items: [ITEMS.suppliers, ITEMS.subcontractors, ITEMS.crews, ITEMS.payees] },
     { key: 'setup', label: 'nav.group.setup', items: [ITEMS.staff, ITEMS.catalog, ITEMS.settings] },
   ]
   return groups
@@ -92,6 +103,14 @@ export function activeSection(pathname: string): NavKey | null {
   }
   return best?.key ?? null
 }
+
+/** The nav entry to light up for a section: Reports lives inside the Dashboard for finance. */
+export function navHighlight(active: NavKey | null, r: NavRole): NavKey | null {
+  return active === 'reports' && r.canSeeFinance ? 'dashboard' : active
+}
+
+const PARTY_KEYS: NavKey[] = ['parties', 'suppliers', 'subcontractors', 'crews', 'payees']
+export const isPartySection = (key: NavKey | null) => key !== null && PARTY_KEYS.includes(key)
 
 /** Phone bottom bar: four sections around the centre "+", chosen by what the person does most. */
 export function phoneBarFor(r: NavRole): NavKey[] {

@@ -37,7 +37,7 @@ export function ClientTab({ projectId, clientName }: { projectId: string; client
             {contract !== null && <div className="mt-1 text-sm text-subtle">of <span className="font-semibold text-ink tabular-nums">{formatNPR(contract)}</span> contract</div>}
           </div>
           <div>
-            <div className="text-sm font-medium text-subtle">{left !== null && left < 0 ? 'Received more than the contract by' : 'To collect'}</div>
+            <div className="text-sm font-medium text-subtle">{left !== null && left < 0 ? 'Received more than the contract by' : 'Contract balance'}</div>
             <div className="text-2xl font-semibold text-ink tabular-nums">{left === null ? 'Not available' : formatNPR(Math.abs(left))}</div>
           </div>
         </div>

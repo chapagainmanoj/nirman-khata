@@ -463,7 +463,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
                     </Field>
                   )}
                   {auth.canSeeFinance && (
-                    <Field label="Rate difference reason (if the rate differs from the slip)" htmlFor={`bl${i}-rv`}>
+                    <Field label="Rate difference reason (if the rate differs from the order slip)" htmlFor={`bl${i}-rv`}>
                       <Input id={`bl${i}-rv`} {...register(`lines.${i}.rate_variance_reason`)} />
                     </Field>
                   )}

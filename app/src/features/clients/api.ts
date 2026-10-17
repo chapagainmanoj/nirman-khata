@@ -1,5 +1,5 @@
 // Client receipts: what the client the project is built for has paid. Kept out of the ledger, so
-// they never change cost, cash paid or party balances; only "Received" and "To collect".
+// they never change cost, cash paid or party balances; only "Received" and "Contract balance".
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { rpc } from '../supply/api'

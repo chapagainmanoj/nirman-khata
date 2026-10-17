@@ -54,7 +54,7 @@ export function DeliveryNewPage() {
   const slipId = params.get('slip') ?? ''
   const slip = useSlip(slipId)
   if (slipId && slip.isPending) return <Spinner />
-  if (slipId && (slip.error || !slip.data)) return <ErrorBanner>{slip.error ? friendlyError(slip.error) : 'Slip not found.'}</ErrorBanner>
+  if (slipId && (slip.error || !slip.data)) return <ErrorBanner>{slip.error ? friendlyError(slip.error) : 'Order slip not found.'}</ErrorBanner>
   // Keyed so picking an open slip below starts a fresh form with that slip's lines.
   return <DeliveryForm key={`${slipId}:${params.get('project') ?? ''}`} slip={slip.data ?? null} projectParam={params.get('project') ?? ''} supplierParam={params.get('supplier') ?? ''} />
 }
@@ -134,7 +134,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
     const problem =
       !supplierId ? 'Choose the supplier.'
       : !projectId ? 'Choose the project.'
-      : !slip && !reason.trim() ? 'Say why there is no slip (e.g. urgent purchase).'
+      : !slip && !reason.trim() ? 'Say why there is no order slip (e.g. urgent purchase).'
       : !filled.length ? 'Enter at least one received quantity.'
       : filled.find((l) => !l.slip_line_id && (!l.unit_id || (!l.material_id || (l.material_id === 'other' && !l.material_text.trim()))))
         ? 'Each item needs a material and unit.'
@@ -166,7 +166,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
           <Attachments owner={{ delivery_id: id }} canAdd label="Take challan photo" />
         </Card>
         <div className="mt-4 flex gap-2">
-          {slip ? <ButtonLink to={`/slips/${slip.slip.id}`}>Back to slip</ButtonLink> : <ButtonLink to={`/projects/${projectId}`}>Back to project</ButtonLink>}
+          {slip ? <ButtonLink to={`/slips/${slip.slip.id}`}>Back to order slip</ButtonLink> : <ButtonLink to={`/projects/${projectId}`}>Back to project</ButtonLink>}
         </div>
       </>
     )
@@ -203,12 +203,12 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
             <Field label="Received on" htmlFor="dl-date"><DateInput id="dl-date" value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
             <Field label="Challan number" htmlFor="dl-challan"><Input id="dl-challan" value={challan} onChange={(e) => setChallan(e.target.value)} /></Field>
             {!slip && (
-              <Field label="Why no slip?" htmlFor="dl-reason"><Input id="dl-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+              <Field label="Why no order slip?" htmlFor="dl-reason"><Input id="dl-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
             )}
           </div>
         </Card>
 
-        {slip && projectId && lines.length === 0 && <Notice>Everything on this slip for this project has been received.</Notice>}
+        {slip && projectId && lines.length === 0 && <Notice>Everything on this order slip for this project has been received.</Notice>}
         {lines.map((l, i) => (
           <Card key={l.id} title={l.slip_line_id ? l.label : `Item ${i + 1}`}
             actions={lines.length > 1 && <Button type="button" variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}><TrashIcon size={16} />Remove</Button>}>
@@ -307,7 +307,7 @@ function OpenSlips({ supplierId, projectId }: { supplierId: string; projectId: s
   if (!open.length) return null
   return (
     <Card title="Is this for an order slip?">
-      <p className="mb-2 text-sm text-subtle">Pick the slip and its pending items fill in for you.</p>
+      <p className="mb-2 text-sm text-subtle">Pick the order slip and its pending items fill in for you.</p>
       <ul className="divide-y divide-line">
         {open.slice(0, 5).map((s) => {
           const project = projectId || s.project_ids[0] || ''

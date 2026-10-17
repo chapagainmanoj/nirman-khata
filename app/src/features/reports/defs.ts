@@ -181,7 +181,7 @@ export const REPORTS: ReportDef[] = [
     key: 'pending', title: 'Pending orders and deliveries', group: 'site', finance: false, period: 'asOf',
     description: 'Ordered but not yet received, and received but not yet billed.',
     columns: [
-      { key: 'what', label: 'Waiting for', kind: 'text' }, PROJECT, { key: 'doc', label: 'Slip / challan', kind: 'text' },
+      { key: 'what', label: 'Waiting for', kind: 'text' }, PROJECT, { key: 'doc', label: 'Order slip / challan', kind: 'text' },
       { key: 'date', label: 'Date', kind: 'date' }, { key: 'supplier', label: 'Supplier', kind: 'text' },
       { key: 'item', label: 'Item', kind: 'text' }, { key: 'qty', label: 'Quantity', kind: 'qty' }, { key: 'unit', label: 'Unit', kind: 'text' },
       { key: 'age', label: 'Days', kind: 'qty' },

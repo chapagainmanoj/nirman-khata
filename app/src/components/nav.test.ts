@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { activeSection, homeFor, phoneBarFor, recordActionsFor, recordHref, sectionsFor, type NavRole } from './nav'
+import { activeSection, homeFor, navHighlight, phoneBarFor, recordActionsFor, recordHref, sectionsFor, type NavRole } from './nav'
 
 const base: NavRole = {
   roles: [], isAdmin: false, seesAllProjects: false, canSeeFinance: false, canRecordPayments: false, canApproveSlips: false,
@@ -15,8 +15,9 @@ const keys = (r: NavRole) => sectionsFor(r).flatMap((g) => g.items.map((i) => i.
 
 describe('sectionsFor', () => {
   it('hides money sections from people who cannot see them', () => {
-    expect(keys(viewer)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', 'parties', 'catalog', 'settings'])
-    expect(keys(site)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', 'bills', 'parties', 'catalog', 'settings'])
+    const parties = ['suppliers', 'subcontractors', 'crews', 'payees']
+    expect(keys(viewer)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', ...parties, 'catalog', 'settings'])
+    expect(keys(site)).toEqual(['projects', 'calendar', 'slips', 'deliveries', 'reports', 'bills', ...parties, 'catalog', 'settings'])
   })
   it('shows payments with finance access, and staff only to admins', () => {
     expect(keys(pmFinance)).toContain('payments')
@@ -25,8 +26,27 @@ describe('sectionsFor', () => {
     expect(keys(pmFinance)).toContain('dashboard')
     expect(keys(site)).not.toContain('dashboard')
   })
-  it('groups by job', () => {
-    expect(sectionsFor(admin).map((g) => g.key)).toEqual(['site', 'money', 'setup'])
+  it('groups by job, with the dashboard on its own', () => {
+    expect(sectionsFor(admin).map((g) => g.key)).toEqual(['dashboard', 'site', 'money', 'parties', 'setup'])
+    expect(sectionsFor(admin)[0].label).toBeNull()
+  })
+  it('leaves Reports to the Dashboard for finance, and keeps it for everyone else', () => {
+    expect(keys(pmFinance)).not.toContain('reports')
+    expect(keys(admin)).not.toContain('reports')
+    expect(keys(viewer)).toContain('reports')
+  })
+  it('lists the party kinds directly; labour crews only with own labour on', () => {
+    expect(keys(admin)).not.toContain('parties')
+    expect(keys({ ...admin, labourEnabled: false })).not.toContain('crews')
+    expect(keys({ ...admin, labourEnabled: false })).toContain('subcontractors')
+  })
+})
+
+describe('navHighlight', () => {
+  it('lights the Dashboard for reports when Reports is not in the nav', () => {
+    expect(navHighlight('reports', admin)).toBe('dashboard')
+    expect(navHighlight('reports', site)).toBe('reports')
+    expect(navHighlight('bills', admin)).toBe('bills')
   })
 })
 
@@ -35,9 +55,10 @@ describe('activeSection', () => {
     ['/bills/abc', 'bills'],
     ['/bills/new', 'bills'],
     ['/payments/abc', 'payments'],
-    ['/work/abc', 'parties'],
-    ['/suppliers/abc', 'parties'],
-    ['/crews/abc', 'parties'],
+    ['/work/abc', 'subcontractors'],
+    ['/suppliers/abc', 'suppliers'],
+    ['/crews/abc', 'crews'],
+    ['/parties', 'parties'],
     ['/deliveries/new', 'deliveries'],
     ['/labour/new', 'projects'],
     ['/projects/abc', 'projects'],

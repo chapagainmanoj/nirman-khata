@@ -71,7 +71,7 @@ export function CalendarPage() {
         <Field label="Show" htmlFor="cal-kind">
           <Select id="cal-kind" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
             <option value="all">Everything</option>
-            <option value="site">Site work, deliveries, slips</option>
+            <option value="site">Site work, deliveries, order slips</option>
             <option value="money">Costs and payments</option>
           </Select>
         </Field>

@@ -74,7 +74,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByLabel(/^Received \(/)).toHaveValue('60')
   await page.getByRole('button', { name: 'Save delivery' }).click()
   await expect(page.getByRole('heading', { name: 'Delivery recorded' })).toBeVisible()
-  await page.getByRole('link', { name: 'Back to slip' }).click()
+  await page.getByRole('link', { name: 'Back to order slip' }).click()
   await expect(page.getByText('Received 60 · Pending 40')).toBeVisible()
   await expect(page.getByRole('list', { name: 'Progress' })).toContainText(/Partly received\s*60 \/ 100/)
   await page.screenshot(shots('m2-04-slip-partly-received'))

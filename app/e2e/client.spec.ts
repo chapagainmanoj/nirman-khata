@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test'
 
 // Money in from the client: record Rs 1,00,000 from the project's Client tab, see it as Received and
-// To collect against the contract (never as cost or paid), then reverse it and the totals go back.
+// Contract balance against the contract (never as cost or paid), then reverse it and the totals go back.
 const run = Date.now().toString().slice(-7)
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
 
@@ -51,14 +51,14 @@ test('a client payment counts toward the contract, not costs, and can be reverse
   await page.goto(`${projectUrl}?tab=client`)
   const client = page.locator('main')
   await expect(row(client, 'Received from client')).toContainText('Rs. 1,00,000')
-  await expect(row(client, 'To collect')).toContainText('Rs. 19,00,000')
+  await expect(row(client, 'Contract balance')).toContainText('Rs. 19,00,000')
   await expect(client.getByRole('link', { name: /CR-0001/ })).toContainText('Rs. 1,00,000')
   await page.screenshot(shots('cr-02-client-tab'))
 
   await page.goto(projectUrl)
   const card = page.locator('section', { has: page.getByRole('heading', { name: 'Contract and budget' }) })
   await expect(row(card, 'Received')).toContainText('Rs. 1,00,000')
-  await expect(row(card, 'To collect')).toContainText('Rs. 19,00,000')
+  await expect(row(card, 'Contract balance')).toContainText('Rs. 19,00,000')
   // Not a cost and not money paid out.
   await expect(row(card, 'Spent')).toContainText('Rs. 0')
   await expect(row(card, 'Paid')).toContainText('Rs. 0')
@@ -66,12 +66,9 @@ test('a client payment counts toward the contract, not costs, and can be reverse
   await expect(activity.getByRole('link', { name: /Received CR-0001/ })).toContainText('Rs. 1,00,000')
   await page.screenshot(shots('cr-03-overview'))
 
-  // The dashboard shows money coming in beside money going out.
+  // Money received is on the project page; the dashboard keeps to spending and what is owed.
   await page.goto('/dashboard')
-  const totals = page.getByRole('region', { name: 'Totals' })
-  await expect(totals.getByRole('link', { name: /^Received/ })).toContainText('Rs. 1,00,000')
-  await expect(totals.getByRole('link', { name: /^To collect/ })).toContainText('Rs. 19,00,000')
-  await expect(totals.getByRole('heading', { name: 'Right now' })).toBeVisible()
+  await expect(page.getByRole('link', { name: /^To pay/ })).toBeVisible()
   await page.goto(projectUrl)
 
   // A bounced cheque: reverse it with a reason; the totals go back.
@@ -84,7 +81,7 @@ test('a client payment counts toward the contract, not costs, and can be reverse
 
   await page.goto(projectUrl)
   await expect(row(card, 'Received')).toContainText('Rs. 0')
-  await expect(row(card, 'To collect')).toContainText('Rs. 20,00,000')
+  await expect(row(card, 'Contract balance')).toContainText('Rs. 20,00,000')
 
   expect(errors).toEqual([])
 })

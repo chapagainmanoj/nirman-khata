@@ -1,19 +1,25 @@
 // Lists open on the current project (the sidebar's "Working on"). A two-way switch shows which
 // view is on: [P-2 · Lakeside] [All projects]. "All" lasts until the current project changes,
-// so the sidebar and the list never disagree for long.
+// so the sidebar and the list never disagree for long. A link with ?all=1 (a company-wide count on
+// the dashboard) opens on "All projects", so the project cannot hide the item it points to.
 import { useState, type ReactNode } from 'react'
+import { useSearchParams } from 'react-router'
 import { useCurrentProject } from '../projects/current'
 
 const option = (on: boolean) =>
   `min-h-11 [@media(pointer:fine)]:min-h-10 min-w-0 rounded-md px-3 text-sm font-medium ${on ? 'bg-surface text-ink shadow-sm' : 'text-subtle hover:text-ink'}`
+
+const ANY = '*'
 
 export function useProjectFilter() {
   const current = useCurrentProject()
   // Only a project that has loaded filters the list, so it is never filtered without a label.
   const p = current.project
   // The project "All" was chosen for; a different current project starts filtered again.
-  const [allFor, setAllFor] = useState<string | null>(null)
-  const all = !!p && allFor === p.id
+  // ANY: opened with ?all=1, so "All" whatever the project (which may not have loaded yet).
+  const [params] = useSearchParams()
+  const [allFor, setAllFor] = useState<string | null>(() => (params.get('all') === '1' ? ANY : null))
+  const all = !!p && (allFor === p.id || allFor === ANY)
   const projectId = p && !all ? p.id : null
 
   const chip = p && (

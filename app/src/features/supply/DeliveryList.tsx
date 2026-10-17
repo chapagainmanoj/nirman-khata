@@ -57,7 +57,7 @@ function DeliveryItem({ d, showProject }: { d: Delivery; showProject: boolean })
             {d.challan_no && ` · Challan ${d.challan_no}`}
             {showProject && d.projects && ` · ${d.projects.code}`}
           </div>
-          {!d.slip_id && d.no_slip_reason && <div className="text-xs text-subtle">No slip: {d.no_slip_reason}</div>}
+          {!d.slip_id && d.no_slip_reason && <div className="text-xs text-subtle">No order slip: {d.no_slip_reason}</div>}
         </div>
       </div>
       <ul className="mt-2">
