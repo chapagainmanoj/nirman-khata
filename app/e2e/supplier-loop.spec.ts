@@ -102,6 +102,22 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByText('Posted', { exact: true })).toBeVisible()
   await expect(page.getByText('Unpaid', { exact: true })).toBeVisible()
   await page.screenshot(shots('m2-06-bill-posted'))
+  // The delivery list now shows it billed, so there is no bill to enter; its page says how much,
+  // and a billed delivery cannot be deleted.
+  await page.goto('/deliveries')
+  const delivery = page.getByRole('row').filter({ hasText: 'Challan CH-501' })
+  await expect(delivery).toContainText('60 bag')
+  await expect(delivery).toContainText('Billed')
+  await expect(delivery.getByRole('link', { name: 'Enter bill for this' })).toHaveCount(0)
+  await page.screenshot(shots('m2-06b-deliveries'))
+  await delivery.getByRole('link', { name: 'Shrestha Suppliers' }).click()
+  await expect(page.getByRole('heading', { name: 'Challan CH-501' })).toBeVisible()
+  await expect(page.locator('section', { has: page.getByRole('heading', { name: 'What came' }) })).toContainText('60 billed')
+  await expect(page.getByRole('button', { name: 'Return items' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Delete' })).toHaveCount(0)
+  await page.screenshot(shots('m2-06c-delivery'))
+  await page.goBack()
+  await page.goBack()
 
   // The supplier page answers what a contractor asks: what is unpaid (and pay it from there), what
   // is still to come, and the supplier's latest rates. Nothing to match yet, so no Match card.

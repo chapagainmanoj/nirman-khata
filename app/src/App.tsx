@@ -25,6 +25,7 @@ const HowToUsePage = page(() => import('./features/help/HowToUsePage'), 'HowToUs
 const NotificationsPage = page(() => import('./features/notifications/NotificationsPage'), 'NotificationsPage')
 const BillDetailPage = page(() => import('./features/supply/BillDetailPage'), 'BillDetailPage')
 const BillEditPage = page(() => import('./features/supply/BillEditPage'), 'BillEditPage')
+const DeliveryDetailPage = page(() => import('./features/supply/DeliveryDetailPage'), 'DeliveryDetailPage')
 const DeliveryNewPage = page(() => import('./features/supply/DeliveryNewPage'), 'DeliveryNewPage')
 const PaymentDetailPage = page(() => import('./features/supply/PaymentDetailPage'), 'PaymentDetailPage')
 const RefundDetailPage = page(() => import('./features/refunds/RefundDetailPage'), 'RefundDetailPage')
@@ -93,6 +94,7 @@ export function App() {
           <Route path="/slips/:slipId/edit" element={<SlipEditPage />} />
           <Route path="/deliveries" element={<DeliveriesPage />} />
           <Route path="/deliveries/new" element={<DeliveryNewPage />} />
+          <Route path="/deliveries/:deliveryId" element={<DeliveryDetailPage />} />
           <Route path="/bills" element={<BillsPage />} />
           <Route path="/payments" element={<PaymentsPage />} />
           <Route path="/expenses" element={<ExpensesPage />} />

@@ -34,11 +34,12 @@ export function SlipsPage() {
   const projects = useProjects(auth.companyId)
   const [filter, setFilter] = useState<Filter>('open')
   const code = (id: string) => projects.data?.find((p) => p.id === id)?.code
-  const { projectId, chip, empty, recordProject } = useProjectFilter()
+  const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
   const scope = { companyId: auth.companyId, projectId }
   const slips = useSlips({ ...scope, tab: filter })
   const list = slips.data
   const counts = { pending: useSlipCount({ ...scope, tab: 'pending' }).data, draft: useSlipCount({ ...scope, tab: 'draft' }).data }
+  const th = 'py-2 pr-3 font-medium'
   const count = (f: Filter) => (f === 'pending' || f === 'draft' ? counts[f] : 0)
 
   return (
@@ -61,32 +62,53 @@ export function SlipsPage() {
       {list?.length === 0 && empty(WHAT[filter], (
         <EmptyState title={`No ${WHAT[filter]}`}>{howSlipsGetHere(filter, auth.company.slip_approval_required)}</EmptyState>
       ))}
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {list?.map((s) => {
-          const [statusLabel, statusTone] = SLIP_STATUS[s.status]
-          const [fLabel, fTone] = FULFILMENT[s.fulfilment] ?? FULFILMENT.not_received
-          const codes = s.project_ids.map((id) => code(id)).filter(Boolean)
-          return (
-            <li key={s.id}>
-              <Link to={`/slips/${s.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <div className="text-xs font-semibold text-subtle">{s.number}</div>
-                    <div className="font-semibold break-words text-ink">{s.suppliers?.name}</div>
-                  </div>
-                  <Badge tone={statusTone}>{statusLabel}</Badge>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-subtle">
-                  <DateText value={s.request_date} display={auth.dateDisplay} />
-                  {codes.length > 0 && <span>· {codes.join(', ')}</span>}
-                  {s.status === 'approved' && <Badge tone={fTone}>{fLabel}</Badge>}
-                  {s.status === 'approved' && !s.sent_at && <Badge tone="warn">Not sent</Badge>}
-                </div>
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+      {list && list.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs text-subtle">
+                <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
+                <th scope="col" className={`hidden md:table-cell ${th}`}>Number</th>
+                <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>Supplier</th>
+                {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>Projects</th>}
+                <th scope="col" className="py-2 pr-4 text-right font-medium">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.map((s) => {
+                const to = `/slips/${s.id}`
+                const [statusLabel, statusTone] = SLIP_STATUS[s.status]
+                const [fLabel, fTone] = FULFILMENT[s.fulfilment] ?? FULFILMENT.not_received
+                const codes = s.project_ids.map((id) => code(id)).filter(Boolean).join(', ')
+                return (
+                  <tr key={s.id} className="border-b border-line align-middle last:border-0 hover:bg-muted">
+                    <td className="hidden py-2 pr-3 pl-4 whitespace-nowrap text-subtle sm:table-cell"><DateText value={s.request_date} display={auth.dateDisplay} /></td>
+                    <td className="hidden py-2 pr-3 whitespace-nowrap md:table-cell"><Link to={to} className="text-slate hover:underline">{s.number}</Link></td>
+                    <td className="py-2 pr-3 pl-4 sm:pl-0">
+                      {/* Smaller screens: the number is part of the link, the date and projects go under it. */}
+                      <Link to={to} className="inline-flex min-h-8 flex-col justify-center font-medium break-words text-ink hover:underline">
+                        {s.suppliers?.name}<span className="text-xs font-semibold text-subtle md:hidden">{s.number}</span>
+                      </Link>
+                      <div className="text-xs text-subtle md:hidden">
+                        <span className="sm:hidden"><DateText value={s.request_date} display={auth.dateDisplay} />{showProject && codes && ' · '}</span>
+                        {showProject && codes}
+                      </div>
+                    </td>
+                    {showProject && <td className="hidden py-2 pr-3 md:table-cell">{codes}</td>}
+                    <td className="py-2 pr-4 text-right">
+                      {/* Approved slips say how much has come; the others say where they are in approval. */}
+                      <div className="flex flex-wrap justify-end gap-1">
+                        {s.status === 'approved' ? <Badge tone={fTone}>{fLabel}</Badge> : <Badge tone={statusTone}>{statusLabel}</Badge>}
+                        {s.status === 'approved' && !s.sent_at && <Badge tone="warn">Not sent</Badge>}
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
       <ShowMore list={slips} total={filter === 'all' || filter === 'open' ? null : count(filter)} />
     </>
   )

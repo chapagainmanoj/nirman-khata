@@ -1,10 +1,10 @@
 // Data for the supplier loop: suppliers, slips, deliveries, bills, payments, khata.
 // Reads go through RLS, so each list already contains only what the user may see.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef } from 'react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useRef } from 'react'
 import type { Database, Json } from '../../lib/database.types'
 import { newId } from '../../lib/ids'
-import { usePaged } from '../../lib/paging'
+import { PAGE_SIZE, usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 
 type Fns = Database['public']['Functions']
@@ -192,6 +192,44 @@ export function useDeliveries(filter: { projectId?: string; slipId?: string; sup
 }
 
 /** Delivery lines with derived quantities (billable, returned, awaiting credit). */
+/** One delivery with its lines; null when it does not exist or is on a project the user cannot see. */
+export function useDelivery(deliveryId: string) {
+  return useQuery({
+    queryKey: ['deliveries', 'one', deliveryId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('deliveries')
+        .select('*, suppliers(name), projects(code, name), order_slips(number), delivery_lines(*, materials(name), units(code))')
+        .eq('id', deliveryId).order('sort_order', { referencedTable: 'delivery_lines' }).maybeSingle()
+      if (error) throw error
+      return data
+    },
+  })
+}
+
+/**
+ * Billed / returned quantities for the lines of these deliveries only, one request per page of
+ * the list. Under 'delivery-lines', so posting a bill or credit refreshes it.
+ */
+export function useDeliveryStatusFor(deliveryIds: string[]) {
+  const chunks = useMemo(() => {
+    const out: string[][] = []
+    for (let i = 0; i < deliveryIds.length; i += PAGE_SIZE) out.push(deliveryIds.slice(i, i + PAGE_SIZE).sort())
+    return out
+  }, [deliveryIds])
+  return useQueries({
+    queries: chunks.map((ids) => ({
+      queryKey: ['delivery-lines', 'by-delivery', ids],
+      queryFn: async () => {
+        const { data, error } = await supabase.from('delivery_line_status')
+          .select('id, billed_qty, returned_qty, awaiting_credit_qty, billable_qty').in('delivery_id', ids)
+        if (error) throw error
+        return data
+      },
+    })),
+    combine: (results) => new Map(results.flatMap((r) => r.data ?? []).map((l) => [l.id!, l])),
+  })
+}
+
 export function useDeliveryLineStatus(filter: { supplierId?: string; projectId?: string; billableOnly?: boolean }, enabled = true) {
   return useQuery({
     queryKey: ['delivery-lines', filter],

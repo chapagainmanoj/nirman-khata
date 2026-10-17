@@ -1,110 +1,146 @@
 // Deliveries (challan) with their photos, returns and derived quantities (req §10, §20).
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useMemo, useState, type FormEvent, type ReactNode } from 'react'
+import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { Attachments } from '../../components/Attachments'
 import { DateInput, DateText } from '../../components/DateInput'
-import { Badge, Button, ButtonLink, ConfirmButton, ErrorBanner, Field, Input, Spinner } from '../../components/ui'
+import { Badge, Button, ErrorBanner, Field, Input, Spinner } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { ShowMore } from '../../components/ShowMore'
 import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
-import { rpc, useDeliveries, useDeliveryLineStatus } from './api'
+import { rpc, useDeliveries, useDeliveryStatusFor } from './api'
 import { canEnter } from './permissions'
 
 const qty = (n: number) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 })
 
-type Delivery = NonNullable<ReturnType<typeof useDeliveries>['data']>[number]
+type Delivery = Pick<NonNullable<ReturnType<typeof useDeliveries>['data']>[number], 'id' | 'supplier_id' | 'project_id' | 'delivery_lines'>
+type DeliveryLine = Delivery['delivery_lines'][number]
+export type LineStatus = ReturnType<typeof useDeliveryStatusFor>
 
+const lineName = (l: DeliveryLine) => l.materials?.name ?? l.material_text ?? ''
+
+/** Lines still waiting for a bill; "Enter bill for this" shows only then. */
+export const billableQty = (d: Delivery, status: LineStatus) =>
+  d.delivery_lines.reduce((n, l) => n + (status.get(l.id)?.billable_qty ?? 0), 0)
+
+/** Billed or returned deliveries are history; the server refuses to delete them too. */
+export const isLocked = (d: Delivery, status: LineStatus) =>
+  d.delivery_lines.some((l) => (status.get(l.id)?.billed_qty ?? 0) > 0 || (status.get(l.id)?.returned_qty ?? 0) > 0)
+
+/** Where the delivery stands with its bill, summed over its lines. Nothing to bill and none billed: no badge. */
+function billing(d: Delivery, status: LineStatus): [string, 'neutral' | 'good' | 'warn'] | null {
+  const sum = (k: 'billed_qty' | 'billable_qty' | 'awaiting_credit_qty') => d.delivery_lines.reduce((n, l) => n + (status.get(l.id)?.[k] ?? 0), 0)
+  if (!d.delivery_lines.some((l) => status.has(l.id))) return null
+  if (sum('awaiting_credit_qty') > 0) return ['Awaiting credit', 'warn']
+  if (sum('billable_qty') > 0) return sum('billed_qty') > 0 ? ['Part billed', 'warn'] : ['Not billed', 'neutral']
+  return sum('billed_qty') > 0 ? ['Billed', 'good'] : null
+}
+
+/**
+ * Deliveries as a compact table, newest first, 50 at a time: one line a delivery on a laptop.
+ * On a phone, the date, challan, project and items move under the supplier.
+ */
 export function DeliveryList({ filter, empty }: { filter: { projectId?: string; slipId?: string; supplierId?: string }; empty?: ReactNode }) {
+  const auth = useCompany()
   const deliveries = useDeliveries(filter)
+  const ids = useMemo(() => (deliveries.data ?? []).map((d) => d.id), [deliveries.data])
+  const status = useDeliveryStatusFor(ids)
   if (deliveries.isPending) return <Spinner />
   if (deliveries.error) return <ErrorBanner onRetry={() => void deliveries.refetch()}>{friendlyError(deliveries.error)}</ErrorBanner>
   const list = deliveries.data ?? []
   if (!list.length) return empty ?? <p className="text-sm text-subtle">No deliveries recorded yet.</p>
+  const showProject = !filter.projectId
+  const th = 'py-2 pr-3 font-medium'
   return (
     <>
-      <ul className="grid gap-3 lg:grid-cols-2">
-        {list.map((d) => <DeliveryItem key={d.id} d={d} showProject={!filter.projectId} />)}
-      </ul>
+      <div className="overflow-hidden rounded-xl border border-line bg-surface">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-line text-left text-xs text-subtle">
+              <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
+              <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>Supplier</th>
+              <th scope="col" className={`hidden md:table-cell ${th}`}>Challan</th>
+              {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>Project</th>}
+              <th scope="col" className={`hidden lg:table-cell ${th}`}>Items</th>
+              <th scope="col" className="py-2 pr-4 text-right font-medium">Received</th>
+            </tr>
+          </thead>
+          <tbody>
+            {list.map((d) => {
+              const to = `/deliveries/${d.id}`
+              const [first, ...rest] = d.delivery_lines
+              const items = first && <>{lineName(first)}{first.spec && <span className="text-subtle"> · {first.spec}</span>}{rest.length > 0 && <span className="text-subtle"> +{rest.length} more</span>}</>
+              const issue = d.delivery_lines.find((l) => l.issue)?.issue
+              const bill = billing(d, status)
+              return (
+                <tr key={d.id} className="border-b border-line align-middle last:border-0 hover:bg-muted">
+                  <td className="hidden py-2 pr-3 pl-4 whitespace-nowrap text-subtle sm:table-cell"><DateText value={d.receipt_date} display={auth.dateDisplay} /></td>
+                  <td className="py-2 pr-3 pl-4 sm:pl-0">
+                    <Link to={to} className="inline-flex min-h-8 items-center font-medium break-words text-ink hover:underline">{d.suppliers?.name}</Link>
+                    {issue && <> <Badge tone="warn">{DELIVERY_ISSUES[issue]}</Badge></>}
+                    {/* Smaller screens: what the hidden columns say. */}
+                    {items && <div className="text-xs break-words text-ink lg:hidden">{items}</div>}
+                    <div className="text-xs text-subtle md:hidden">
+                      <span className="sm:hidden"><DateText value={d.receipt_date} display={auth.dateDisplay} /></span>
+                      {d.challan_no && <><span className="sm:hidden"> · </span>Challan {d.challan_no}</>}
+                      {showProject && d.projects && <> · {d.projects.code}</>}
+                    </div>
+                  </td>
+                  <td className="hidden py-2 pr-3 whitespace-nowrap md:table-cell">{d.challan_no}</td>
+                  {showProject && <td className="hidden py-2 pr-3 md:table-cell">{d.projects?.code}</td>}
+                  <td className="hidden py-2 pr-3 break-words lg:table-cell">{items}</td>
+                  <td className="py-2 pr-4 text-right">
+                    <span className="whitespace-nowrap tabular-nums">
+                      {d.delivery_lines.length === 1 ? `${qty(first.accepted_qty ?? 0)} ${first.units?.code ?? ''}` : `${d.delivery_lines.length} items`}
+                    </span>
+                    {bill && <div className="mt-1"><Badge tone={bill[1]}>{bill[0]}</Badge></div>}
+                    {/* The next step for a delivery is its bill. */}
+                    {canEnter(auth) && billableQty(d, status) > 0 && (
+                      <div><Link to={`/bills/new?supplier=${d.supplier_id}&delivery=${d.id}`} className="inline-flex min-h-8 items-center text-xs font-semibold text-brand hover:underline">Enter bill for this</Link></div>
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+      </div>
       <ShowMore list={deliveries} />
     </>
   )
 }
 
-function DeliveryItem({ d, showProject }: { d: Delivery; showProject: boolean }) {
-  const auth = useCompany()
-  const queryClient = useQueryClient()
-  const status = useDeliveryLineStatus({ projectId: d.project_id, supplierId: d.supplier_id })
-  const [open, setOpen] = useState<'photos' | 'return' | null>(null)
-  const st = (lineId: string) => status.data?.find((x) => x.id === lineId)
-  // Billed or returned deliveries are history; the server refuses to delete them too.
-  const locked = d.delivery_lines.some((l) => (st(l.id)?.billed_qty ?? 0) > 0 || (st(l.id)?.returned_qty ?? 0) > 0)
-
-  const remove = useMutation({
-    mutationFn: () => rpc('delete_delivery', { p_delivery: d.id }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['deliveries'] }),
-  })
-
+/** Each line with what was accepted, and what has since been rejected, returned, billed or credited. */
+export function DeliveryLines({ d, status }: { d: Delivery; status: LineStatus }) {
   return (
-    <li className="rounded-xl border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          <div className="font-semibold text-ink">{d.suppliers?.name}</div>
-          <div className="text-xs text-subtle">
-            <DateText value={d.receipt_date} display={auth.dateDisplay} />
-            {d.challan_no && ` · Challan ${d.challan_no}`}
-            {showProject && d.projects && ` · ${d.projects.code}`}
-          </div>
-          {!d.slip_id && d.no_slip_reason && <div className="text-xs text-subtle">No order slip: {d.no_slip_reason}</div>}
-        </div>
-      </div>
-      <ul className="mt-2">
-        {d.delivery_lines.map((l) => {
-          const s = st(l.id)
-          return (
-            <li key={l.id} className="flex justify-between gap-3 border-b border-line py-1.5 text-sm last:border-0">
-              <span className="min-w-0 break-words">
-                {l.materials?.name ?? l.material_text}{l.spec && <span className="text-subtle"> · {l.spec}</span>}
-                {l.issue && <> <Badge tone="warn">{DELIVERY_ISSUES[l.issue]}</Badge></>}
-                {l.note && <span className="block text-xs text-subtle">{l.note}</span>}
-              </span>
-              <span className="shrink-0 text-right tabular-nums">
-                {qty(l.accepted_qty ?? 0)} {l.units?.code}
-                {l.rejected_qty > 0 && <span className="block text-xs text-subtle">{qty(l.rejected_qty)} rejected</span>}
-                {s && s.returned_qty! > 0 && <span className="block text-xs text-subtle">{qty(s.returned_qty!)} returned</span>}
-                {s && s.billed_qty! > 0 && <span className="block text-xs text-subtle">{qty(s.billed_qty!)} billed</span>}
-                {s && s.awaiting_credit_qty! > 0 && <span className="block text-xs text-warn-ink">{qty(s.awaiting_credit_qty!)} awaiting credit</span>}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-      <div className="mt-2 flex flex-wrap gap-1">
-        {/* The next step for a delivery is its bill. */}
-        {canEnter(auth) && d.delivery_lines.some((l) => (st(l.id)?.billable_qty ?? 0) > 0) && (
-          <ButtonLink variant="secondary" to={`/bills/new?supplier=${d.supplier_id}&delivery=${d.id}`}>Enter bill for this</ButtonLink>
-        )}
-        <Button variant="ghost" aria-expanded={open === 'photos'} onClick={() => setOpen(open === 'photos' ? null : 'photos')}>Challan photo</Button>
-        {canEnter(auth) && (
-          <Button variant="ghost" aria-expanded={open === 'return'} onClick={() => setOpen(open === 'return' ? null : 'return')}>Return items</Button>
-        )}
-        {canEnter(auth) && !locked && (
-          <ConfirmButton label="Delete this delivery" confirmLabel="Delete" disabled={remove.isPending} onConfirm={() => remove.mutate()}>
-            Delete
-          </ConfirmButton>
-        )}
-      </div>
-      {open === 'photos' && <div className="mt-2"><Attachments owner={{ delivery_id: d.id }} canAdd={canEnter(auth)} label="Add challan photo" /></div>}
-      {open === 'return' && <ReturnForm d={d} onDone={() => setOpen(null)} />}
-      <ErrorBanner>{remove.error && friendlyError(remove.error)}</ErrorBanner>
-    </li>
+    <ul>
+      {d.delivery_lines.map((l) => {
+        const s = status.get(l.id)
+        return (
+          <li key={l.id} className="flex justify-between gap-3 border-b border-line py-1.5 text-sm last:border-0">
+            <span className="min-w-0 break-words">
+              {lineName(l)}{l.spec && <span className="text-subtle"> · {l.spec}</span>}
+              {l.issue && <> <Badge tone="warn">{DELIVERY_ISSUES[l.issue]}</Badge></>}
+              {l.note && <span className="block text-xs text-subtle">{l.note}</span>}
+            </span>
+            <span className="shrink-0 text-right tabular-nums">
+              {qty(l.accepted_qty ?? 0)} {l.units?.code}
+              {l.rejected_qty > 0 && <span className="block text-xs text-subtle">{qty(l.rejected_qty)} rejected</span>}
+              {s && s.returned_qty! > 0 && <span className="block text-xs text-subtle">{qty(s.returned_qty!)} returned</span>}
+              {s && s.billed_qty! > 0 && <span className="block text-xs text-subtle">{qty(s.billed_qty!)} billed</span>}
+              {s && s.awaiting_credit_qty! > 0 && <span className="block text-xs text-warn-ink">{qty(s.awaiting_credit_qty!)} awaiting credit</span>}
+            </span>
+          </li>
+        )
+      })}
+    </ul>
   )
 }
 
 /** Physical return: quantities only; cost changes only when the supplier's credit is posted. */
-function ReturnForm({ d, onDone }: { d: Delivery; onDone: () => void }) {
+export function ReturnForm({ d, onDone }: { d: Delivery; onDone: () => void }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
   const [id] = useState(newId)
@@ -135,7 +171,7 @@ function ReturnForm({ d, onDone }: { d: Delivery; onDone: () => void }) {
       <div className="font-semibold text-ink">Return to supplier</div>
       <p className="text-xs text-subtle">This changes quantities only. If the goods were billed, ask the supplier for a credit note.</p>
       {d.delivery_lines.map((l) => (
-        <Field key={l.id} label={`${l.materials?.name ?? l.material_text} (${l.units?.code})`} htmlFor={`ret-${l.id}`}>
+        <Field key={l.id} label={`${lineName(l)} (${l.units?.code})`} htmlFor={`ret-${l.id}`}>
           <Input id={`ret-${l.id}`} inputMode="decimal" value={qtys[l.id] ?? ''} onChange={(e) => setQtys({ ...qtys, [l.id]: e.target.value })} />
         </Field>
       ))}
