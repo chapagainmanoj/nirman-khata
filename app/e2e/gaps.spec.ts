@@ -113,7 +113,7 @@ test('paged lists, rate hint, refund and password reset', async ({ page }) => {
   // A section at the foot of the balance card, named by its aria-label.
   const refundCard = page.getByRole('region', { name: 'Money given back' })
   await expect(refundCard).toContainText('Rs. 2,500')
-  await refundCard.getByRole('button', { name: 'Record refund' }).click()
+  await refundCard.getByRole('button', { name: 'Record money given back' }).click()
   await expect(page.getByLabel('Amount received')).toHaveValue('2500')
   await page.getByLabel('Amount received').fill('3,000')
   await expect(page.getByText('No more than Rs. 2,500 here')).toBeVisible()

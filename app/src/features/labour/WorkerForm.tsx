@@ -70,7 +70,8 @@ export function WorkerForm({ crewId, member, onDone, onAdded }: {
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={kind === 'daily' ? 'Rate for a full day' : 'Rate for an hour'} htmlFor={`mf-rate-${id}`}>
+        <Field label={kind === 'daily' ? 'Rate for a full day' : 'Rate for an hour'} htmlFor={`mf-rate-${id}`}
+          hint={member ? 'A new rate applies to days verified from now on.' : undefined}>
           <MoneyInput id={`mf-rate-${id}`} value={rate} onChange={(e) => setRate(e.target.value)} />
         </Field>
         <Field label="Phone" htmlFor={`mf-phone-${id}`} hint="Optional"><Input id={`mf-phone-${id}`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>

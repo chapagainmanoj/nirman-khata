@@ -2,7 +2,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { runId } from './helpers'
 
 // Milestone 3 walk-through on a phone: labour paid now, a weekly labour batch (with the
-// near-duplicate check), an other expense to a new payee, and subcontract peski -> claim ->
+// near-duplicate check), an other expense to a new payee, and subcontract peski -> bill ->
 // approval -> match. Project cost, cash and amounts owed must add up.
 const run = runId()
 const shots = (name: string) => ({ path: `e2e/.results/screens/${name}.png`, fullPage: true })
@@ -101,26 +101,30 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await expect(page.getByRole('heading', { name: /Payment PAY-0003/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Change split' })).toBeHidden()
 
-  // Running bill claimed 30,000, approved in full: cost from the approval date.
+  // Running bill of 30,000: the owner adds and approves it in one step, then pays it. The 20,000
+  // peski comes off first (Farchhyaut); 10,000 is left to pay in cash, kept for later here.
   await page.goto(packageUrl)
-  await page.getByRole('button', { name: 'Add claim' }).click()
-  await page.getByLabel('Amount claimed').fill('30,000')
-  await page.getByLabel('Claim or bill number').fill('RA-1')
-  await page.getByRole('button', { name: 'Save claim' }).click()
-  await page.getByRole('button', { name: 'Approve', exact: true }).click()
-  await page.getByRole('button', { name: 'Approve Rs. 30,000' }).click()
-  await expect(row(page, 'Approved work (cost)')).toContainText('Rs. 30,000')
+  await page.getByRole('button', { name: 'Add bill' }).click()
+  await page.getByLabel('Amount', { exact: true }).fill('30,000')
+  await page.getByLabel('Bill number').fill('RA-1')
+  await page.getByRole('button', { name: 'Save and pay' }).click()
+  await expect(page.getByRole('heading', { name: 'Record payment' })).toBeVisible()
+  await expect(page.getByText(/Less money they hold/).locator('..')).toContainText('Rs. 20,000')
+  await expect(page.getByText('To pay in cash').locator('..')).toContainText('Rs. 10,000')
+  await page.getByLabel('Amount paid').fill('0')
+  await page.getByRole('button', { name: 'Pay from money they hold' }).click()
+  await expect(page.getByText('Rs. 20,000 taken from money they hold')).toBeVisible()
+  await expect(row(page, 'Work done (cost)')).toContainText('Rs. 30,000')
+  await expect(row(page, 'Paid').first()).toContainText('Rs. 20,000') // package total; the bill row also says Paid
+  await expect(row(page, 'Balance')).toContainText('Rs. 10,000')
   await page.screenshot(shots('m3-03-package'))
 
-  // Farchhyaut: match the peski to the approved claim on the subcontractor page.
+  // The subcontractor page leads with the contract: agreed, paid, left, and due now.
   await page.getByRole('link', { name: 'Tamang Plaster' }).click()
-  await page.getByLabel('Unpaid charge').selectOption({ index: 1 })
-  await page.getByLabel('Paid from').selectOption({ index: 1 })
-  await page.getByRole('button', { name: 'Match', exact: true }).click()
-  await expect(page.getByText('Matched.')).toBeVisible()
-  await page.goto(packageUrl)
-  await expect(row(page, 'Paid').first()).toContainText('Rs. 20,000') // package total; the claim row also says Paid
-  await expect(row(page, 'Balance')).toContainText('Rs. 10,000')
+  const contract = page.locator('section', { has: page.getByRole('heading', { name: 'Contract', exact: true }) })
+  await expect(contract).toContainText('Rs. 1,00,000')
+  await expect(contract.getByText('Left to pay on the contract').locator('xpath=following-sibling::dd[1]')).toContainText('Rs. 80,000')
+  await expect(contract.getByText('Due now').locator('xpath=following-sibling::dd[1]')).toContainText('Rs. 10,000')
 
   // Project: cost 6,000 + 7,000 + 4,500 + 30,000; cash 6,000 + 4,500 + 20,000;
   // still owed 7,000 to the crew and 10,000 to the subcontractor.

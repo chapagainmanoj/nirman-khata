@@ -35,8 +35,15 @@ function useRefundRooms(partyId: string, enabled: boolean) {
   })
 }
 
-/** `embedded`: a section at the foot of the balance card instead of a card of its own. */
-export function RefundCard({ kind, partyId, embedded }: { kind: PartyKind; partyId: string; embedded?: boolean }) {
+/**
+ * `embedded`: a section at the foot of the balance card instead of a card of its own.
+ * `quiet`: only a small link until opened, for while their money is still being used up (a
+ * subcontractor's peski during active work comes off their next bill, it is not given back).
+ * `intro`: the line above the button, in place of the usual one.
+ */
+export function RefundCard({ kind, partyId, embedded, quiet, intro }: {
+  kind: PartyKind; partyId: string; embedded?: boolean; quiet?: boolean; intro?: (held: string) => string
+}) {
   const auth = useCompany()
   const rooms = useRefundRooms(partyId, auth.canSeeFinance && canRecordPayments(auth))
   const [open, setOpen] = useState(false)
@@ -47,15 +54,26 @@ export function RefundCard({ kind, partyId, embedded }: { kind: PartyKind; party
   const peski = Math.max(...usable.map((r) => r.peski_paisa))
   const held = [peski > 0 && `${formatNPR(peski)} peski not yet used`, overpaid > 0 && `${formatNPR(overpaid)} overpaid`]
     .filter(Boolean).join(' and ')
+  if (quiet && !open) {
+    return (
+      <div className={embedded ? 'mt-4 border-t border-line pt-3' : ''}>
+        <button type="button" onClick={() => setOpen(true)} className="min-h-11 text-sm text-slate underline underline-offset-4">
+          They gave money back
+        </button>
+      </div>
+    )
+  }
   const body = (
     <>
       <p className="text-sm text-subtle">
-        This {PARTY[kind].one.toLowerCase()} holds up to <span className="font-semibold text-ink tabular-nums">{held}</span>.
-        Record money they give back here; it is not a cost.
+        {intro ? intro(held) : <>
+          This {PARTY[kind].one.toLowerCase()} holds up to <span className="font-semibold text-ink tabular-nums">{held}</span>.
+          Record money they give back here; it is not a cost.
+        </>}
       </p>
       {open
         ? <RefundForm kind={kind} partyId={partyId} rooms={usable} onDone={() => setOpen(false)} />
-        : <Button variant="secondary" className="mt-3" onClick={() => setOpen(true)}>Record refund</Button>}
+        : <Button variant="secondary" className="mt-3" onClick={() => setOpen(true)}>Record money given back</Button>}
     </>
   )
   if (embedded) {

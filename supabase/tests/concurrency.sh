@@ -302,5 +302,28 @@ check "Close: a receipt first, then the close, both succeed" "yes yes" "$(succee
 check "Close: the receipt is recorded and the project closed" "1 closed" \
   "$(q -c "select count(*) from public.client_receipts where project_id = '$PROJECT'") $(q -c "select status from public.projects where id = '$PROJECT'")"
 
+# Two bills paid at once from one opening balance of 1,000 -> it is used once, never 2,000.
+q -c "update public.projects set status = 'active' where id = '$PROJECT'" >/dev/null
+OSUB=$(q -c "$(as_user "insert into public.subcontractors (company_id, name) values ('$COMPANY', 'Race Tiles') returning id;")" | tail -1)
+OPKG=$(uuidgen | tr 'A-Z' 'a-z')
+q -c "$(as_user "select public.save_work_package(jsonb_build_object('id', '$OPKG', 'project_id', '$PROJECT', 'subcontractor_id', '$OSUB', 'scope', 'Plaster'));
+  select public.set_opening_balance(gen_random_uuid(), '$OSUB', '2026-05-01', -100000, 'Old peski');")" >/dev/null
+new_charge() { # approved work bill of Rs 1,000; prints its id
+  local id; id=$(uuidgen | tr 'A-Z' 'a-z')
+  q -c "$(as_user "select public.save_charge_claim(jsonb_build_object('id', '$id', 'work_package_id', '$OPKG',
+    'charge_date', '2026-05-10', 'claimed_paisa', 100000));
+    select public.approve_charge(gen_random_uuid(), '$id', 100000, '2026-05-10');")" >/dev/null
+  echo "$id"
+}
+pay_sub() { # charge id: pay it with no cash, from what they hold
+  echo "select public.pay_subcontractor(gen_random_uuid(), jsonb_build_object('id', gen_random_uuid(), 'subcontractor_id', '$OSUB',
+    'payment_date', '2026-05-10', 'amount_paisa', 0, 'docs', jsonb_build_array(jsonb_build_object('doc_id', '$1'))));"
+}
+CH1=$(new_charge); CH2=$(new_charge)
+race "$(pay_sub "$CH1")" "$(pay_sub "$CH2")"
+check "Opening: both payments finish" "yes yes" "$(succeeded "$RACE_A") $(succeeded "$RACE_B")"
+check "Opening: 1,000 is used once" 100000 \
+  "$(q -c "select coalesce(sum(amount_paisa), 0) from public.settlement_events where opening_balance_id is not null and doc_id in ('$CH1', '$CH2')")"
+
 if [ "$failures" -gt 0 ]; then echo "$failures concurrency test(s) failed"; exit 1; fi
 echo "All concurrency tests passed"

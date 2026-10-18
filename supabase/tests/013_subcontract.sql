@@ -2,7 +2,7 @@
 -- (req §13, §19; acceptance #7; S5 for work-package values; C7 for charges; I-10).
 begin;
 \ir helpers/helpers.psql
-select plan(30);
+select plan(31);
 
 select tests.create_user('owner') as owner \gset
 select tests.create_user('acct') as acct \gset
@@ -56,6 +56,8 @@ select is((select agreed_value_paisa from public.work_package_terms where id = '
   15000000::bigint, 'a PM without finance updates progress; the agreed value is kept');
 select is((select progress_pct from public.work_packages where id = '55555555-0000-0000-0000-000000000001'),
   40.00::numeric, '... and the progress is saved');
+select is((select status::text from public.work_packages where id = '55555555-0000-0000-0000-000000000001'),
+  'active', '... and an older app''s "in_progress" is saved as active');
 
 -- Acceptance #7: an advance of 50,000 is cash paid, not cost.
 select tests.login(:'pm');

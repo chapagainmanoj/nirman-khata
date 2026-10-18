@@ -42,7 +42,7 @@ const khata = (kind: PartyKind): ReportDef['load'] => async (f, ctx) => {
     rows: rows.map((r) => ({
       link: r.doc_kind === 'credit' ? null : docPath(r.doc_kind, r.doc_id, { projectId: r.project_id }),
       values: {
-        date: r.business_date, entry: r.label, project: code(ctx, r.project_id),
+        date: r.business_date, entry: r.label, project: (r.project_ids ?? []).map((id) => code(ctx, id)).filter(Boolean).join(', '),
         charged: r.balance_paisa + r.cash_paisa || null,
         paid: r.cash_paisa || null, balance: r.running_balance_paisa,
       },

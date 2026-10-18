@@ -136,7 +136,9 @@ export function PartiesPage({ kind }: { kind: PartyKind }) {
  * Workers as a table (attendance): name, work, rate, phone and what each is owed, everywhere. On a
  * phone the work moves under the name and the phone column is dropped.
  */
-function WorkerTable({ rows, balance, showBalance }: { rows: Row[]; balance: (id: string) => number | undefined; showBalance: boolean }) {
+function WorkerTable({ rows, balance, showBalance }: {
+  rows: Row[]; balance: (id: string) => number | undefined; showBalance: boolean
+}) {
   return (
     <div className="overflow-hidden rounded-xl border border-line bg-surface">
       <table className="w-full text-sm">

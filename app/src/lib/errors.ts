@@ -16,10 +16,13 @@ const BY_CONSTRAINT: Record<string, string> = {
 const BY_CHECK: Record<string, string> = {
   attendance_times: 'The out time must be after the in time.',
   attendance_minutes_fit: 'The hours cannot be more than the time from in to out.',
+  // Not reachable from a form (the server picks the source); kept readable if it ever shows.
+  settlement_one_source: 'A payment match needs exactly one payment or opening balance.',
+  allocation_one_source: 'A project split needs exactly one payment or opening balance.',
 }
 
 // Our own error codes: the readable part follows the colon.
-const PREFIXED = ['attendance_off', 'day_closed', 'attendance_overlap']
+const PREFIXED = ['attendance_off', 'day_closed', 'day_verified', 'day_too_old', 'attendance_overlap', 'already_paid']
 
 const BY_CODE: Record<string, string> = {
   '23505': 'This already exists. Use a different value.',

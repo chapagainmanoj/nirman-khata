@@ -82,8 +82,11 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Crew ko Jyala haalne: ek din wa dherai din, din ma kati manche, rate, jamma; aahile tirne wa pachhi.',
       'Hajiri (attendance, Settings ma on gare): Labour crews > Workers ma kaamdar ek patak thapne, din wa ghanta ko rate sanga.',
       'Project ko crew ma kaamdar thapne. Hajiri crew ko page ma matra: baya kaamdar, daya mahina ko calendar.',
-      'Calendar ko din thichne: Full day, Half day, Not here, ghanta; arko project sanga split. "Everyone in" le sabai lai ek patak.',
-      'Close days: Hajiri lai Jyala ma badalne. Pay: pratyek kaamdar lai chhuttai tirne.',
+      'Mathi "The crew on Today" ma sabai kaamdar: Full, Half wa Absent ek thichai ma; "Mark everyone in" le baaki sabai lai.',
+      'Calendar ko din thichne: Full day, Half day, Absent, ghanta. Ek din dui project ma bhaye, arko project ko crew ma pani thapera tyahan mark garne (samaya na-julne gari).',
+      'Mark gareko din Draft hunchha: kharcha ma gandaina. Verified thichepachhi Jyala (labour cost) hunchha, kaamdar lai tirnu parne. "Verify the crew\'s day" le sabai ek patak.',
+      'Verified din pani badalna milchha: tirisakeko bhaye pani hisab aafai milchha. Site staff le 7 din samma ko matra.',
+      'Pay: pratyek kaamdar lai chhuttai tirne; peski/agadi diyeko paisa aafai katchha.',
     ],
   },
   {

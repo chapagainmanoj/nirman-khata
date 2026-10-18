@@ -4,6 +4,8 @@
 -- now, near-duplicates, reversal).
 begin;
 \ir helpers/helpers.psql
+-- These tests mark days long past as site staff; the 7-day limit has its own tests (038).
+create or replace function private.can_mark_day(p_company uuid, p_date date) returns boolean language sql as $$ select true $$;
 select plan(34);
 
 select tests.create_user('owner') as owner \gset
@@ -114,7 +116,7 @@ select is((select sum(amount_paisa) from public.attendance where project_id = :'
 -- Closed rows are locked until the cost is reversed.
 select tests.login(:'site');
 select throws_like($$select tests.mark('$$ || :'pa' || $$', '$$ || :'crew_a' || $$', '$$ || :'gopal' || $$', '2026-05-04', '08:00', '17:00', 480)$$,
-  '%day_closed%', 'a closed day cannot be changed');
+  '%day_verified%', 'a closed day cannot be changed');
 
 -- Lakeside closes its afternoon of Ram, paid now: owed to Lakeside's crew, settled at once.
 select tests.login(:'owner');

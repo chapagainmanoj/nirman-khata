@@ -11,13 +11,13 @@ What a person sees when no project is chosen in Working on: lists show every pro
 - **Aliases to avoid:** "No project chosen", "No project (see everything)".
 
 ## Attendance (Hajiri)
-One Worker's time on one project on one work date: in, out and minutes worked. Used only when the company setting "Labour by" is Attendance; the default, Day total, records one amount per crew per day instead.
+One Worker's time on one project on one work date: in, out and minutes worked, or Absent (kept as a mark with no time, so it is told apart from a day not marked yet). Used only when the company setting "Labour by" is Attendance; the default, Day total, records one amount per crew per day instead.
 
-- **Not:** a labour cost. Attendance is priced and turned into a labour cost only when the day is closed (see Close day).
-- **States:** open (can be set, changed or unset) → closed (locked, priced) → open again if that labour cost is reversed. Each worker's day closes on its own.
+- **Not:** a labour cost. A day becomes labour cost only when it is Verified.
+- **States:** not marked → **Draft** (worked or Absent; no cost, no money anywhere) → **Verified** (a worked day is labour cost, priced at the worker's rate then and owed to them; an Absent day is just confirmed). A verified day can still be changed: its cost is reversed and posted again at the same rate in one step, paid or not, and the worker's balance takes the difference. Cleared goes back to not marked. Site staff work up to 7 days back; Accounts and Admin any day.
 - **Relations:** belongs to one Worker, one project and the Crew it was marked on (usually the worker's crew on that project).
-- **In code:** `attendance` (`worker_id`); written only by `set_attendance` (minutes 0 unsets) and `split_attendance`; `project_workers`, `crew_month`, `worker_month`. Marked in one place: the Crew's page (`CrewBoard.tsx`), with "Everyone in" for a whole crew's day; the old day roster address `/labour/attendance` redirects there.
-- **Notes:** A worker can split a day between projects by times that do not overlap, never more than 24 h in total. (2026-10-17: one flow. The day roster and the worker's time card were removed: days are entered and seen only on the Crew's page; a Worker's page links to their crews.)
+- **In code:** `attendance` (`worker_id`, `verified_at` for an Absent day; a worked day is verified when its `labour_cost_id` is posted, `private.attendance_verified`); drafts written by `set_attendance` (`absent: true` keeps an Absent mark; minutes 0 without it unsets) and `set_attendance_many` ("Mark everyone in" and the crew's day list, one call); `verify_attendance` (one worker's day or the crew's day); `change_attendance` (a verified day; `labour_cost_changes` links the new cost to the one it replaced, and `party_khata` shows the day once); `private.can_mark_day` (the 7-day limit); `open_labour` (drafts); `project_workers`, `crew_month`, `worker_month`. Marked in one place: the Crew's page (`CrewBoard.tsx`), with "The crew on <day>" (each worker Full, Half or Absent; "Mark everyone in" for those not marked); the old day roster address `/labour/attendance` redirects there.
+- **Notes:** A worker can work one day on two projects by times that do not overlap, never more than 24 h in total: each part is marked on that project's crew, and the day's editor shows the other part ("Also that day"); Half day takes the afternoon when the morning is taken. (2026-10-18: the Split button was removed for this; `split_attendance` stays in the database, unused by the app.) (2026-10-17: one flow. The day roster and the worker's time card were removed: days are entered and seen only on the Crew's page; a Worker's page links to their crews.)
 
 ## Cash payee
 The one built-in Payee per company that an Other Expense on a project is filed under when it is paid now and nobody is named: khaja, fuel, small cash on site. Named "Cash (not named)".
@@ -27,11 +27,12 @@ The one built-in Payee per company that an Other Expense on a project is filed u
 - **Notes:** An unpaid Other Expense must still name who is owed it. Someone without payment rights cannot mark it paid, so always names a payee.
 
 ## Close day
-Turning open Attendance into labour costs: one labour cost per Worker per work date, on the project worked, owed to that Worker, optionally paid now (one payment per worker).
+Retired (2026-10-18): days are now Verified one day at a time (see Attendance). Kept here because the code still uses the word: closing turns Attendance into labour costs, one per Worker per work date, on the project worked, owed to that Worker.
 
 - **Not:** Closed (project).
-- **In code:** `close_labour_day` (a crew on a project, a date or range: the crew page's "Close days") and `close_worker_days` (one worker: Pay on the crew page, which closes every open day up to today on that project first), both through `private.close_crew_days`, which prices each row (daily rate × minutes ÷ the standard day, or hourly rate × hours) and posts through the same labour writer as day totals.
-- **Notes:** The rate is copied onto each row at close, so a later rate change does not alter past days. Reverse the labour cost to reopen that worker's day. Days closed before workers became parties (2026-10-17) stay owed to their crew.
+- **Aliases to avoid:** "Close days" and "Add to labour cost" in the UI. The app says **Verified**.
+- **In code:** `verify_attendance` calls `private.close_crew_days` for one date (the older `close_labour_day` and `close_worker_days` remain, unused by the app). `close_crew_days` which prices each row (daily rate × minutes ÷ the standard day, or hourly rate × hours) and posts through the same labour writer as day totals.
+- **Notes:** The rate is copied onto each row when verified, so a later rate change does not alter past days, and a change to a verified day keeps that rate. Days closed before workers became parties (2026-10-17) stay owed to their crew.
 
 ## Closed (project)
 A project whose books are final: work is done (see Completed) and its money has been reconciled. No new financial entries are allowed until an authorized user reopens it.
@@ -87,7 +88,8 @@ Everyday word for any spending on a project: materials, labour, subcontract work
 Deducting Peski from what a party is owed: their bill, work charge or wages. The Peski is used up by that amount and only the rest is paid in cash.
 
 - **Not:** Settle (matching an ordinary payment to a bill) or Hisab Milan (closing out the whole account with a party).
-- **In code:** no separate step; done by the same bill-matching as Settle (`settlement_events`).
+- **In code:** done by the same matching as Settle (`settlement_events`). For a Worker it is automatic (`private.use_held`): when their days are added to labour cost, money they already hold, Peski or paid ahead, pays the new days first, oldest first. It comes first from the day's own project, then from other projects the user sees, then (Accounts or Admin only) from money not given a project; money from elsewhere is moved to the day's project (`private.move_allocation`, an `allocation_move` event) before it is matched. The worker payment form shows the same amount as "Less advance" (`worker_advance`, not netted against what is owed on other projects) and saves with `pay_worker`. A Subcontractor's approved work is paid the same way (`pay_subcontractor`; package Peski first). An opening balance the party holds counts as money they hold (`private.use_held_docs`, design §5.3). Supplier bills are matched by hand as before.
+- **Notes (2026-10-18):** a worker asking for money before payday is the common case; the screens call money beyond what is owed "paid ahead" or "advance" for workers (Overpayment elsewhere). A worker is never given Peski as such: money beyond the ticked days is simply paid ahead.
 - **Notes:** From the government term *peski farchhyaut*, the clearing of an advance.
 
 ## Hisab Milan
@@ -206,6 +208,13 @@ The three figures in a Party's Khata. **Tirnu parne** (to be paid) is everything
 - **In code:** `charged_paisa`, `paid_paisa`, `balance_paisa` (`party_balances`); the Khata report columns `charged`, `paid`, `balance`. UI labels are the Nepali words: the balance card ("Tirnu parne (bills)", "Tireko") and the Khata report columns.
 - **Aliases to avoid:** "Charged" (reads as if the company charged the party), "Bought" (does not fit crews, payees, an opening balance or a reversal), "Jamma/Naam" (the formal bookkeeping words; *jamma* reads as "deposit" in everyday use).
 - **Notes:** Chosen 2026-10-14 because it is how contractors say it out loud ("kati tirnu parne, kati tireko, kati baki"), it never reads backwards, and it matches "Baki / Tirna Baki" in `docs/requirements-v1.1.md` §3.1.
+
+## Work charge
+A subcontractor's bill (or running measurement) for work done on one work package. Approved, it is project cost and raises what the company owes them; a draft or rejected one is neither.
+
+- **In code:** `subcontract_charges` (`claimed_paisa`, `approved_paisa`); "claim" in SQL and older code.
+- **In UI:** "Work done (bills)" on the work package page; one bill is "Bill RA-1". Accounts and Admin add and approve a bill in one step (optionally going on to pay it); others save a draft that waits for approval.
+- **Aliases to avoid:** "Claim" in the UI (contractors say bill).
 
 ## Worker
 One person in the company's own labour, added once for the company with the kind of work and a rate by the day or by the hour. When the company works by Attendance, a worker is a Party: the days they work are owed to them, they are paid one by one, and they can be given Peski.

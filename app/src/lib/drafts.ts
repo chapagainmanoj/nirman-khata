@@ -22,11 +22,13 @@ export async function clearUserDrafts(userId: string): Promise<void> {
 
 /**
  * Restore a saved draft into the form on mount, then autosave changes.
- * Call `clear()` after a successful submit.
+ * Call `clear()` after a successful submit. `worthKeeping` says whether a stored draft is worth
+ * bringing back (e.g. one that was sent, or has typed notes); one that is not is dropped quietly.
  */
 export function useFormDraft<T extends FieldValues>(
   form: UseFormReturn<T>,
   ids: { userId: string; companyId: string; formKey: string },
+  opts: { worthKeeping?: (values: T) => boolean } = {},
 ) {
   const key = keyFor(ids.userId, ids.companyId, ids.formKey)
   const [restoredAt, setRestoredAt] = useState<string | null>(null)
@@ -37,7 +39,9 @@ export function useFormDraft<T extends FieldValues>(
     let cancelled = false
     platform.storage.get<Draft<T>>(key).then((draft) => {
       if (cancelled) return
-      if (draft) {
+      if (draft && opts.worthKeeping && !opts.worthKeeping(draft.values)) {
+        void platform.storage.del(key)
+      } else if (draft) {
         form.reset(draft.values)
         setRestoredAt(draft.savedAt)
       }

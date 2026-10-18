@@ -55,7 +55,8 @@ export function BalanceText({ paisa }: { paisa: number }) {
 }
 
 /** What is owed either way. `children` adds detail under the totals (the supplier page's split by project). */
-export function BalanceCard({ kind, partyId, children }: { kind: PartyKind; partyId: string; children?: ReactNode }) {
+/** `quietRefund`: "Money given back" only as a small link (see RefundCard). */
+export function BalanceCard({ kind, partyId, children, quietRefund }: { kind: PartyKind; partyId: string; children?: ReactNode; quietRefund?: boolean }) {
   const auth = useCompany()
   const balances = usePartyBalances(auth.companyId, kind, true)
   const b = balances.data?.find((x) => x.party_id === partyId)
@@ -95,7 +96,7 @@ export function BalanceCard({ kind, partyId, children }: { kind: PartyKind; part
         </>
       )}
       {auth.seesAllProjects && opening === 0 && <OpeningBalance kind={kind} partyId={partyId} prompt={fresh} />}
-      <RefundCard kind={kind} partyId={partyId} embedded />
+      <RefundCard kind={kind} partyId={partyId} embedded quiet={quietRefund} />
     </Card>
   )
 }
@@ -303,8 +304,8 @@ export function Khata({ kind, partyId, projectId: fixedProject }: { kind: PartyK
                 </div>
                 <div className="text-xs text-subtle">
                   <DateText value={r.business_date} display={auth.dateDisplay} />
-                  {r.project_id && !projectId && ` · ${code(r.project_id) ?? ''}`}
-                  {!r.project_id && r.event_type !== 'opening' && !projectId && ' · not assigned to a project'}
+                  {!projectId && r.project_ids.length > 0 && ` · ${r.project_ids.map(code).filter(Boolean).join(', ')}`}
+                  {!projectId && r.project_ids.length === 0 && r.event_type !== 'opening' && ' · not assigned to a project'}
                   {r.reason && ` · ${r.reason}`}
                 </div>
               </div>

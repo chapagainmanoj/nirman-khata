@@ -100,8 +100,7 @@ export function settlementLabel(outstanding: number, settled: number): [string, 
 }
 
 export const PACKAGE_STATUS: Record<PackageStatus, [string, Tone]> = {
-  planned: ['Planned', 'info'],
-  in_progress: ['In progress', 'warn'],
+  active: ['Active', 'info'],
   completed: ['Completed', 'good'],
   cancelled: ['Cancelled', 'neutral'],
 }

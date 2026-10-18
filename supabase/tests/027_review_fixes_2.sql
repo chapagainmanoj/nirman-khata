@@ -3,6 +3,8 @@
 -- follows moves, and Peski as of a date ignores later reversals. Races are in concurrency.sh.
 begin;
 \ir helpers/helpers.psql
+-- These tests mark days long past as site staff; the 7-day limit has its own tests (038).
+create or replace function private.can_mark_day(p_company uuid, p_date date) returns boolean language sql as $$ select true $$;
 select plan(33);
 
 select tests.create_user('owner') as owner \gset

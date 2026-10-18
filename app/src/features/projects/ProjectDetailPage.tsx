@@ -13,6 +13,7 @@ import { t } from '../../lib/i18n'
 import { FULFILMENT, ROLE_LABELS, STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { supabase, type Tables } from '../../lib/supabase'
+import { openBy, useOpenLabour } from '../labour/api'
 import { ExpenseSection, LabourSection, SubcontractSection } from '../costs/CostLists'
 import { DeliveryList } from '../supply/DeliveryList'
 import { useDeliveries, useDeliveryLineStatus, useOpenSlips, useProjectCost } from '../supply/api'
@@ -168,7 +169,10 @@ function CostBreakdown({ projectId }: { projectId: string }) {
  * added in, so the figure stays exact (req §19).
  */
 function SummaryStrip({ projectId }: { projectId: string }) {
+  const auth = useCompany()
   const dash = useProjectDashboard(projectId)
+  const openLabour = useOpenLabour(auth.companyId, auth.company.labour_mode === 'attendance')
+  const labour = openBy(openLabour.data, 'project_id').get(projectId)
   const f = dash.data
   if (dash.error) return <ErrorBanner onRetry={() => void dash.refetch()}>{friendlyError(dash.error)}</ErrorBanner>
   if (dash.isPending) return <Spinner />
@@ -201,14 +205,16 @@ function SummaryStrip({ projectId }: { projectId: string }) {
       </div>
       {/* Work done is entered on site, not worked out from cost (acceptance #10). */}
       <UsedBars figures={f} setProgress="?tab=site" />
-      <NotSpentYet figures={f} />
+      <NotSpentYet figures={f} labour={labour} />
     </section>
   )
 }
 
 /** Costs on their way that "Spent" does not count yet. What to do about them is in Activity. */
-function NotSpentYet({ figures: f }: { figures: ProjectFigures }) {
+function NotSpentYet({ figures: f, labour }: { figures: ProjectFigures; labour?: { days: number } }) {
   const items: string[] = []
+  // Attendance days still drafts: no money until verified (GLOSSARY: Attendance).
+  if (labour?.days) items.push(`${labour.days} attendance ${labour.days === 1 ? 'day' : 'days'} not verified`)
   if (f.unbilled_lines > 0) {
     const what = `${f.unbilled_lines} delivered item${f.unbilled_lines === 1 ? '' : 's'} with no bill yet`
     items.push(f.unbilled_estimate_paisa
@@ -238,6 +244,8 @@ function useProjectTodo(p: Tables<'projects'>, canEdit: boolean, onShowDeliverie
   const deliveries = useDeliveries({ projectId: p.id })
   const unbilled = useDeliveryLineStatus({ projectId: p.id, billableOnly: true })
   const dash = useProjectDashboard(p.id)
+  const openLabour = useOpenLabour(auth.companyId, auth.company.labour_mode === 'attendance')
+  const labourDays = openBy(openLabour.data, 'project_id').get(p.id)?.days ?? 0
 
   const f = dash.data
   const open = p.status !== 'completed' && p.status !== 'closed' && p.status !== 'cancelled'
@@ -263,6 +271,9 @@ function useProjectTodo(p: Tables<'projects'>, canEdit: boolean, onShowDeliverie
   }
   if (f?.draft_bills && canPost(auth)) {
     todo.push({ key: 'drafts', title: 'Post bills', detail: `${plural(f.draft_bills, 'bill')} not posted${f.draft_bills_paisa ? ` · ${formatNPR(f.draft_bills_paisa)}` : ''}`, to: '/bills' })
+  }
+  if (labourDays > 0 && canEnter(auth)) {
+    todo.push({ key: 'labour', title: 'Verify attendance', detail: `${plural(labourDays, 'day')} still drafts`, to: `/labour/crew?project=${p.id}` })
   }
   if (canEdit && open && !p.actual_start && (deliveries.data?.length ?? 0) > 0) {
     todo.push({ key: 'start', title: 'Set actual start date', detail: 'deliveries are arriving', to: '?tab=details&edit=actual_start' })

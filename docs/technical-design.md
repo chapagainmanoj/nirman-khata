@@ -248,6 +248,7 @@ ledger_entries
 | Charge approve / labour / expense | +amount | +amount | 0 | project | approval / work / expense date |
 | Payment post | 0 | −part | +part | each project part, and null for the unallocated part | payment date |
 | Allocation move | 0 | ±x | ±x | null ↔ project | **the payment's date** (see 5.6 I-9) |
+| Opening credit move | 0 | ±x | 0 | null ↔ project | the date it is used: later of cutover and the document's date (see 5.6 I-9) |
 | Credit post | −cost share | −payable share | 0 | project | credit date |
 | Refund | 0 | +amount | −amount | project or null | refund date |
 | Reversal | negation of every ledger row of the target event **and** of its later dependent events | | | same | **reversal date** |
@@ -373,6 +374,8 @@ Locking the party first serializes all settlement and correction work for that p
   - amount ≤ the document's remaining **settleable amount** for that project.
 - Settleable amount = Σ line `payable_amount` in the project − active posted credits for that project.
 - `unsettle` writes a negative event. The money stays in the project allocation, unmatched (Peski again for a Peski payment, otherwise overpaid).
+- **Opening balance as a source (2026-10-18).** A posted opening balance the party holds (negative) settles documents like a payment: `settlement_events` and `payment_allocation_events` carry `opening_balance_id` in place of `payment_id` (exactly one; `settlement_one_source`, `allocation_one_source`). It sits on no project, so it is first moved to the document's project (`private.move_opening`, an `allocation_move` event with no cash), then matched (`private.settle_opening`). Only Accounts or Admin may use the part on no project (design §3.4).
+- **Farchhyaut** (`private.use_held_docs`): money the party holds pays the given documents first, oldest first. Sources: payments for the charge's own work package; other payments on the document's project; the opening credit already there; payments held on other visible projects, then on no project (Accounts/Admin); then the opening credit from elsewhere. A bucket gives no more than the party holds there (`private.held_in`). Used by `pay_worker` (through `private.use_held`) and `pay_subcontractor`, which pays a subcontractor's ticked approved work from what they hold and then cash for the rest. Supplier bills are matched by hand (`settle`, which also takes an `opening_balance_id` item).
 
 ### 5.4 Corrections
 
@@ -381,6 +384,7 @@ Locking the party first serializes all settlement and correction work for that p
 | Credit on a bill (or a charge, labour cost, expense) | Up to the remaining settleable amount per project. If the credit pushes settleable below what is settled, `unsettle` the excess (newest settlement first) in the same transaction. |
 | **Reverse a document that has credits** | **The credits are reversed in the same transaction, before the document.** The confirmation screen lists them. Order: unsettle all settlements → reverse each active credit (negate its rows) → reverse the document (negate its rows). Result: cost and payable from that document net to exactly zero. Applies to bills, subcontract charges, labour costs and expenses. |
 | Reverse a credit only | Allowed if the document is still active. Settleable goes back up. Nothing else changes. |
+| Reverse an opening balance | Unsettle everything it settled, then negate its event and every move of its credit, so each project nets to zero. |
 | Reverse a payment | Unsettle all its settlements. Then negate **every ledger row of the payment event and of all its allocation-move events**, so each project nets to zero whatever reallocations happened. Business date = reversal date. Reports before that date are unchanged. |
 | Remove or reduce a project allocation | Allowed only down to the amount already settled in that project. Writes an allocation move back to unallocated. |
 | Repeat reversal | `unique` on reversals per target. A reversal itself can't be reversed; enter a new document instead. |
@@ -427,7 +431,7 @@ Each invariant is checked inside the posting function, as a DB constraint where 
 | I-6 | Payments, refunds and allocation moves write `cost_paisa = 0` | §19 | Check constraint per event type |
 | I-7 | **Closed project:** no posting event may reference a project with status `closed`. Completed projects accept postings by authorized users | §20 | Every posting function + trigger on `ledger_entries` |
 | I-8 | **Pay now is atomic:** `save_labour_cost` / `save_expense` with `pay_now` write the cost event, the payment event, the project allocation and the full settlement in one transaction under one op_key. Cost is counted once; paid status is derived | §14, §15 | Those functions |
-| I-9 | **Dates of moves:** an allocation move uses the **payment's business date** (the current view always shows a payment against its project from the day it was paid) and its own `posted_at` (the as-known view reproduces what was known before the reallocation). A reversal uses the **reversal date**. Results for earlier dates never change | §19.1 | Posting functions |
+| I-9 | **Dates of moves:** an allocation move uses the **payment's business date** (the current view always shows a payment against its project from the day it was paid) and its own `posted_at` (the as-known view reproduces what was known before the reallocation). An opening credit move uses the date it is used (later of cutover and the document's date), so a project never shows the credit before it was used there. A reversal uses the **reversal date**. Results for earlier dates never change | §19.1 | Posting functions |
 | I-10 | Company party balance = Σ project balances + unallocated | §12.3 | Holds by construction; property test H3 |
 | I-11 | Posted rows are never updated or deleted | §20 | Revoked grants + triggers |
 | I-12 | Each source is posted once per event type; each ledger component is written once per event | §22 | Unique constraints (4.3) |

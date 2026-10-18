@@ -4,6 +4,8 @@
 -- day totals still owed to the crew.
 begin;
 \ir helpers/helpers.psql
+-- These tests mark days long past as site staff; the 7-day limit has its own tests (038).
+create or replace function private.can_mark_day(p_company uuid, p_date date) returns boolean language sql as $$ select true $$;
 select plan(34);
 
 select tests.create_user('owner') as owner \gset
@@ -76,8 +78,8 @@ select is((select (w ->> 'minutes')::int from jsonb_array_elements(public.crew_m
 select is((select w ->> 'open_paisa' from jsonb_array_elements(public.crew_month(:'crew_a', '2026-05-01', '2026-05-31') -> 'workers') w
     where w ->> 'id' = :'ram'), null, 'site staff see hours, not money');
 select tests.login(:'acct');
-select is((select (w ->> 'open_paisa')::bigint from jsonb_array_elements(public.crew_month(:'crew_a', '2026-05-01', '2026-05-31') -> 'workers') w
-    where w ->> 'id' = :'ram'), 180000::bigint, 'finance sees what open days will cost: 1,200 + 600');
+select is((select (w ->> 'draft_days')::int from jsonb_array_elements(public.crew_month(:'crew_a', '2026-05-01', '2026-05-31') -> 'workers') w
+    where w ->> 'id' = :'ram'), 2, 'finance sees the draft days, with no money until verified');
 select throws_ok($$select public.crew_month('$$ || :'crew_a' || $$', '2026-05-01', '2026-07-01')$$, '22023', null,
   'the month covers at most 42 days');
 select tests.login(:'viewer');

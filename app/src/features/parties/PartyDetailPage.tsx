@@ -4,15 +4,15 @@
 // company works by attendance, a crew's page is its workers' calendar (CrewBoard); each worker
 // has their own page: the crews they are on (attendance is marked there, and only there), then
 // their khata.
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { Badge, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
+import { Badge, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Notice, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { PACKAGE_STATUS } from '../../lib/labels'
 import { useProjects } from '../projects/api'
-import { useWorkPackages } from '../subcontract/api'
+import { packageFiguresQuery, useWorkPackages } from '../subcontract/api'
 import { rpc } from '../supply/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permissions'
 import { PARTY, partyCrumbs, type PartyKind } from './kinds'
@@ -24,6 +24,7 @@ import { WorkerCrews } from '../labour/WorkerCrews'
 import { WorkerForm } from '../labour/WorkerForm'
 import { formatNPR } from '../../lib/money'
 import { BalanceCard, ContactRow, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
+import { RefundCard } from '../refunds/RefundCard'
 
 type Tab = 'khata' | 'payments'
 
@@ -38,6 +39,9 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   // A crew paid as a crew before workers were paid one by one keeps its khata.
   const crewMoney = usePartyBalances(auth.companyId, 'crew', board && auth.canSeeFinance).data?.find((b) => b.party_id === partyId)
   const crewHasMoney = !board || !!crewMoney?.charged_paisa || !!crewMoney?.paid_paisa
+  const paidFromHeld = (useLocation().state as { paidFromHeld?: number } | null)?.paidFromHeld
+  // A subcontractor's money is read by the job (Contract card); the khata detail sits in its tab.
+  const byJob = kind === 'subcontractor'
 
   if (rows.isPending) return <Spinner />
   if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
@@ -56,9 +60,6 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
         subtitle={<span className="flex flex-wrap items-center gap-2">{sub}{!r.active && <Badge>Inactive</Badge>}</span>}
         actions={
           <div className="flex flex-wrap gap-2">
-            {kind === 'subcontractor' && canManageSuppliers(auth) && (
-              <ButtonLink variant="secondary" to={`/work/new?subcontractor=${r.id}`}>New work package</ButtonLink>
-            )}
             {kind === 'crew' && canEnter(auth) && !byAttendance && (
               <ButtonLink variant="secondary" to={labourPath(auth.company, { crew: r.id, project: r.project_id })}>Enter labour</ButtonLink>
             )}
@@ -67,9 +68,13 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
         }
       />
       <ContactRow phone={r.phone} links={[[`${PARTY[kind].path}/${r.id}/details`, 'Details']]} />
+      {!!paidFromHeld && <div className="mb-4"><Notice>{formatNPR(paidFromHeld)} taken from money they hold. Nothing paid in cash.</Notice></div>}
+      {/* A subcontractor is the jobs given to them: what is paid and left on them, then the jobs. */}
+      {byJob && auth.canSeeFinance && <ContractCard subcontractorId={r.id} name={r.name} />}
+      {byJob && <PackageList subcontractorId={r.id} />}
       {board && <CrewBoard crewId={r.id} projectId={r.project_id ?? null} />}
       {kind === 'worker' && byAttendance && canEnter(auth) && <WorkerCrews workerId={r.id} />}
-      {auth.canSeeFinance && crewHasMoney && (
+      {auth.canSeeFinance && crewHasMoney && !byJob && (
         <div className={`grid items-start gap-4 ${board ? 'mt-6' : ''}`}>
           {board && <h2 className="text-base font-semibold text-ink">Paid to the crew before</h2>}
           <BalanceCard kind={kind} partyId={r.id} />
@@ -79,13 +84,17 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
 
       {auth.canSeeFinance && crewHasMoney && (
         <Tabs tabs={[['khata', 'Khata'], ['payments', 'Payments']]} value={tab} onChange={setTab} label={`${PARTY[kind].one} records`}>
+          {tab === 'khata' && byJob && (
+            <div className="mb-4 grid items-start gap-4">
+              {/* Money given back is asked on the Contract card once no work is going on; here only a link. */}
+              <BalanceCard kind={kind} partyId={r.id} quietRefund />
+              {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
+            </div>
+          )}
           {tab === 'khata' && <Khata kind={kind} partyId={r.id} />}
           {tab === 'payments' && <PaymentList kind={kind} partyId={r.id} />}
         </Tabs>
       )}
-
-      {/* After the khata: the money record is what people open this page to check. */}
-      {kind === 'subcontractor' && <PackageList subcontractorId={r.id} />}
     </>
   )
 }
@@ -162,25 +171,113 @@ function PartyDetails({ kind, party: r, code, empty, edit }: {
   )
 }
 
-function PackageList({ subcontractorId }: { subcontractorId: string }) {
+/** A subcontractor's work packages and, for finance users, each one's figures (work_package_figures, per project). */
+function useSubcontractorPackages(subcontractorId: string) {
+  const auth = useCompany()
   const packages = useWorkPackages({ subcontractorId })
+  const projectIds = [...new Set(packages.data?.map((w) => w.project_id) ?? [])]
+  const figures = useQueries({
+    queries: projectIds.map((id) => packageFiguresQuery(id, auth.canSeeFinance)),
+    combine: (rs) => ({ rows: rs.flatMap((q) => q.data ?? []), ready: rs.every((q) => q.data != null) }),
+  })
+  return { packages, figures }
+}
+
+/**
+ * What the owner asks first about a subcontractor: what the jobs are worth, what has been paid, and
+ * what is left, both on the whole contract and for work already approved. Cancelled jobs count only
+ * for what was paid on them. Money with them outside any job (an opening balance, money paid
+ * ahead) is one line from the khata balance; it pays their next bill first.
+ */
+function ContractCard({ subcontractorId, name }: { subcontractorId: string; name: string }) {
+  const auth = useCompany()
+  const { packages, figures } = useSubcontractorPackages(subcontractorId)
+  const balance = usePartyBalances(auth.companyId, 'subcontractor', true).data?.find((b) => b.party_id === subcontractorId)
+  // With no work going on, money they still hold is not coming off a bill: ask if they gave it back.
+  const workGoingOn = packages.data?.some((w) => w.status === 'active') ?? true
+  const askGiveBack = !workGoingOn && (
+    <div className="mb-6">
+      <RefundCard kind="subcontractor" partyId={subcontractorId}
+        intro={(held) => `${name} still holds ${held}, and no work is going on. Did they give it back?`} />
+    </div>
+  )
+  if (!packages.data?.length) return askGiveBack || null
+  if (!figures.ready) return null
+  const live = new Set(packages.data.filter((w) => w.status !== 'cancelled').map((w) => w.id))
+  const sum = (pick: (f: (typeof figures.rows)[number]) => number | null, onlyLive = true) =>
+    figures.rows.filter((f) => !onlyLive || live.has(f.work_package_id)).reduce((s, f) => s + (pick(f) ?? 0), 0)
+  const agreed = sum((f) => f.agreed_value_paisa)
+  const approved = sum((f) => f.approved_paisa)
+  const paid = sum((f) => f.paid_paisa, false)
+  const noAgreed = figures.rows.some((f) => live.has(f.work_package_id) && f.agreed_value_paisa == null)
+  const due = sum((f) => f.approved_paisa, false) - paid
+  // The khata balance less what the jobs account for: money outside any job.
+  const outside = balance && balance.company_level ? balance.balance_paisa - due : 0
   return (
-    <section className="mt-6">
-      <h2 className="mb-2 text-base font-semibold text-ink">Work packages</h2>
+    <>
+      <Card title="Contract" className="mb-6">
+        <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+          <dt className="text-subtle">Agreed for the work</dt><dd className="text-right tabular-nums">{formatNPR(agreed)}</dd>
+          <dt className="text-subtle">Paid so far</dt><dd className="text-right tabular-nums">{formatNPR(paid)}</dd>
+          <dt className="font-semibold text-ink">Left to pay on the contract</dt>
+          <dd className="text-right font-semibold tabular-nums text-ink">{formatNPR(agreed - paid)}</dd>
+        </dl>
+        {noAgreed && <p className="mt-1 text-xs text-subtle">Some work has no agreed amount yet, so the contract total is short.</p>}
+        <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-line pt-3 text-sm">
+          <dt className="text-subtle">Work done (approved bills)</dt><dd className="text-right tabular-nums">{formatNPR(approved)}</dd>
+          <dt className="font-semibold text-ink">{due >= 0 ? 'Due now' : 'They hold (peski)'}</dt>
+          <dd className="text-right font-semibold tabular-nums text-ink">{due === 0 ? 'Nothing' : formatNPR(Math.abs(due))}</dd>
+        </dl>
+        {outside < 0 && (
+          <p className="mt-3 text-sm text-subtle">
+            Also with them from before or paid ahead: <span className="font-semibold text-ink">{formatNPR(-outside)}</span>.{workGoingOn && ' It pays their next bill first.'}
+          </p>
+        )}
+        {outside > 0 && (
+          <p className="mt-3 text-sm text-subtle">
+            Also owed from before, outside these jobs: <span className="font-semibold text-ink">{formatNPR(outside)}</span>. See the khata.
+          </p>
+        )}
+      </Card>
+      {askGiveBack}
+    </>
+  )
+}
+
+// Active jobs first, then completed, then cancelled; newest first within each.
+const PACKAGE_ORDER = { active: 0, completed: 1, cancelled: 2 } as const
+
+/** The subcontractor's work packages, with each one's agreed value, approved work and balance for finance users. */
+function PackageList({ subcontractorId }: { subcontractorId: string }) {
+  const auth = useCompany()
+  const { packages, figures: { rows: figures } } = useSubcontractorPackages(subcontractorId)
+  const list = [...(packages.data ?? [])].sort((a, b) => PACKAGE_ORDER[a.status] - PACKAGE_ORDER[b.status])
+  return (
+    <section className="mb-6">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-base font-semibold text-ink">Work packages</h2>
+        {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/new?subcontractor=${subcontractorId}`}>New work package</ButtonLink>}
+      </div>
       {packages.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void packages.refetch()}>{packages.error && friendlyError(packages.error)}</ErrorBanner>
-      {packages.data?.length === 0 && <p className="text-sm text-subtle">No work packages on your projects.</p>}
-      {!!packages.data?.length && (
+      {packages.data?.length === 0 && (
+        <p className="text-sm text-subtle">No work packages on your projects. Add one for each job you give them, with the agreed amount.</p>
+      )}
+      {list.length > 0 && (
         <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
-          {packages.data.map((w) => {
+          {list.map((w) => {
             const [label, tone] = PACKAGE_STATUS[w.status]
             const pct = Math.min(100, Math.max(0, Number(w.progress_pct)))
+            const f = figures.find((x) => x.work_package_id === w.id)
             return (
               <li key={w.id}>
-                <Link to={`/work/${w.id}`} className="flex min-h-14 items-center gap-3 px-4 py-2 hover:bg-muted">
+                <Link to={`/work/${w.id}`} className={`flex min-h-14 items-center gap-3 px-4 py-2 hover:bg-muted ${w.status === 'active' ? '' : 'text-subtle'}`}>
                   <div className="min-w-0 flex-1">
-                    <div className="font-medium break-words text-ink">{w.scope}</div>
-                    <div className="text-xs text-subtle">{w.projects?.code}</div>
+                    <div className={`font-medium break-words ${w.status === 'active' ? 'text-ink' : ''}`}>{w.scope}</div>
+                    <div className="text-xs text-subtle">
+                      {w.projects?.code}
+                      {f && <> · {formatNPR(f.approved_paisa)} of {formatNPR(f.agreed_value_paisa)} approved · {f.balance_paisa > 0 ? `${formatNPR(f.balance_paisa)} to pay` : f.balance_paisa < 0 ? `${formatNPR(-f.balance_paisa)} peski` : 'nothing to pay'}</>}
+                    </div>
                   </div>
                   {/* Progress: neutral bar, the number beside it (PRODUCT.md: bars are not colour-coded). */}
                   <div className="hidden w-32 items-center gap-2 sm:flex" aria-hidden>
@@ -188,7 +285,7 @@ function PackageList({ subcontractorId }: { subcontractorId: string }) {
                       <div className="h-full rounded-full bg-bar" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <span className="w-16 shrink-0 text-right text-sm text-ink tabular-nums">{pct}% done</span>
+                  <span className="w-16 shrink-0 text-right text-sm tabular-nums">{pct}% done</span>
                   <Badge tone={tone}>{label}</Badge>
                 </Link>
               </li>

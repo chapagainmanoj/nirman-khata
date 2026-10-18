@@ -1,6 +1,6 @@
 // Subcontract work (req §13): subcontractors, work packages, claims and package figures.
 // Reads go through RLS: package scope for anyone on the project, amounts for finance only.
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { rpc } from '../supply/api'
 
@@ -60,11 +60,30 @@ export type PackageFigures = {
 }
 
 /** Per-package money for a project; empty for users without finance access (S5). */
-export function usePackageFigures(projectId: string, enabled: boolean) {
-  return useQuery({
+export function packageFiguresQuery(projectId: string, enabled: boolean) {
+  return {
     queryKey: ['package-figures', projectId],
     enabled: enabled && !!projectId,
     queryFn: async () => (await rpc('work_package_figures', { p_project: projectId })) as unknown as PackageFigures[],
+  }
+}
+
+export function usePackageFigures(projectId: string, enabled: boolean) {
+  return useQuery(packageFiguresQuery(projectId, enabled))
+}
+
+/**
+ * What a subcontractor holds that would pay work on these projects first (peski, money paid
+ * ahead, an opening balance), as pay_subcontractor would take it: party_usable_held per project.
+ */
+export function useUsableHeld(partyId: string, projectIds: string[], packageId: string | null) {
+  return useQueries({
+    queries: projectIds.map((projectId) => ({
+      queryKey: ['balances', 'usable-held', partyId, projectId, packageId],
+      enabled: !!partyId,
+      queryFn: async () => (await rpc('party_usable_held', { p_party: partyId, p_project: projectId, p_package: packageId ?? undefined })) as number,
+    })),
+    combine: (rs) => ({ paisa: rs.reduce((s, r) => s + (r.data ?? 0), 0), ready: rs.every((r) => r.data != null) }),
   })
 }
 

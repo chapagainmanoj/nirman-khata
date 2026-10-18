@@ -1,5 +1,6 @@
-// Search and date filter for long lists (deliveries, order slips). Kept in the URL, so coming
-// back from a record keeps the search; typing waits a moment before asking the server.
+// Search and date filter for long lists (deliveries, order slips, payments), plus one optional
+// pick-list (who a payment went to). Kept in the URL, so coming back from a record keeps the search;
+// typing waits a moment before asking the server.
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
@@ -14,11 +15,15 @@ const WAIT_MS = 400
 
 export type ListSearch = DateRange & { search?: string; supplierMatch?: string[] }
 
-export function useListFilters({ placeholder }: { placeholder: string }) {
+/** A pick-list beside "When": `param` in the URL, `any` the label for no choice. */
+export type ListChoice = { param: string; label: string; any: string; options: Array<[value: string, label: string]> }
+
+export function useListFilters({ placeholder, choice }: { placeholder: string; choice?: ListChoice }) {
   const auth = useCompany()
   const [params, setParams] = useSearchParams()
   const q = params.get('q') ?? ''
   const when: Period = isPeriod(params.get('when')) ? (params.get('when') as Period) : 'any'
+  const chosen = choice && choice.options.some(([v]) => v === params.get(choice.param)) ? params.get(choice.param) : null
   const [typed, setTyped] = useState(q)
   const today = todayKathmandu()
 
@@ -53,8 +58,8 @@ export function useListFilters({ placeholder }: { placeholder: string }) {
     return { ...range, ...(term ? { search: term, supplierMatch } : {}) }
   }, [term, suppliers.data, when, today, auth.dateDisplay, params])
 
-  const active = !!(filter.search || filter.from || filter.to)
-  const clear = () => { setTyped(''); set({ q: null, when: null, from: null, to: null }) }
+  const active = !!(filter.search || filter.from || filter.to || chosen)
+  const clear = () => { setTyped(''); set({ q: null, when: null, from: null, to: null, ...(choice ? { [choice.param]: null } : {}) }) }
 
   const bar = (
     <div className="mb-3 flex flex-col gap-2">
@@ -65,6 +70,12 @@ export function useListFilters({ placeholder }: { placeholder: string }) {
           onChange={(e) => set({ when: e.target.value === 'any' ? null : e.target.value, ...(e.target.value === 'custom' ? {} : { from: null, to: null }) })}>
           {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p, today, auth.dateDisplay)}</option>)}
         </Select>
+        {choice && (
+          <Select aria-label={choice.label} value={chosen ?? ''} className="sm:w-48" onChange={(e) => set({ [choice.param]: e.target.value || null })}>
+            <option value="">{choice.any}</option>
+            {choice.options.map(([v, label]) => <option key={v} value={v}>{label}</option>)}
+          </Select>
+        )}
       </div>
       {when === 'custom' && (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -82,10 +93,10 @@ export function useListFilters({ placeholder }: { placeholder: string }) {
   /** Empty-list text when the filters hid everything, with the way out. */
   const noMatch = (what: string) => (
     <p className="text-sm text-subtle">
-      No {what} match{filter.search ? ` “${filter.search}”` : ''}{filter.from || filter.to ? ' in these dates' : ''}.{' '}
+      No {what} match{filter.search ? ` “${filter.search}”` : ''}{filter.from || filter.to ? ' in these dates' : ''}{chosen ? ` (${choice?.options.find(([v]) => v === chosen)?.[1]})` : ''}.{' '}
       <button type="button" onClick={clear} className="font-medium text-slate underline underline-offset-4">Clear search</button>
     </p>
   )
 
-  return { filter, active, bar, noMatch, clear }
+  return { filter, chosen, active, bar, noMatch, clear }
 }

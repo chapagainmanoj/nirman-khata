@@ -53,7 +53,7 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
     agreed: paisaToInput(t?.agreed_value_paisa),
     planned_start: initial?.planned_start ?? '',
     planned_end: initial?.planned_end ?? '',
-    status: initial?.status ?? 'planned',
+    status: initial?.status ?? 'active',
     progress: initial ? String(Number(initial.progress_pct)) : '0',
     notes: initial?.notes ?? '',
   })

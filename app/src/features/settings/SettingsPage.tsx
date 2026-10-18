@@ -340,7 +340,7 @@ function LabourMode({ v, set, busy }: { v: WorkValues; set: (change: Partial<Wor
       </div>
       <p className="text-sm text-subtle">
         {v.labour_mode === 'attendance'
-          ? 'Attendance: mark each worker\'s in, out and hours. Closing the day works out the crew\'s labour cost from their rates.'
+          ? 'Attendance: mark each worker\'s in, out and hours. A verified day becomes labour cost at the worker\'s rate.'
           : 'Day total: type the crew\'s labour cost for the day, or a week at once.'}
       </p>
       {v.labour_mode === 'attendance' && (
@@ -360,7 +360,7 @@ function LabourMode({ v, set, busy }: { v: WorkValues; set: (change: Partial<Wor
             </Select>
           </Field>
           <p className="col-span-3 text-xs text-subtle">
-            "Everyone in" marks {hhmm(v.day_start)}–{hhmm(v.day_end)} as a full day of {v.standard_day_minutes / 60} hours; a daily rate is paid for that many hours.
+            "Mark everyone in" marks {hhmm(v.day_start)}–{hhmm(v.day_end)} as a full day of {v.standard_day_minutes / 60} hours; a daily rate is paid for that many hours.
           </p>
         </div>
       )}

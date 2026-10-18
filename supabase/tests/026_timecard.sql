@@ -122,7 +122,7 @@ select is((select sum(minutes)::int from tests.tc_day(:'ram', '2026-06-03')), 30
 select is((select count(*) from tests.tc_day(:'ram', '2026-06-03') where time_in >= '08:00' and time_out <= '17:00'), 2::bigint,
   '... and both parts stay inside its in and out');
 select throws_like($$select tests.tc_split('$$ || :'ram' || $$', '2026-06-04', '$$ || :'pa' || $$', '$$ || :'pb' || $$', '$$ || :'crew_b' || $$')$$,
-  'day_closed%', 'a closed day refuses the split');
+  'day_verified%', 'a closed day refuses the split');
 select results_eq($$select * from tests.tc_day('$$ || :'ram' || $$', '2026-06-04')$$,
   $$values ('$$ || :'pa' || $$'::uuid, '08:00'::time, '17:00'::time, 480)$$,
   '... and the first project keeps the whole day');

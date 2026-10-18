@@ -1,10 +1,10 @@
 // A month of one worker's days as a calendar, Sunday first (Saturday is the day off in Nepal). Each
-// box shows the hours, the times on wider screens, and a lock once the day is closed. A tap opens
-// the day's editor at the box: a card beside it on a tablet or desktop, a sheet from the bottom on
-// a phone. Used by the crew page, the one place attendance is marked.
+// box shows the hours and the times on wider screens. A Draft is plain, marked "Draft"; a Verified
+// day is green with a tick (GLOSSARY: Attendance). A tap opens the day's editor at the box: a card
+// beside it on a tablet or desktop, a sheet from the bottom on a phone, with the editor's own buttons
+// at the bottom (Save draft, Verified). Used by the crew page, the one place attendance is marked.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
-import { LockIcon } from '../../components/icons'
-import { Button } from '../../components/ui'
+import { CheckIcon } from '../../components/icons'
 import { adToBs, formatDate, type IsoDate } from '../../lib/dates'
 import { hhmm, hoursText } from './api'
 
@@ -19,9 +19,9 @@ const boxHours = (minutes: number) => {
   return h.toLocaleString('en-IN', { maximumFractionDigits: 2 })
 }
 
-export type GridEntry = { minutes: number; time_in: string | null; time_out: string | null; closed: boolean }
+export type GridEntry = { minutes: number; time_in: string | null; time_out: string | null; verified: boolean; absent?: boolean }
 
-export function DayGrid({ name, days, today, display, entries, selected, onPick, title, editor }: {
+export function DayGrid({ name, days, today, display, entries, selected, onPick, title, editor, actions }: {
   /** Whose days, for screen readers. */
   name: string
   days: IsoDate[]
@@ -33,6 +33,8 @@ export function DayGrid({ name, days, today, display, entries, selected, onPick,
   /** The editor's heading for the chosen day. */
   title: string
   editor: ReactNode
+  /** The editor's buttons, at the bottom; they close it themselves. */
+  actions: ReactNode
 }) {
   const wrapper = useRef<HTMLDivElement>(null)
   const boxes = useRef(new Map<IsoDate, HTMLButtonElement>())
@@ -45,39 +47,46 @@ export function DayGrid({ name, days, today, display, entries, selected, onPick,
       <div className="grid grid-cols-7 gap-1" role="group" aria-label={`${name}'s days`}>
         {Array.from({ length: lead }, (_, i) => <span key={`lead-${i}`} aria-hidden />)}
         {days.map((d) => {
-          const rows = entries(d)
+          const all = entries(d)
+          const absent = all.length > 0 && all.every((r) => r.absent)
+          const rows = all.filter((r) => !r.absent)
           const minutes = rows.reduce((s, r) => s + r.minutes, 0)
-          const closed = rows.length > 0 && rows.every((r) => r.closed)
+          const verified = all.length > 0 && all.every((r) => r.verified)
+          const draft = all.length > 0 && !verified
           const one = rows.length === 1 ? rows[0] : null
           const times = one?.time_in && one.time_out ? `${hhmm(one.time_in)}–${hhmm(one.time_out)}` : rows.length > 1 ? `${rows.length} projects` : ''
           const future = d > today
           const dayNo = display === 'bs' ? adToBs(d).day : Number(d.slice(8))
-          const label = `${formatDate(d, display)}, ${rows.length ? hoursText(minutes) : 'not here'}${closed ? ', closed' : ''}`
+          const label = `${formatDate(d, display)}, ${rows.length ? hoursText(minutes) : absent ? 'absent' : 'not marked'}${verified ? ', verified' : draft ? ', draft' : ''}`
           return (
             <button key={d} type="button" disabled={future} aria-label={label} aria-expanded={selected === d} aria-haspopup="dialog"
               ref={(el) => { if (el) boxes.current.set(d, el); else boxes.current.delete(d) }}
               aria-current={d === today ? 'date' : undefined} onClick={() => onPick(selected === d ? null : d)}
               className={`relative flex min-h-14 flex-col items-center justify-center rounded-lg border px-0.5 pt-3 pb-1 text-center tabular-nums transition-colors disabled:opacity-40 sm:min-h-18
-                ${selected === d ? 'border-brand ring-2 ring-brand' : 'border-line'}
-                ${rows.length ? (closed ? 'bg-muted' : 'bg-good-soft') : weekday(d) === 6 ? 'bg-muted/60' : 'bg-surface'}
+                ${selected === d ? 'border-brand ring-2 ring-brand' : verified ? 'border-good-ink/40' : draft ? 'border-slate/60' : 'border-line'}
+                ${verified && rows.length ? 'bg-good-soft' : 'bg-surface'} ${absent || draft ? 'border-dashed' : ''}
                 enabled:hover:border-slate`}>
               <span className={`absolute top-1 left-1.5 text-[11px] leading-none ${d === today ? 'rounded bg-brand px-1 py-0.5 font-bold text-white' : 'text-subtle'}`}>{dayNo}</span>
               {rows.length > 0 && (
                 <>
-                  <span className={`text-base leading-tight font-semibold sm:text-lg ${closed ? 'text-subtle' : 'text-good-ink'}`}>
+                  <span className={`text-base leading-tight font-semibold sm:text-lg ${verified ? 'text-good-ink' : 'text-ink'}`}>
                     {boxHours(minutes)}<span className="text-xs font-medium"> h</span>
                   </span>
                   {times && <span className="hidden truncate text-[10px] leading-tight text-subtle sm:block">{times}</span>}
+                  {draft && <span className="text-[10px] leading-tight font-medium text-subtle uppercase">Draft</span>}
                 </>
               )}
-              {closed && <span className="absolute right-1 bottom-1 text-subtle"><LockIcon size={11} /></span>}
+              {absent && <span className="text-xs font-medium text-subtle"><span aria-hidden>✕</span> Absent</span>}
+              {verified && <span className="absolute top-1 right-1.5 text-good-ink"><CheckIcon size={12} /></span>}
             </button>
           )
         })}
       </div>
-      <p className="mt-2 text-xs text-subtle">Tap a day to mark it or change its hours. <LockIcon size={11} className="inline" /> closed: in the books.</p>
+      <p className="mt-2 text-xs text-subtle">
+        Tap a day to mark it. A draft is not counted yet; <CheckIcon size={11} className="inline text-good-ink" /> verified is labour cost, owed to the worker.
+      </p>
       {selected && (
-        <DayPopover key={selected} anchor={() => boxes.current.get(selected)} wrapper={wrapper} title={title} onClose={() => onPick(null)}>
+        <DayPopover key={selected} anchor={() => boxes.current.get(selected)} wrapper={wrapper} title={title} onClose={() => onPick(null)} actions={actions}>
           {editor}
         </DayPopover>
       )}
@@ -89,11 +98,12 @@ const WIDE = '(min-width: 640px)'
 const isWide = () => typeof window !== 'undefined' && window.matchMedia?.(WIDE).matches
 
 /** The day's editor: a card under the box on wider screens, a bottom sheet on a phone. */
-function DayPopover({ anchor, wrapper, title, onClose, children }: {
+function DayPopover({ anchor, wrapper, title, onClose, actions, children }: {
   anchor: () => HTMLElement | undefined
   wrapper: React.RefObject<HTMLDivElement | null>
   title: string
   onClose: () => void
+  actions: ReactNode
   children: ReactNode
 }) {
   const [wide] = useState(isWide)
@@ -132,12 +142,9 @@ function DayPopover({ anchor, wrapper, title, onClose, children }: {
     return () => { document.removeEventListener('keydown', onKey); document.removeEventListener('pointerdown', onDown) }
   }, [wide, onClose, anchor, wrapper])
 
-  const head = (
-    <div className="mb-3 flex items-center justify-between gap-2">
-      <h3 className="text-base font-semibold text-ink">{title}</h3>
-      <Button variant="ghost" onClick={onClose}>Done</Button>
-    </div>
-  )
+  const head = <h3 className="mb-3 text-base font-semibold text-ink">{title}</h3>
+  // At the bottom, under the last change: the sheet stays open for several, so these close it.
+  const done = <div className="mt-4">{actions}</div>
   if (!wide) {
     return (
       <dialog ref={sheet} aria-label={title} onClose={onClose}
@@ -145,6 +152,7 @@ function DayPopover({ anchor, wrapper, title, onClose, children }: {
         className="mt-auto mb-0 max-h-[85dvh] w-full max-w-none rounded-t-2xl bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-ink backdrop:bg-ink/40">
         {head}
         <div data-day-body>{children}</div>
+        {done}
       </dialog>
     )
   }
@@ -154,6 +162,7 @@ function DayPopover({ anchor, wrapper, title, onClose, children }: {
       className="absolute z-30 w-[28rem] max-w-full rounded-xl border border-line bg-surface p-4 shadow-lg">
       {head}
       <div data-day-body>{children}</div>
+      {done}
     </div>
   )
 }

@@ -52,8 +52,12 @@ export function ButtonLink({ variant = 'primary', className, ...rest }: LinkProp
  * The first tap asks inline instead of opening a modal; a stray thumb on site does nothing.
  */
 export function ConfirmButton({
-  children, confirmLabel, onConfirm, disabled, label,
-}: { children: ReactNode; confirmLabel: string; onConfirm: () => void; disabled?: boolean; label?: string }) {
+  children, confirmLabel, onConfirm, disabled, label, quiet,
+}: {
+  children: ReactNode; confirmLabel: string; onConfirm: () => void; disabled?: boolean; label?: string
+  /** A rare action beside an everyday one: plain grey text until asked, so it does not compete. */
+  quiet?: boolean
+}) {
   const [asking, setAsking] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
   const wasAsking = useRef(false)
@@ -64,6 +68,14 @@ export function ConfirmButton({
     wasAsking.current = asking
   }, [asking])
 
+  if (!asking && quiet) {
+    return (
+      <button ref={trigger} type="button" aria-label={label} disabled={disabled} onClick={() => setAsking(true)}
+        className="inline-flex min-h-11 items-center px-2 text-sm text-subtle hover:text-ink hover:underline disabled:opacity-50">
+        {children}
+      </button>
+    )
+  }
   if (!asking) {
     return (
       <Button ref={trigger} variant="ghost" aria-label={label} disabled={disabled} onClick={() => setAsking(true)}>

@@ -1,8 +1,9 @@
 // Attendance (req §14, company setting "Labour by: Attendance"): workers with a rate, put on the
-// crews of the projects they work on; each worker's in, out and hours per day; closing days into
-// labour cost owed to each worker (GLOSSARY: Worker, Crew Member, Close day).
+// crews of the projects they work on; each worker's in, out and hours per day, a Draft until it is
+// Verified, which makes it labour cost owed to the worker (GLOSSARY: Worker, Crew Member, Attendance).
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { Tables } from '../../lib/database.types'
+import type { IsoDate } from '../../lib/dates'
 import { newId } from '../../lib/ids'
 import { supabase } from '../../lib/supabase'
 import { rpc } from '../supply/api'
@@ -85,7 +86,11 @@ export function minutesBetween(timeIn: string, timeOut: string, company: { day_s
   return span > 360 ? Math.max(0, span - pause) : span
 }
 
-export type Mark = { time_in: string | null; time_out: string | null; minutes: number }
+/** A day's attendance. Absent is kept as its own mark (no hours), so it is told apart from a day not marked. */
+export type Mark = { time_in: string | null; time_out: string | null; minutes: number; absent?: boolean }
+export const ABSENT: Mark = { time_in: null, time_out: null, minutes: 0, absent: true }
+/** The mark as set_attendance takes it; null clears the day back to not marked. */
+export const markRow = (m: Mark | null) => ({ time_in: m?.time_in ?? null, time_out: m?.time_out ?? null, minutes: m?.minutes ?? 0, absent: !!m?.absent })
 type WorkingDay = { day_start: string; day_end: string; standard_day_minutes: number }
 /** The normal working day, and half of it from the start of the day. */
 export const fullDayOf = (c: WorkingDay): Mark => ({ time_in: hhmm(c.day_start), time_out: hhmm(c.day_end), minutes: c.standard_day_minutes })
@@ -123,8 +128,10 @@ export type CardRow = {
   time_in: string | null
   time_out: string | null
   minutes: number
+  absent: boolean
   amount_paisa: number | null
   closed: boolean
+  verified: boolean
   editable: boolean
 }
 export type CardWorker = {
@@ -149,8 +156,13 @@ export type MonthRow = {
   time_in: string | null
   time_out: string | null
   minutes: number
+  /** Kept as a row with no hours; never priced. */
+  absent: boolean
+  /** In labour cost (a verified worked day). */
   closed: boolean
-  /** Closed: what it was priced at. Open: at the current rate. Null when money is hidden. */
+  /** Verified: a worked day in labour cost, or an absent day confirmed. Otherwise a draft. */
+  verified: boolean
+  /** What a verified day was priced at. Null for a draft (no money) or when money is hidden. */
   amount_paisa: number | null
 }
 export type CrewWorker = {
@@ -163,7 +175,8 @@ export type CrewWorker = {
   /** On the crew's project; null when money is hidden. */
   paid_paisa: number | null
   balance_paisa: number | null
-  open_paisa: number | null
+  /** Days on the project still drafts (absent ones too). */
+  draft_days: number
   /** Everywhere, including money not given to a project: Accounts and Admin only. */
   company_balance_paisa: number | null
 }
@@ -172,6 +185,8 @@ export type CrewMonth = {
   standard_day_minutes: number
   can_see_money: boolean
   workers: CrewWorker[]
+  /** The first day this user may mark or change (site staff: 7 days back); null for any day. */
+  mark_from: IsoDate | null
 }
 
 export function useCrewMonth(crewId: string, from: string, to: string) {
@@ -180,4 +195,39 @@ export function useCrewMonth(crewId: string, from: string, to: string) {
     enabled: !!crewId && !!from && !!to,
     queryFn: async () => (await rpc('crew_month', { p_crew: crewId, p_from: from, p_to: to })) as CrewMonth,
   })
+}
+
+// ---------------------------------------------------------------------------
+// Draft days (marked, not verified): per project, crew and worker
+// ---------------------------------------------------------------------------
+export type OpenLabour = { project_id: string; crew_id: string; worker_id: string; days: number; minutes: number; amount_paisa: number | null }
+
+/** The advance a worker holds that paying takes off their days, from every project the user sees. */
+export function useWorkerAdvance(workerId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['balances', 'worker-advance', workerId],
+    enabled: !!workerId && enabled,
+    queryFn: () => rpc('worker_advance', { p_worker: workerId }),
+  })
+}
+
+/** Under 'attendance', so every mark and close refreshes it. */
+export function useOpenLabour(companyId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['attendance', 'open', companyId],
+    enabled: !!companyId && enabled,
+    queryFn: async () => (await rpc('open_labour', { p_company: companyId })) as OpenLabour[],
+  })
+}
+
+/** Sum the open labour by one key: amount null when any part of it is hidden. */
+export function openBy(rows: OpenLabour[] | undefined, key: 'project_id' | 'crew_id' | 'worker_id') {
+  const out = new Map<string, { days: number; amount_paisa: number | null }>()
+  for (const r of rows ?? []) {
+    const o = out.get(r[key]) ?? { days: 0, amount_paisa: 0 }
+    o.days += r.days
+    o.amount_paisa = o.amount_paisa == null || r.amount_paisa == null ? null : o.amount_paisa + r.amount_paisa
+    out.set(r[key], o)
+  }
+  return out
 }

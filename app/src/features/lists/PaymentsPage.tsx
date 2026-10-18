@@ -1,4 +1,5 @@
-// Every payment the person can see, newest first, with who it was paid to and what for.
+// Every payment the person can see, newest first, with who it was paid to and what for;
+// searchable by number, who was paid and what for, and filtered by date and kind of party.
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
@@ -8,34 +9,69 @@ import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
+import { containsAny } from '../../lib/search'
 import { ShowMore } from '../../components/ShowMore'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 import { canRecordPayments } from '../supply/permissions'
+import { useParties } from '../parties/api'
 import { useProjects } from '../projects/api'
+import { useListFilters, type ListSearch } from './ListFilters'
 import { useProjectFilter } from './ProjectFilter'
 
-type PaymentFilter = { companyId: string; projectId: string | null }
+type PaymentFilter = { companyId: string; projectId: string | null; paidTo: string | null; partyMatch?: string[] } & ListSearch
+
+type Filterable<Q> = {
+  eq: (c: string, v: string) => Q; contains: (c: string, v: string[]) => Q
+  gte: (c: string, v: string) => Q; lte: (c: string, v: string) => Q; or: (f: string) => Q
+}
 
 // PostgREST filters shared by the list and its count.
-function paymentQuery<Q extends { eq: (c: string, v: string) => Q; contains: (c: string, v: string[]) => Q }>(q: Q, f: PaymentFilter): Q {
+function paymentQuery<Q extends Filterable<Q>>(q: Q, f: PaymentFilter): Q {
   q = q.eq('company_id', f.companyId)
   // A payment counts for a project once some of it is assigned there.
   if (f.projectId) q = q.contains('project_ids', [f.projectId])
+  // Two `or` filters must both hold, so this and the search combine.
+  const columns = PAID_TO.find(([k]) => k === f.paidTo)?.[2]
+  if (columns) q = q.or(columns.map((c) => `${c}.not.is.null`).join(','))
+  if (f.from) q = q.gte('payment_date', f.from)
+  if (f.to) q = q.lte('payment_date', f.to)
+  if (f.search) q = q.or(containsAny(f.search, ['number', 'reference', 'paid_for'], 'party_id', f.partyMatch))
   return q
+}
+
+/** Who a payment went to, by kind: crews and workers together as labour (GLOSSARY: Worker). */
+const PAID_TO: Array<[key: string, label: string, columns: string[]]> = [
+  ['supplier', 'Suppliers', ['supplier_id']],
+  ['subcontractor', 'Subcontractors', ['subcontractor_id']],
+  ['labour', 'Labour (crews and workers)', ['crew_id', 'worker_id']],
+  ['payee', 'Other services', ['payee_id']],
+]
+
+/**
+ * The ids of every party whose name has the term: a payment can go to any kind, so the shared
+ * search's supplier match is widened to subcontractors, crews, workers and other services.
+ */
+function usePartyMatch(companyId: string, term: string | undefined, supplierMatch: string[] = []) {
+  const lists = [useParties(companyId, 'subcontractor'), useParties(companyId, 'crew'), useParties(companyId, 'payee'), useParties(companyId, 'worker')]
+  if (!term) return undefined
+  const t = term.toLowerCase()
+  // A new array each render is fine: query keys compare by value.
+  return [...supplierMatch, ...lists.flatMap((l) => (l.data ?? []).filter((p) => p.name.toLowerCase().includes(t)).map((p) => p.id))]
 }
 
 function usePayments(filter: PaymentFilter) {
   return usePaged(['payments', filter], async (from, to) => {
     const q = paymentQuery(supabase.from('payment_summaries')
-      .select('*, suppliers(name), subcontractors(name), crews(name), payees(name, is_cash)'), filter)
+      .select('*, suppliers(name), subcontractors(name), crews(name), payees(name, is_cash), workers(name)'), filter)
     const { data, error } = await q.order('payment_date', { ascending: false }).order('number', { ascending: false }).range(from, to)
     if (error) throw error
     return data.map((p) => ({
       ...p, id: p.id!, number: p.number!, payment_date: p.payment_date!, status: p.status!, method: p.method!,
       amount_paisa: p.amount_paisa ?? 0, allocated_paisa: p.allocated_paisa ?? 0,
       // The Cash payee is "Cash (not named)"; in a table row "Cash" says it.
-      party: p.suppliers?.name ?? p.subcontractors?.name ?? p.crews?.name ?? (p.payees?.is_cash ? PAYMENT_METHODS.cash : p.payees?.name) ?? '',
+      party: p.suppliers?.name ?? p.subcontractors?.name ?? p.crews?.name ?? p.workers?.name
+        ?? (p.payees?.is_cash ? PAYMENT_METHODS.cash : p.payees?.name) ?? '',
     }))
   })
 }
@@ -59,7 +95,13 @@ function usePaymentCount(filter: PaymentFilter) {
 export function PaymentsPage() {
   const auth = useCompany()
   const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
-  const filter = { companyId: auth.companyId, projectId }
+  const search = useListFilters({
+    placeholder: 'Search number, who was paid or what for',
+    choice: { param: 'to', label: 'Paid to', any: 'Paid to anyone', options: PAID_TO.map(([k, label]) => [k, label]) },
+  })
+  const partyMatch = usePartyMatch(auth.companyId, search.filter.search, search.filter.supplierMatch)
+  const { supplierMatch: _, ...dates } = search.filter
+  const filter: PaymentFilter = { companyId: auth.companyId, projectId, paidTo: search.chosen, ...dates, ...(partyMatch ? { partyMatch } : {}) }
   const payments = usePayments(filter)
   const total = usePaymentCount(filter).data
   const projects = useProjects(auth.companyId)
@@ -70,9 +112,10 @@ export function PaymentsPage() {
       <PageHeader title="Payments" subtitle="Money paid to suppliers, subcontractors, crews and other services."
         actions={canRecordPayments(auth) && <ButtonLink variant="tonal" to={recordProject ? `/payments/new?project=${recordProject}` : '/payments/new'}>Record payment</ButtonLink>} />
       {chip}
+      {search.bar}
       {payments.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void payments.refetch()}>{payments.error && friendlyError(payments.error)}</ErrorBanner>
-      {payments.data?.length === 0 && <Card>{empty('payments', <EmptyState title="No payments yet" />)}</Card>}
+      {payments.data?.length === 0 && (search.active ? search.noMatch('payments') : <Card>{empty('payments', <EmptyState title="No payments yet" />)}</Card>)}
       {payments.data && payments.data.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <table className="w-full text-sm">
