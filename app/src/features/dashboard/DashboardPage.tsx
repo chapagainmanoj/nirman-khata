@@ -48,7 +48,8 @@ export function DashboardPage() {
   if (dash.error) return <ErrorBanner onRetry={() => void dash.refetch()}>{friendlyError(dash.error)}</ErrorBanner>
   const d = dash.data
   const owed = d.payable_by_kind ?? { supplier: 0, subcontractor: 0, crew: 0, payee: 0 }
-  const owedTotal = Object.values(owed).reduce((s, n) => s + n, 0)
+  // Only what is owed: a kind of party holding money (peski, overpaid) is not taken off it.
+  const owedTotal = Object.values(owed).reduce((s, n) => s + Math.max(0, n), 0)
   const attention = attentionRows(d, {
     enter: canEnter(auth), approve: auth.isAdmin || !!auth.membership?.can_approve_slips, post: canPost(auth), pay: canRecordPayments(auth),
   }, today)
@@ -62,7 +63,7 @@ export function DashboardPage() {
       {d.money_visible && (
         <RunningBlock projects={d.projects}>
           <Figure label="To pay" value={owedTotal}
-            sub={Object.entries(owed).filter(([, n]) => n).map(([k, n]) => `${OWED_LABEL[k as keyof typeof OWED_LABEL]} ${formatNPR(n, { whole: true })}`).join(' · ') || 'Nothing to pay'}
+            sub={Object.entries(owed).filter(([, n]) => n > 0).map(([k, n]) => `${OWED_LABEL[k as keyof typeof OWED_LABEL]} ${formatNPR(n, { whole: true })}`).join(' · ') || 'Nothing to pay'}
             to="/parties" />
           {!!d.peski_paisa && <Figure label="Peski not yet used" value={d.peski_paisa} sub="Deducted from their bills as they come" to="/parties" />}
         </RunningBlock>

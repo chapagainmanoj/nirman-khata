@@ -178,6 +178,9 @@ function SummaryStrip({ projectId }: { projectId: string }) {
   if (dash.isPending) return <Spinner />
   if (!f || !f.money_visible) return null
   const spent = Number(f.cost_paisa ?? 0)
+  // Due is net of what parties hold (peski, overpaid); shown apart, so it never goes below zero.
+  const held = (f.peski_paisa ?? 0) + (f.overpaid_paisa ?? 0)
+  const due = (f.payable_paisa ?? 0) + held
   const budget = f.budget_paisa || null
   const left = budget === null ? null : budget - spent
   return (
@@ -188,7 +191,8 @@ function SummaryStrip({ projectId }: { projectId: string }) {
           <div className="text-3xl font-semibold text-ink tabular-nums">{formatNPR(spent)}</div>
           <div className="mt-1 text-sm text-subtle">
             Paid <span className="font-semibold text-ink tabular-nums">{formatNPR(f.cash_paid_paisa)}</span>
-            {' · '}Due <span className="font-semibold text-ink tabular-nums">{formatNPR(f.payable_paisa)}</span>
+            {' · '}Due <span className="font-semibold text-ink tabular-nums">{formatNPR(due)}</span>
+            {held > 0 && <>{' · '}They hold <span className="font-semibold text-good-ink tabular-nums">{formatNPR(held)}</span></>}
           </div>
         </div>
         <div>
@@ -543,6 +547,9 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
   const amounts = useAmountsAsOf(projectId, asOf, true)
   const cost = useProjectCost(projectId, asOf, true)
   const received = useClientReceived(projectId, asOf, true)
+  // What parties hold here (peski, overpaid), per party: Due is shown without it, never negative.
+  const figures = useProjectDashboard(projectId, asOf === todayKathmandu() ? undefined : asOf)
+  const held = (figures.data?.peski_paisa ?? 0) + (figures.data?.overpaid_paisa ?? 0)
   const a = amounts.data
   const c = cost.data
   const finished = status === 'completed' || status === 'closed'
@@ -596,7 +603,8 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
             {left === null ? t('common.notAvailable') : formatNPR(Math.abs(left))}
           </Detail>
           <Detail label="Paid">{formatNPR(c.cash_paid_paisa)}</Detail>
-          <Detail label="Due">{formatNPR(c.payable_paisa)}</Detail>
+          <Detail label="Due">{formatNPR(c.payable_paisa + held)}</Detail>
+          {held > 0 && <Detail label="They hold (peski, overpaid)"><span className="text-good-ink">{formatNPR(held)}</span></Detail>}
           {/* Break it down only when more than one kind of party is owed; one kind would just repeat the total. */}
           {OWED.filter(([k]) => c.payable_by_kind[k] !== 0).length > 1 && OWED.map(([k, label]) => c.payable_by_kind[k] !== 0 && (
             <Detail key={k} label={`· ${label}`}><BalanceText paisa={c.payable_by_kind[k]} /></Detail>

@@ -2,13 +2,13 @@
 // photographed or entered and sent on.
 import { useState } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
-import { ButtonLink, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
+import { ButtonLink, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
 import { ShowMore } from '../../components/ShowMore'
 import { Tabs } from '../parties/PartyParts'
 import { useBillCount, useBills, useBillsOwed } from '../supply/api'
-import { BillRow } from '../supply/BillRow'
+import { BillTable } from '../supply/BillRow'
 import { canEnter, canPost } from '../supply/permissions'
 import { useProjectFilter } from './ProjectFilter'
 
@@ -64,16 +64,14 @@ export function BillsPage() {
         actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/bills/new?project=${recordProject}` : '/bills/new'}>{posts ? 'Enter bill' : 'Bill photo'}</ButtonLink>} />
       {chip}
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Bills">
-        <Card>
-          {shown.isPending && <Spinner />}
-          <ErrorBanner onRetry={() => void shown.refetch()}>{shown.error && friendlyError(shown.error)}</ErrorBanner>
-          {shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]}>{HOW[tab]}</EmptyState>)}
-          {owed > 0 && (tab === 'posted' || tab === 'all') && (
-            <p className="mb-2 border-b border-line pb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
-          )}
-          <ul>{shown.data?.map((b) => <BillRow key={b.id} bill={b} showSupplier showProject={showProject} />)}</ul>
-          <ShowMore list={shown} total={total} />
-        </Card>
+        {shown.isPending && <Spinner />}
+        <ErrorBanner onRetry={() => void shown.refetch()}>{shown.error && friendlyError(shown.error)}</ErrorBanner>
+        {shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]}>{HOW[tab]}</EmptyState>)}
+        {owed > 0 && (tab === 'posted' || tab === 'all') && (
+          <p className="mb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
+        )}
+        {!!shown.data?.length && <BillTable bills={shown.data} showSupplier showProject={showProject} />}
+        <ShowMore list={shown} total={total} />
       </Tabs>
     </>
   )

@@ -90,7 +90,7 @@ test('paged lists, rate hint, refund and password reset', async ({ page }) => {
   // Bills: the tab counts every bill; the list loads 50 and "Show more" the rest.
   await page.goto('/bills')
   await page.getByRole('tab', { name: 'Posted (55)' }).click()
-  const bills = page.getByRole('tabpanel').getByRole('listitem')
+  const bills = page.getByRole('tabpanel').locator('tbody tr')
   await expect(bills).toHaveCount(50)
   await expect(page.getByText('Showing 50 of 55')).toBeVisible()
   await page.getByRole('button', { name: 'Show more' }).click()
