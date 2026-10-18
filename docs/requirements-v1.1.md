@@ -212,7 +212,7 @@ Default headings (editable):
 **Rules**
 - Companies can add, rename and deactivate headings. Used headings stay visible in historical reports.
 - Every posted cost line belongs to exactly one project and one heading.
-- One bill can contain lines for different projects and headings.
+- One bill can contain lines for different headings. (Different projects: see §11, one project per bill in the form since 2026-10-18.)
 - Material type and cost heading are separate (a material has a default heading that can be overridden per line).
 - Reports group by heading, subheading, project, party and date.
 
@@ -303,7 +303,7 @@ Supplier, bill number, bill date, cost date, optional due date, linked deliverie
 ### 11.3 Rules
 - Only posted bills count in cost totals.
 - Every line has a project and heading. Shared charges (e.g. transport for two sites) must be split explicitly.
-- Partial billing and multi-delivery / multi-project bills are supported.
+- Partial billing and multi-delivery bills are supported. **One bill is for one project** (revised 2026-10-18): the bill form takes the project once, at the top, and offers only that project's deliveries; a supplier delivering to two projects gets a bill per project. The server still accepts lines for several projects, so older bills open and post as before.
 - Warn on duplicate bill number for the same supplier.
 - Bills with no matching receipt are flagged; posting needs authorization and a reason.
 - Ordered vs received vs billed differences are visible.

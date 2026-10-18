@@ -156,7 +156,8 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await page.getByRole('link', { name: /Shrestha Suppliers/ }).click()
   await page.getByRole('link', { name: 'Enter bill' }).first().click()
   await page.getByRole('button', { name: 'Add material line' }).click()
-  await expect(page.locator('#bl0-p')).toHaveValue(p1)
+  // The bill's one project starts on the Working on project.
+  await expect(page.locator('#b-project')).toHaveValue(p1)
   await switchTo('P-2 · Private house Pokhara')
   await side.getByRole('link', { name: /Order slips/ }).click()
   await page.getByRole('button', { name: 'To approve (1)' }).click()

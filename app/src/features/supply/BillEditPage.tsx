@@ -49,6 +49,7 @@ type Override = { charge: 'discount' | 'transport' | 'vat'; project_id: string; 
 export type BillValues = {
   id: string
   supplier_id: string
+  project_id: string // the bill's one project, used by every line; '' on an older bill with several
   bill_no: string
   bill_date: string
   cost_date: string
@@ -79,7 +80,9 @@ export function BillEditPage() {
   if (billId && (!d?.bill || !['draft', 'under_review'].includes(d.bill.status))) return <ErrorBanner>This bill cannot be edited.</ErrorBanner>
 
   const initial: BillValues | undefined = d?.bill ? {
-    id: d.bill.id, supplier_id: d.bill.supplier_id, bill_no: d.bill.bill_no ?? '', bill_date: d.bill.bill_date,
+    id: d.bill.id, supplier_id: d.bill.supplier_id,
+    project_id: new Set(d.lines.map((l) => l.project_id)).size === 1 ? d.lines[0].project_id : '',
+    bill_no: d.bill.bill_no ?? '', bill_date: d.bill.bill_date,
     // Saved as the bill date when left empty; keep it empty so a corrected bill date carries it along.
     cost_date: d.bill.cost_date === d.bill.bill_date ? '' : d.bill.cost_date, due_date: d.bill.due_date ?? '', notes: d.bill.notes ?? '',
     discount: rupees(d.charges?.discount_paisa), transport: rupees(d.charges?.transport_paisa), vat: rupees(d.charges?.vat_paisa),
@@ -114,12 +117,16 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
   const form = useForm<BillValues>({
     defaultValues: initial ?? {
-      id: newId(), supplier_id: params.get('supplier') ?? '', bill_no: '', bill_date: todayKathmandu(), cost_date: '',
+      id: newId(), supplier_id: params.get('supplier') ?? '', project_id: params.get('project') ?? '', bill_no: '', bill_date: todayKathmandu(), cost_date: '',
       due_date: '', notes: '', discount: '', transport: '', vat: '', vat_rate: '13', split_charges: false, overrides: [], lines: [],
       paper_total: '', photos: [], post_key: newId(), submit_key: newId(),
     },
   })
-  const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: initial ? `bill-${initial.id}` : 'bill-new' })
+  // Opened from a delivery ("Enter bill for this"): a draft of its own, so an unfinished bill
+  // for another supplier is not brought back in its place.
+  const fromDelivery = params.get('delivery')
+  const draftKey = initial ? `bill-${initial.id}` : fromDelivery ? `bill-new-delivery-${fromDelivery}` : 'bill-new'
+  const draft = useFormDraft(form, { userId: auth.userId, companyId: auth.companyId, formKey: draftKey })
   const lines = useFieldArray({ control: form.control, name: 'lines', keyName: 'key' })
   const overrides = useFieldArray({ control: form.control, name: 'overrides', keyName: 'key' })
   const { register, control, watch, setValue, getValues } = form
@@ -132,28 +139,54 @@ function BillForm({ initial }: { initial?: BillValues }) {
   const workingOn = useWorkingOnId()
   const leafHeadings = headings.data?.filter((h) => h.active && (h.parent_id || !headings.data?.some((c) => c.parent_id === h.id))) ?? []
   const transportHeading = headings.data?.find((h) => h.kind === 'transport' && !h.parent_id)
+  // One bill is for one project (revised 2026-10-18). An older bill with lines for several
+  // projects keeps a project per line until one is chosen for the whole bill.
+  const lineProjects = [...new Set(values.lines.map((l) => l.project_id).filter(Boolean))]
+  const projectId = values.project_id || (lineProjects.length === 1 ? lineProjects[0] : '')
+  const mixed = !values.project_id && lineProjects.length > 1
+  useEffect(() => {
+    if (initial || getValues('project_id') || fromDelivery) return
+    const start = workingOn || (workable.length === 1 ? workable[0].id : '')
+    if (start && !getValues('lines').length) setValue('project_id', start)
+  }, [workingOn, workable.length]) // eslint-disable-line react-hooks/exhaustive-deps
   const unbilled = useDeliveryLineStatus({ supplierId, billableOnly: true }, !!supplierId)
   const deliveries = useDeliveriesById(unbilled.data?.map((u) => u.delivery_id!) ?? [])
 
   // Start with the supplier's unbilled deliveries as lines, so only rates are added (req §21).
-  function addFromDeliveries(onlyDelivery?: string) {
+  // Only the bill's project: the first delivery added chooses it when none is chosen yet.
+  function addFromDeliveries(onlyDelivery?: string, forProject?: string) {
     const taken = new Set(getValues('lines').flatMap((l) => l.matches.map((m) => m.delivery_line_id)))
+    let project = forProject || getValues('project_id') || (onlyDelivery ? unbilled.data?.find((u) => u.delivery_id === onlyDelivery)?.project_id : '') || ''
     for (const u of unbilled.data ?? []) {
       if (taken.has(u.id!) || (onlyDelivery && u.delivery_id !== onlyDelivery)) continue
+      if (!project) project = u.project_id!
+      if (u.project_id !== project) continue
       const dl = deliveries.data?.get(u.id!)
       if (!dl || !dl.material_id) continue
       const m = materials.data?.find((x) => x.id === dl.material_id)
       lines.append({
-        id: newId(), line_type: 'material', project_id: u.project_id!, heading_id: m?.default_heading_id ?? '',
+        id: newId(), line_type: 'material', project_id: project, heading_id: m?.default_heading_id ?? '',
         material_id: dl.material_id, description: '', qty: String(u.billable_qty), unit_id: dl.unit_id, unit_note: dl.unit_note ?? '',
         rate: '', amount: '', amount_edited: false, unmatched_reason: '', rate_variance_reason: '',
         matches: [{ delivery_line_id: u.id!, billed_qty: String(u.billable_qty) }],
       })
     }
+    if (project && !getValues('project_id')) setValue('project_id', project)
   }
 
-  // Opened from a delivery ("Enter bill for this"): its items become the first lines.
-  const fromDelivery = params.get('delivery')
+  // The bill's project goes on every line; links to deliveries of another project are dropped.
+  function chooseProject(id: string) {
+    setValue('project_id', id)
+    const deliveryProject = new Map((unbilled.data ?? []).map((u) => [u.id!, u.project_id]))
+    getValues('lines').forEach((l, i) => {
+      setValue(`lines.${i}.project_id`, id)
+      setValue(`lines.${i}.matches`, l.matches.filter((m) => deliveryProject.get(m.delivery_line_id) === id))
+    })
+    setValue('split_charges', false)
+    overrides.replace([])
+  }
+
+  // Opened from a delivery: its items become the first lines.
   const prefilled = useRef(false)
   useEffect(() => {
     if (initial || !fromDelivery || prefilled.current || !deliveries.data || !materials.data || getValues('lines').length) return
@@ -164,7 +197,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
   function blankLine(type: 'material' | 'charge'): BillLine {
     const last = getValues('lines').at(-1)
     return {
-      id: newId(), line_type: type, project_id: last?.project_id ?? params.get('project') ?? (workingOn || (workable.length === 1 ? workable[0].id : '')),
+      id: newId(), line_type: type, project_id: getValues('project_id') || (last?.project_id ?? ''),
       heading_id: type === 'charge' ? transportHeading?.id ?? '' : '', material_id: '', description: type === 'charge' ? 'Transport' : '',
       qty: '', unit_id: '', unit_note: '', rate: '', amount: '', amount_edited: false, unmatched_reason: '', rate_variance_reason: '', matches: [],
     }
@@ -182,7 +215,6 @@ function BillForm({ initial }: { initial?: BillValues }) {
   const total = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0) + (parseNPR(values.vat) ?? 0)
   const chargesSummary = ([['Discount', values.discount], ['Transport', values.transport], ['VAT', values.vat]] as const)
     .filter(([, a]) => parseNPR(a)).map(([k, a]) => `${k} ${formatNPR(parseNPR(a))}`).join(', ') || 'none'
-  const lineProjects = [...new Set(values.lines.map((l) => l.project_id).filter(Boolean))]
   const paper = parseNPR(values.paper_total)
   const [showCostDate, setShowCostDate] = useState(!!initial?.cost_date)
   const [showDue, setShowDue] = useState(!!initial?.due_date)
@@ -244,9 +276,10 @@ function BillForm({ initial }: { initial?: BillValues }) {
     if (then === 'submit' && !v.lines.length && (v.photos.length || initial || v.saved)) return ''
     if (!v.bill_no.trim()) return then === 'submit' ? 'Take the bill photo, or enter the bill number.' : 'Enter the bill number.'
     if (!v.lines.length) return 'Add at least one line.'
+    if (!mixed && !projectId) return 'Choose the project.'
     for (const [i, l] of v.lines.entries()) {
       const n = `Line ${i + 1}`
-      if (!l.project_id) return `${n}: choose the project.`
+      if (mixed && !l.project_id) return `${n}: choose the project.`
       if (!l.heading_id && !(l.material_id && materials.data?.find((m) => m.id === l.material_id)?.default_heading_id)) return `${n}: choose a cost heading.`
       if (parseNPR(l.amount) === null) return `${n}: enter the amount.`
       if (l.line_type === 'material') {
@@ -274,8 +307,13 @@ function BillForm({ initial }: { initial?: BillValues }) {
   }
 
   const onBill = new Set(values.lines.flatMap((l) => l.matches.map((m) => m.delivery_line_id)))
-  const notOnBill = supplierId ? (unbilled.data ?? []).filter((u) => !onBill.has(u.id!)) : []
+  const notOnBill = supplierId ? (unbilled.data ?? []).filter((u) => !onBill.has(u.id!) && (!projectId || u.project_id === projectId)) : []
+  // With no project chosen yet, the supplier's unbilled deliveries are offered project by project.
+  const notOnBillProjects = [...new Set(notOnBill.map((u) => u.project_id!))]
   const projectName = (id: string) => projects.data?.find((p) => p.id === id)?.code ?? ''
+  // Which delivery this bill was started from: its date, project and challan.
+  const startedFrom = fromDelivery && !initial ? unbilled.data?.find((u) => u.delivery_id === fromDelivery) : undefined
+  const startedFromLine = startedFrom ? deliveries.data?.get(startedFrom.id!) : undefined
 
   const crumbs: Crumb[] = initial
     ? [{ to: '/bills', label: 'Bills' }, { to: `/bills/${initial.id}`, label: billTitle(initial.bill_no) }]
@@ -285,6 +323,12 @@ function BillForm({ initial }: { initial?: BillValues }) {
     <>
       <PageHeader title={initial ? 'Edit bill' : 'Enter supplier bill'} crumbs={crumbs} subtitle={accounts ? 'Check the lines against the paper bill, then post it.' : 'Nothing counts as cost until Accounts posts the bill.'} />
       {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved bill.</Notice></div>}
+      {startedFrom && startedFromLine && (
+        <div className="mb-4"><Notice>
+          For the delivery of {formatDate(startedFromLine.receipt_date, auth.dateDisplay)} to {projectName(startedFrom.project_id!)}
+          {startedFromLine.challan_no && ` (challan ${startedFromLine.challan_no})`}. Its items are on the bill below; add the rates.
+        </Notice></div>
+      )}
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start lg:gap-6">
       <Card title="Bill photo" className="lg:sticky lg:top-4">
         {initial || values.saved ? (
@@ -313,6 +357,13 @@ function BillForm({ initial }: { initial?: BillValues }) {
             <Field label="Bill number" htmlFor="b-no" hint={accounts ? undefined : 'Optional when you send the photo'}>
               <Input id="b-no" {...register('bill_no', { onBlur: () => void checkDuplicate() })} />
             </Field>
+            <div className="sm:col-span-2"><Field label="Project" htmlFor="b-project"
+              hint={mixed ? 'This bill has lines for more than one project. Choose one to put every line on it.' : 'One bill is for one project. Enter a separate bill for each project.'}>
+              <Select id="b-project" value={projectId} onChange={(e) => chooseProject(e.target.value)}>
+                <option value="">{mixed ? 'Several projects' : 'Choose project'}</option>
+                {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+              </Select>
+            </Field></div>
             <div className="sm:col-span-2"><Field label="Bill date" htmlFor="b-date">
               <Controller control={control} name="bill_date" render={({ field }) => (
                 <DateInput id="b-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
@@ -349,12 +400,23 @@ function BillForm({ initial }: { initial?: BillValues }) {
           {dupWarning && <div className="mt-3"><Notice>{dupWarning}</Notice></div>}
         </Card>
 
-        {notOnBill.length > 0 && (
+        {notOnBill.length > 0 && (projectId || mixed ? (
           <Notice>
-            {notOnBill.length} delivered item(s) from this supplier are not billed yet.{' '}
+            {notOnBill.length} delivered item(s) from this supplier{projectId && ` to ${projectName(projectId)}`} are not billed yet.{' '}
             <button type="button" className="font-semibold text-slate underline" onClick={() => addFromDeliveries()}>Add them as lines</button>
           </Notice>
-        )}
+        ) : (
+          <Notice>
+            Delivered items from this supplier are not billed yet. Which project is this bill for?
+            <span className="mt-1 flex flex-wrap gap-x-4">
+              {notOnBillProjects.map((pid) => (
+                <button key={pid} type="button" className="min-h-11 font-semibold text-slate underline" onClick={() => addFromDeliveries(undefined, pid)}>
+                  {projectName(pid)}: {notOnBill.filter((u) => u.project_id === pid).length} item(s)
+                </button>
+              ))}
+            </span>
+          </Notice>
+        ))}
 
         {lines.fields.map((field, i) => {
           const l = values.lines[i]
@@ -368,12 +430,14 @@ function BillForm({ initial }: { initial?: BillValues }) {
             <Card key={field.key} title={l.line_type === 'charge' ? `Line ${i + 1}: charge` : `Line ${i + 1}`}
               actions={<Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />Remove</Button>}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Project" htmlFor={`bl${i}-p`}>
-                  <Select id={`bl${i}-p`} {...register(`lines.${i}.project_id`)}>
-                    <option value="">Choose project</option>
-                    {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
-                  </Select>
-                </Field>
+                {mixed && (
+                  <Field label="Project" htmlFor={`bl${i}-p`}>
+                    <Select id={`bl${i}-p`} {...register(`lines.${i}.project_id`)}>
+                      <option value="">Choose project</option>
+                      {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+                    </Select>
+                  </Field>
+                )}
                 {l.line_type === 'material' ? (
                   <Field label="Material" htmlFor={`bl${i}-m`}>
                     <Select id={`bl${i}-m`} value={l.material_id} onChange={(e) => {
@@ -568,7 +632,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
 function toPayload(v: BillValues) {
   const lines = v.lines.map((l) => ({
-    id: l.id, line_type: l.line_type, project_id: l.project_id, heading_id: l.heading_id || null,
+    id: l.id, line_type: l.line_type, project_id: v.project_id || l.project_id, heading_id: l.heading_id || null,
     material_id: l.line_type === 'material' && l.material_id ? l.material_id : null,
     description: l.description || null, qty: l.line_type === 'material' ? Number(l.qty) : null,
     unit_id: l.line_type === 'material' ? l.unit_id || null : null, unit_note: l.unit_note || null,

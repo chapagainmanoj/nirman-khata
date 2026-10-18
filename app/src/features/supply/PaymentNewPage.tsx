@@ -185,6 +185,22 @@ export function PaymentNewPage() {
   const allocated = v.allocations.reduce((s, a) => s + (parseNPR(a.amount) ?? 0), 0)
   const unallocated = (amountPaisa ?? 0) - allocated
   const extraProject = pkgProject || v.extra_project || (visible.length === 1 ? visible[0].id : '')
+  // Money beyond the ticked bills while other bills are unpaid: offer to pay those, oldest first,
+  // before any of it counts as overpaid.
+  const untickedOpen = billsMode && !subMode && !v.package_id
+    ? openDocs.filter((d) => !(docKey(d) in v.settle)).sort((a, b) => (a.doc_date ?? '').localeCompare(b.doc_date ?? ''))
+    : []
+  function extraToBills() {
+    const next = { ...getValues('settle') }
+    let left = extra
+    for (const d of untickedOpen) {
+      if (left <= 0) break
+      const take = Math.min(left, d.amount_paisa)
+      next[docKey(d)] = paisaToInput(take)
+      left -= take
+    }
+    setValue('settle', next)
+  }
 
   /** The project split the server gets: from the ticked bills, the package, or typed in. */
   function splitOf(vals: Values) {
@@ -509,6 +525,16 @@ export function PaymentNewPage() {
                   {visible.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
                 </Select>
               </Field>
+            )}
+            {extra > 0 && untickedOpen.length > 0 && (
+              <div className="sm:col-span-2">
+                <Notice>
+                  {formatNPR(extra)} is more than the ticked bills, and {untickedOpen.length === 1 ? `${docLabel(untickedOpen[0])} (${code(untickedOpen[0].project_id)}) is` : `${untickedOpen.length} other bills are`} still unpaid.{' '}
+                  <button type="button" className="min-h-11 font-semibold text-slate underline" onClick={extraToBills}>
+                    {untickedOpen.length === 1 ? `Pay ${docLabel(untickedOpen[0])} with it` : 'Pay the oldest bills with it'}
+                  </button>
+                </Notice>
+              </div>
             )}
             {billsMode && !subMode && !v.package_id && extra > 0 && (
               <Field label={`Extra ${formatNPR(extra)} is ${v.party_kind === 'worker' ? 'paid ahead' : 'overpaid'} on`} htmlFor="p-extra">

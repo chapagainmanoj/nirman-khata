@@ -89,6 +89,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.getByRole('tab', { name: 'Activity' }).click()
   await page.getByRole('button', { name: 'Enter bills' }).click()
   await page.getByRole('link', { name: 'Enter bill for this' }).click()
+  await expect(page.getByText(/^For the delivery of .* to P-/)).toBeVisible()
   await expect(page.getByLabel('Quantity')).toHaveValue('60')
   await page.getByLabel('Bill number').fill('1001')
   await page.getByLabel('Rate per unit').fill('850')
@@ -232,5 +233,93 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByRole('img', { name: 'Bill photo 1 of 1' })).toBeVisible()
   await expect(page.getByText('Enter the bill number from the paper bill')).toBeVisible()
 
+  expect(errors).toEqual([])
+})
+
+// One bill is for one project (revised 2026-10-18): deliveries to two projects are billed
+// separately, and "Enter bill for this" opens the bill for that delivery only.
+test('deliveries to two projects: one bill per project', async ({ page }) => {
+  const errors = trackErrors(page)
+  const r = runId()
+  await page.goto('/register')
+  await page.getByLabel('Company name').fill(`Two Sites ${r}`)
+  await page.getByLabel('Your name').fill('Sita Owner')
+  await page.getByLabel('Mobile number or email').fill(`+977 984${r}`)
+  await page.getByLabel('Password').fill('owner-pass-1')
+  await page.getByRole('button', { name: 'Create company' }).click()
+  await expect(page.getByText('No projects yet')).toBeVisible()
+
+  for (const [code, name] of [['P-1', 'Ward 5 school'], ['P-2', 'Health post']]) {
+    await page.goto('/projects/new')
+    await page.getByLabel('Project code').fill(code)
+    await page.getByLabel('Project name').fill(name)
+    await page.getByLabel('Contract amount (Thekka Rakam)').fill('5,00,000')
+    await page.getByRole('button', { name: 'Create project' }).click()
+    await expect(page.getByRole('heading', { name })).toBeVisible()
+  }
+  await page.goto('/suppliers')
+  await page.getByRole('button', { name: 'Add supplier' }).click()
+  await page.getByLabel('Business name').fill('Shrestha Rod')
+  await page.getByRole('button', { name: 'Save' }).click()
+  await expect(page.getByRole('link', { name: /Shrestha Rod/ })).toBeVisible()
+
+  for (const [project, challan, qty] of [['P-1 · Ward 5 school', 'CH-A1', '10'], ['P-2 · Health post', 'CH-B2', '20']]) {
+    await page.goto('/deliveries/new')
+    await page.getByLabel('Supplier').selectOption({ label: 'Shrestha Rod' })
+    await page.getByLabel('Project (site)').selectOption({ label: project })
+    await page.getByLabel('Challan number').fill(challan)
+    await page.getByLabel('Why no order slip?').fill('Urgent')
+    await page.getByLabel('Material', { exact: true }).selectOption({ label: 'Cement' })
+    await page.getByLabel('Received', { exact: true }).fill(qty)
+    await page.getByRole('button', { name: 'Save delivery' }).click()
+    await expect(page.getByRole('heading', { name: 'Delivery recorded' })).toBeVisible()
+  }
+
+  // A new bill asks which project first; the lines are that project's deliveries only.
+  await page.goto('/bills/new')
+  await page.getByLabel('Supplier').selectOption({ label: 'Shrestha Rod' })
+  await expect(page.getByText('Which project is this bill for?')).toBeVisible()
+  await page.getByRole('button', { name: 'P-2: 1 item(s)' }).click()
+  await expect(page.getByLabel('Project', { exact: true })).toHaveValue(/.+/)
+  await expect(page.getByLabel('Project', { exact: true }).locator('option:checked')).toHaveText('P-2 · Health post')
+  await expect(page.getByLabel('Quantity')).toHaveValue('20')
+  await expect(page.getByText('Which project is this bill for?')).toHaveCount(0)
+  await expect(page.getByText(/not billed yet/)).toHaveCount(0)
+
+  // From the P-1 delivery: the bill is for P-1 and its 10 bags, whatever was typed before.
+  await page.goto('/deliveries')
+  await page.getByPlaceholder('Search challan or supplier').fill('CH-A1')
+  await expect(page.getByRole('link', { name: 'Enter bill for this' })).toHaveCount(1)
+  await page.getByRole('link', { name: 'Enter bill for this' }).click()
+  await expect(page.getByText(/^For the delivery of .* to P-1 \(challan CH-A1\)/)).toBeVisible()
+  await expect(page.getByLabel('Project', { exact: true }).locator('option:checked')).toHaveText('P-1 · Ward 5 school')
+  await expect(page.getByLabel('Quantity')).toHaveValue('10')
+  await page.getByLabel('Bill number').fill('A-1')
+  await page.getByLabel('Rate per unit').fill('800')
+  await page.getByRole('button', { name: 'Save and post' }).click()
+  await expect(page.getByRole('heading', { name: /A-1/ })).toBeVisible()
+  const supplierId = (await page.getByRole('link', { name: 'Shrestha Rod' }).first().getAttribute('href'))!.split('/').at(-1)
+
+  // The P-2 bill, then one payment: B-2 ticked, more paid than it owes. The form offers the
+  // rest to the unpaid P-1 bill instead of counting it as overpaid.
+  await page.goto('/bills/new')
+  await page.getByLabel('Supplier').selectOption({ label: 'Shrestha Rod' })
+  await page.getByRole('button', { name: 'P-2: 1 item(s)' }).click()
+  await page.getByLabel('Bill number').fill('B-2')
+  await page.getByLabel('Rate per unit').fill('100')
+  await page.getByRole('button', { name: 'Save and post' }).click()
+  await expect(page.getByRole('heading', { name: /B-2/ })).toBeVisible()
+
+  await page.goto(`/payments/new?supplier=${supplierId}`)
+  await page.getByLabel(/^Bill B-2 · P-2/).check()
+  await page.getByLabel('Amount paid').fill('3,000')
+  await page.getByRole('button', { name: 'Pay Bill A-1 with it' }).click()
+  await expect(page.getByLabel(/^Bill A-1 · P-1/)).toBeChecked()
+  await expect(page.getByText(/is overpaid on/)).toHaveCount(0)
+  await page.getByRole('button', { name: 'Record payment of Rs. 3,000' }).click()
+  const paid = page.locator('section', { has: page.getByRole('heading', { name: 'What it paid' }) })
+  await expect(paid).toContainText('Bill A-1 · P-1')
+  await expect(paid).toContainText('Rs. 1,000')
+  await expect(paid).toContainText('Bill B-2 · P-2')
   expect(errors).toEqual([])
 })
