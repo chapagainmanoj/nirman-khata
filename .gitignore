@@ -5,3 +5,4 @@ supabase/.branches
 .env
 .env.local
 docker/.env
+scripts
