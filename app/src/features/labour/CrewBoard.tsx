@@ -466,7 +466,8 @@ function AddWorker({ crewId, projectId, onto, onDone }: { crewId: string; projec
   const others = (known.data ?? []).filter((w) => !onCrew.has(w.id))
   return (
     <Card title="Add worker" actions={<Button variant="ghost" onClick={() => onDone()}>Cancel</Button>}>
-      {creating || (!known.isPending && others.length === 0) ? (
+      {/* Only before a tap: adding the last one refetches the list empty before the card closes. */}
+      {creating || (!known.isPending && add.isIdle && others.length === 0) ? (
         <WorkerForm crewId={crewId} onDone={() => onDone()} onAdded={(id) => onDone(id)} />
       ) : (
         <>
