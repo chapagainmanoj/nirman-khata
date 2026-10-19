@@ -16,8 +16,9 @@
   /* Selection and soft buttons; brand-dark on it 7.8:1. */
   --color-brand-soft: #e3efef;
   --color-brand-tint: #d3e6e6;
-  /* Edge of a tonal button: brand-soft alone barely differs from the page (1.03:1). */
-  --color-brand-edge: #9cc2c3;
+  /* Edge of a tonal button: brand-soft alone barely differs from the page (1.03:1). Mixed from
+     the accent so it follows the company colour (lib/accents.ts sets brand and brand-soft). */
+  --color-brand-edge: color-mix(in oklab, var(--color-brand) 35%, var(--color-brand-soft));
   /* Same accent under the name the code uses for links, counts and info. */
   --color-slate: #2a6a6e;
   --color-slate-dark: #1d4f52;
@@ -36,8 +37,12 @@
   /* Page: a warm grey just under the white cards, so the cards stand out as islands and
      the space between them recedes. Subtle text 6.7:1, links 5.4:1, field edges 3.2:1 on it. */
   --color-page: #f3f0ea;
-  /* Sidebar: a warm near-white, just off the page. */
-  --color-side: #faf9f6;
+  /* Sidebar: halfway between the page and the white cards, so it reads as its own area without
+     out-shining the content. Subtle text 7.1:1 on it. The chosen section is a tint of the accent
+     mixed into this colour (brand-soft alone barely differs from it). */
+  --color-side: #f9f7f3;
+  /* 1.26:1 on the sidebar; brand-dark text on it 6.8:1 or more. */
+  --color-side-selected: color-mix(in oklab, var(--color-brand) 16%, var(--color-side));
   /* Progress bars: neutral, so only "over budget" carries colour. */
   --color-bar: #6b625d;
   /* Lighter steps of the same grey, for a split bar (where the money went): kinds are told

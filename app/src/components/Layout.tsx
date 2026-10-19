@@ -79,7 +79,7 @@ function Frame() {
     const n = counts[key]
     return (
       <Link key={key} to={item.to} aria-current={active === key ? 'page' : undefined}
-        className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium [@media(pointer:fine)]:min-h-9 ${active === key ? 'bg-brand-soft text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
+        className={`flex min-h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium [@media(pointer:fine)]:min-h-9 ${active === key ? 'bg-side-selected text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
         <Icon />{t(item.label)}<Count n={n} label={countLabel(key, n ?? 0)} />
       </Link>
     )

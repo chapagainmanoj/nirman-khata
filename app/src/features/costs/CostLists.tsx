@@ -74,30 +74,90 @@ export function LabourSection({ projectId }: { projectId: string }) {
       {labour.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void labour.refetch()}>{labour.error && friendlyError(labour.error)}</ErrorBanner>
       {labour.data?.length === 0 && <p className="text-sm text-subtle">No labour entered yet.</p>}
-      {labour.data && labour.data.length > 0 && (
-        <ul className="rounded-xl border border-line bg-surface px-4">
-          {labour.data.map((l) => (
-            <li key={l.id} className="flex flex-wrap items-start justify-between gap-2 border-b border-line py-2 last:border-0">
-              <div className="min-w-0 text-sm">
-                <div className="font-medium text-ink">
-                  <DateText value={l.work_date} display={auth.dateDisplay} /> · {l.workers?.name ?? l.crews?.name}
-                </div>
-                <div className="text-xs text-subtle">
-                  {[l.work_type, l.headcount && `${l.headcount} people`, l.person_days && `${Number(l.person_days)} person-days`, l.description]
-                    .filter(Boolean).join(' · ')}
-                </div>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">
-                <span>{formatNPR(l.amount_paisa)}</span>
-                <PaidBadge amount={l.amount_paisa} settled={l.settled_paisa} reversed={l.status === 'reversed'} />
-                {l.status === 'posted' && canPost(auth) && <ReverseEntry id={l.id} what="labour entry" />}
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      {labour.data && labour.data.length > 0 && <LabourTable rows={labour.data} />}
       <ShowMore list={labour} />
     </Section>
+  )
+}
+
+type Labour = ReturnType<typeof useLabourCosts>['data'] extends (infer L)[] | undefined ? L : never
+
+/**
+ * Labour as a compact table, like other expenses: attendance writes one entry per worker per day,
+ * so a row is one line. On a phone the date, kind of work and days move under the name.
+ * Reversing opens its form in a row of its own.
+ */
+function LabourTable({ rows }: { rows: Labour[] }) {
+  const auth = useCompany()
+  const [reversing, setReversing] = useState<string | null>(null)
+  const mayReverse = canPost(auth)
+  const cols = 7 + (mayReverse ? 1 : 0)
+  const th = 'py-2 pr-3 font-medium'
+  return (
+    <div className="overflow-hidden rounded-xl border border-line bg-surface">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line text-left text-xs text-subtle">
+            <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
+            <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>Who</th>
+            <th scope="col" className={`hidden md:table-cell ${th}`}>Work</th>
+            <th scope="col" className={`hidden text-right md:table-cell ${th}`}>Person-days</th>
+            <th scope="col" className={`hidden lg:table-cell ${th}`}>Note</th>
+            <th scope="col" className={`text-right ${th}`}>Amount</th>
+            <th scope="col" className={`hidden sm:table-cell ${th}`}>Status</th>
+            {mayReverse && <th scope="col" className="w-0 py-2 pr-4"><span className="sr-only">Actions</span></th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((l) => {
+            const days = l.person_days != null ? Number(l.person_days) : null
+            // A crew entry counts heads; a worker's own entry is always one person, so it says nothing.
+            const note = [l.headcount && l.headcount > 1 && `${l.headcount} people`, l.description].filter(Boolean).join(' · ')
+            const status = <PaidBadge amount={l.amount_paisa} settled={l.settled_paisa} reversed={l.status === 'reversed'} />
+            const canReverse = mayReverse && l.status === 'posted'
+            return (
+              <Fragment key={l.id}>
+                <tr className={`border-b border-line align-middle last:border-0 ${l.status === 'reversed' ? 'text-subtle' : ''}`}>
+                  <td className="hidden py-2 pr-3 pl-4 whitespace-nowrap text-subtle sm:table-cell"><DateText value={l.work_date} display={auth.dateDisplay} /></td>
+                  <td className="py-2 pr-3 pl-4 sm:pl-0">
+                    <div className="font-medium break-words text-ink">{l.workers?.name ?? l.crews?.name}</div>
+                    {/* Phone: what the hidden columns say, and the status. */}
+                    <div className="text-xs text-subtle md:hidden">
+                      {[<span key="d" className="sm:hidden"><DateText value={l.work_date} display={auth.dateDisplay} /></span>,
+                        l.work_type, days != null && `${days} person-days`, note]
+                        .filter(Boolean).map((part, i) => <Fragment key={i}>{i > 0 && ' · '}{part}</Fragment>)}
+                    </div>
+                    <div className="mt-1 sm:hidden">{status}</div>
+                  </td>
+                  <td className="hidden py-2 pr-3 md:table-cell">{l.work_type}</td>
+                  <td className="hidden py-2 pr-3 text-right tabular-nums md:table-cell">{days ?? '—'}</td>
+                  <td className="hidden py-2 pr-3 text-subtle lg:table-cell">{note}</td>
+                  <td className="py-2 pr-3 text-right whitespace-nowrap tabular-nums">{formatNPR(l.amount_paisa)}</td>
+                  <td className="hidden py-2 pr-3 sm:table-cell">{status}</td>
+                  {mayReverse && (
+                    <td className="py-2 pr-4 text-right">
+                      {canReverse && reversing !== l.id && (
+                        <button type="button" onClick={() => setReversing(l.id)}
+                          className="min-h-11 text-sm font-medium text-subtle underline underline-offset-2 hover:text-ink [@media(pointer:fine)]:min-h-8">
+                          Reverse
+                        </button>
+                      )}
+                    </td>
+                  )}
+                </tr>
+                {canReverse && reversing === l.id && (
+                  <tr className="border-b border-line">
+                    <td colSpan={cols} className="px-4 py-2">
+                      <ReverseEntry id={l.id} what="labour entry" open onOpenChange={(o) => { if (!o) setReversing(null) }} />
+                    </td>
+                  </tr>
+                )}
+              </Fragment>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
