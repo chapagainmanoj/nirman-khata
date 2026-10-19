@@ -29,7 +29,7 @@ import { detailsSchema, detailsToRow, type DetailsValues } from './projectDetail
 import { RevisionsCard } from './RevisionsCard'
 import { SiteSection } from '../site/SiteSection'
 import { useProjectDashboard } from '../dashboard/api'
-import { HeadingTable, SourceList, UsedBars, type ProjectFigures } from '../dashboard/parts'
+import { SourceList, UsedBars, type ProjectFigures } from '../dashboard/parts'
 import { ChevronDownIcon } from '../../components/icons'
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
@@ -139,7 +139,8 @@ function ProjectBody({ p, members }: { p: Tables<'projects'>; members: ReturnTyp
   )
 }
 
-/** Cost by heading against the heading budget, and by source (req §18.2). */
+/** Recorded cost by source, with the cost-by-heading report one tap away (req §18.2). Headings
+ *  over their budget are flagged on the dashboard (attention.ts). */
 function CostBreakdown({ projectId }: { projectId: string }) {
   const auth = useCompany()
   const dash = useProjectDashboard(projectId)
@@ -149,7 +150,6 @@ function CostBreakdown({ projectId }: { projectId: string }) {
   if (!d || !d.money_visible) return null
   return (
     <div className="flex flex-col gap-4">
-      <Card title="Cost by heading"><HeadingTable figures={d} projectId={projectId} /></Card>
       <Card title="Where the money went">
         <SourceList figures={d} />
         {!!d.peski_paisa && <p className="mt-2 text-sm text-subtle">Peski not yet used: <span className="font-semibold text-ink">{formatNPR(d.peski_paisa)}</span></p>}
@@ -157,6 +157,9 @@ function CostBreakdown({ projectId }: { projectId: string }) {
         <p className="mt-2 text-sm text-subtle">
           Last daily report: {d.last_report_date ? formatDate(d.last_report_date, auth.dateDisplay) : 'none yet'}
         </p>
+        <Link className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-slate hover:underline" to={`/reports/cost-by-heading?project=${projectId}`}>
+          Cost by heading report
+        </Link>
       </Card>
     </div>
   )

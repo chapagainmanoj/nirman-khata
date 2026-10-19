@@ -246,6 +246,8 @@ function ChargeItem({ c, subcontractorId }: { c: Charge; subcontractorId: string
         {c.approved_paisa != null && c.approved_paisa !== c.claimed_paisa && <Detail label="Approved (cost)">{formatNPR(c.approved_paisa)}</Detail>}
         {c.approved_date && c.approved_date !== c.charge_date && <Detail label="Approved on"><DateText value={c.approved_date} display={auth.dateDisplay} /></Detail>}
         {c.status === 'approved' && <Detail label="Paid">{formatNPR(c.settled_paisa)}</Detail>}
+        {/* Part paid: what is left, as on bills and labour. */}
+        {c.status === 'approved' && outstanding > 0 && c.settled_paisa > 0 && <Detail label="Still due">{formatNPR(outstanding)}</Detail>}
         {c.decision_note && <Detail label={c.status === 'rejected' ? 'Reason' : 'Note'}>{c.decision_note}</Detail>}
       </div>
 

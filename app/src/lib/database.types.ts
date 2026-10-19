@@ -3046,6 +3046,11 @@ isOneToOne: false
               "at": string,"created_by": string,"detail": string,"id": string,"kind": string,"label": string
             }[]
                            },
+"report_heading_quantities":
+{ Args: { "p_as_known"?: boolean,"p_as_of"?: string,"p_company": string,"p_project"?: string }; Returns: {
+              "heading_id": string,"kind": string,"project_id": string,"qty": number,"unit": string
+            }[]
+                           },
 "report_labour":
 { Args: { "p_company": string,"p_crew"?: string,"p_from": string,"p_project"?: string,"p_to": string }; Returns: {
               "amount_paisa": number,"crew": string,"crew_id": string,"daily_report_id": string,"headcount": number,"labour_cost_id": string,"paid_paisa": number,"person_days": number,"project_id": string,"reversed_on": string,"work_date": string,"work_type": string,"worker": string,"worker_id": string

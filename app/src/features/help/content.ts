@@ -58,7 +58,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Project details: client, thau (district, municipality, ward), manager, planned ra actual dates.',
       'Summary: Thekka Rakam, Lagat Anuman, kharcha, client bata payeko, baki; kunai miti samma ko rakam herne.',
       'Paid, Due ra They hold: Due ma tapaai le tirnu baki matra; party sanga rahela paisa (peski wa badhi tireko) They hold ma chhuttai.',
-      'Where the money went ra Cost by heading: kun heading ma kati kharcha bhayo.',
+      'Where the money went: saamaan, thekka, jyala ra anya kharcha ma kati gayo; heading anusar herna tala ko Cost by heading report.',
       'Activity: garna baki kaam (bill haalne, bill post garne, daily report pathaune, miti milaune).',
       'Thekka Rakam wa Lagat Anuman revise garne: karan, lagu hune miti, heading anusar split.',
       'Staff assign garne; status Active, On hold, Completed; Books close garne ra feri kholne.',

@@ -1,5 +1,5 @@
-// Every supplier bill the person can see. Accounts open on "To post": the bills site staff
-// photographed or entered and sent on.
+// Every supplier bill the person can see. It opens on the person's queue when something waits in
+// it (Accounts: "To post", the bills site staff photographed or entered and sent on), else on All.
 import { useState } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { ButtonLink, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
@@ -39,16 +39,24 @@ const HOW: Record<Tab, string> = {
 export function BillsPage() {
   const auth = useCompany()
   const posts = canPost(auth)
-  const [tab, setTab] = useState<Tab>(posts ? 'to_post' : 'drafts')
+  const [chosen, setTab] = useState<Tab | null>(null)
   const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
   const scope = { companyId: auth.companyId, projectId: projectId ?? undefined }
-  const shown = useBills({ ...scope, statuses: STATUSES[tab] })
   // Tab counts come from the server, so they cover every bill, not just the loaded ones.
   const counts = {
     to_post: useBillCount({ ...scope, statuses: STATUSES.to_post }, posts),
     drafts: useBillCount({ ...scope, statuses: STATUSES.drafts }),
     posted: useBillCount({ ...scope, statuses: STATUSES.posted }, auth.canSeeFinance),
   }
+  // Until a tab is tapped: the person's own queue when something waits in it (Accounts: To post,
+  // then drafts), otherwise All. Site staff without finance see only their drafts.
+  const queue = (posts ? (['to_post', 'drafts'] as const) : (['drafts'] as const))
+  const waiting = queue.find((t) => (counts[t].data ?? 0) > 0)
+  // A count that failed counts as known, so the page never waits on it.
+  const known = queue.every((t) => counts[t].data !== undefined || counts[t].isError)
+  const settling = chosen === null && !known
+  const tab: Tab = chosen ?? (!auth.canSeeFinance && !posts ? 'drafts' : waiting ?? (known ? 'all' : queue[0]))
+  const shown = useBills({ ...scope, statuses: STATUSES[tab] })
   const named = (t: Exclude<Tab, 'all'>, text: string): [Tab, string] => [t, counts[t].data !== undefined ? `${text} (${counts[t].data})` : text]
   const tabs: Array<[Tab, string]> = posts
     ? [named('to_post', 'To post'), named('drafts', 'Drafts'), named('posted', 'Posted'), ['all', 'All']]
@@ -64,13 +72,13 @@ export function BillsPage() {
         actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/bills/new?project=${recordProject}` : '/bills/new'}>{posts ? 'Enter bill' : 'Bill photo'}</ButtonLink>} />
       {chip}
       <Tabs tabs={tabs} value={tab} onChange={setTab} label="Bills">
-        {shown.isPending && <Spinner />}
+        {(settling || shown.isPending) && <Spinner />}
         <ErrorBanner onRetry={() => void shown.refetch()}>{shown.error && friendlyError(shown.error)}</ErrorBanner>
-        {shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]}>{HOW[tab]}</EmptyState>)}
+        {!settling && shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]}>{HOW[tab]}</EmptyState>)}
         {owed > 0 && (tab === 'posted' || tab === 'all') && (
           <p className="mb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
         )}
-        {!!shown.data?.length && <BillTable bills={shown.data} showSupplier showProject={showProject} />}
+        {!settling && !!shown.data?.length && <BillTable bills={shown.data} showSupplier showProject={showProject} />}
         <ShowMore list={shown} total={total} />
       </Tabs>
     </>

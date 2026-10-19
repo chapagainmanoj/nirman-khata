@@ -59,10 +59,18 @@ function ReverseEntry({ id, what, company, open, onOpenChange }: {
   )
 }
 
+/** Paid, part paid or unpaid; part paid also says what is still due, as the bills table does. */
 function PaidBadge({ amount, settled, reversed }: { amount: number; settled: number; reversed: boolean }) {
   if (reversed) return <Badge tone="bad">Reversed</Badge>
-  const [label, tone] = settlementLabel(amount - settled, settled)
-  return <Badge tone={tone}>{label}</Badge>
+  const due = amount - settled
+  const [label, tone] = settlementLabel(due, settled)
+  if (!(due > 0 && settled > 0)) return <Badge tone={tone}>{label}</Badge>
+  return (
+    <span className="inline-flex flex-col items-start">
+      <Badge tone={tone}>{label}</Badge>
+      <span className="mt-0.5 text-xs whitespace-nowrap text-ink tabular-nums">{formatNPR(due)} due</span>
+    </span>
+  )
 }
 
 export function LabourSection({ projectId }: { projectId: string }) {

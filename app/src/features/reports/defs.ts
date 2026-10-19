@@ -5,6 +5,7 @@ import { type DateDisplay, formatDate } from '../../lib/dates'
 import type { XlsxColumn } from '../../lib/xlsx'
 import { docPath, type PartyKind } from '../parties/kinds'
 import { rpc } from '../supply/api'
+import { quantityText } from './quantities'
 
 export type Filters = { from: string; to: string; asOf: string; project: string; party: string; asKnown: boolean }
 export type Project = { id: string; code: string; name: string }
@@ -86,14 +87,22 @@ export const REPORTS: ReportDef[] = [
   },
   {
     key: 'cost-by-heading', title: 'Cost by heading', group: 'money', finance: true, period: 'asOf', asKnown: true,
-    description: 'Recorded cost under each cost heading.',
-    columns: [PROJECT, { key: 'heading', label: 'Heading', kind: 'text' }, { key: 'cost', label: 'Recorded cost', kind: 'money', total: true }],
+    description: 'Recorded cost under each cost heading, with the quantity of material and labour.',
+    columns: [
+      PROJECT, { key: 'heading', label: 'Heading', kind: 'text' }, { key: 'qty', label: 'Quantity', kind: 'text' },
+      { key: 'cost', label: 'Recorded cost', kind: 'money', total: true },
+    ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_cost_by_heading', { p_company: ctx.companyId, p_as_of: f.asOf, p_as_known: f.asKnown, ...proj(f) })
+      const args = { p_company: ctx.companyId, p_as_of: f.asOf, p_as_known: f.asKnown, ...proj(f) }
+      const [rows, quantities] = await Promise.all([rpc('report_cost_by_heading', args), rpc('report_heading_quantities', args)])
+      const qty = quantityText(quantities)
       return {
         rows: rows.filter((r) => r.cost_paisa !== 0).map((r) => ({
           link: `/projects/${r.project_id}`,
-          values: { project: code(ctx, r.project_id), heading: r.parent_heading ? `${r.parent_heading} › ${r.heading}` : r.heading, cost: r.cost_paisa },
+          values: {
+            project: code(ctx, r.project_id), heading: r.parent_heading ? `${r.parent_heading} › ${r.heading}` : r.heading,
+            qty: qty.get(`${r.project_id}:${r.heading_id}`) ?? null, cost: r.cost_paisa,
+          },
         })),
       }
     },

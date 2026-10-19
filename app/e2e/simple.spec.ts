@@ -36,8 +36,10 @@ test('simple forms fold the less-used fields; values and detailed mode keep them
   await expect(page.getByText('No projects yet')).toBeVisible()
   await chooseForms(page, 'Simple')
 
-  // An empty tab says how things get there.
+  // With nothing waiting, Bills opens on All; an empty tab says how things get there.
   await page.goto('/bills')
+  await expect(page.getByRole('tab', { name: 'All' })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: /^To post/ }).click()
   await expect(page.getByText(/sent with "Send to Accounts" wait here/)).toBeVisible()
   await page.goto('/slips')
   await expect(page.getByText(/until everything ordered has arrived/)).toBeVisible()

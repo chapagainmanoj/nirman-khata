@@ -98,40 +98,6 @@ export function Completeness({ figures: f, compact, status }: { figures: Project
   )
 }
 
-/** Heading budget against recorded cost, as a table with bars (over budget in red). */
-export function HeadingTable({ figures: f, projectId }: { figures: ProjectFigures; projectId: string }) {
-  const rows = f.by_heading ?? []
-  if (!rows.length) return <p className="text-sm text-subtle">No cost or heading budget yet.</p>
-  return (
-    <>
-      <ul>
-        {rows.map((h) => {
-          const used = h.budget_paisa ? (h.cost_paisa / h.budget_paisa) * 100 : null
-          return (
-            <li key={h.heading_id} className="border-b border-line py-2 last:border-0">
-              <span className="flex flex-wrap justify-between gap-x-3 text-sm">
-                <span className="min-w-0 text-ink">{h.parent ? `${h.parent} › ` : ''}{h.name}</span>
-                <span className={`tabular-nums ${h.over ? 'font-semibold text-danger' : 'text-ink'}`}>
-                  {formatNPR(h.cost_paisa)}{h.budget_paisa !== null && <span className="text-subtle"> of {formatNPR(h.budget_paisa)}</span>}
-                  {h.over && ' (over)'}
-                </span>
-              </span>
-              {used !== null && (
-                <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
-                  <span className={`block h-full rounded-full ${h.over ? 'bg-danger' : 'bg-bar'}`} style={{ width: `${Math.min(100, used)}%` }} />
-                </span>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      <Link className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-slate hover:underline" to={`/reports/budget-vs-cost?project=${projectId}`}>
-        Budget vs recorded cost report
-      </Link>
-    </>
-  )
-}
-
 /** Recorded cost split by where it came from. */
 export function SourceList({ figures: f }: { figures: ProjectFigures }) {
   if (!f.by_source) return null
