@@ -3,7 +3,8 @@
 // becoming a supplier) are on their own page (PartyInfoPage), linked under the name. When the
 // company works by attendance, a crew's page is its workers' calendar (CrewBoard); each worker
 // has their own page: the crews they are on (attendance is marked there, and only there), then
-// their khata.
+// their khata. A subcontractor's page follows the sidebar's project like the lists do: the jobs,
+// contract figures and khata on that project, with "All projects" a tap away.
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useLocation, useNavigate, useParams } from 'react-router'
@@ -12,6 +13,7 @@ import { Badge, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner
 import { friendlyError } from '../../lib/errors'
 import { PACKAGE_STATUS } from '../../lib/labels'
 import { useProjects } from '../projects/api'
+import { useProjectFilter } from '../lists/ProjectFilter'
 import { packageFiguresQuery, useWorkPackages } from '../subcontract/api'
 import { rpc } from '../supply/api'
 import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permissions'
@@ -27,14 +29,13 @@ import { BalanceCard, ContactRow, Khata, MatchCard, OpeningBalance, PaymentList,
 import { RefundCard } from '../refunds/RefundCard'
 import { t } from '../../lib/i18n'
 
-type Tab = 'khata' | 'payments'
+type Tab = 'overview' | 'khata' | 'payments'
 
 export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   const { partyId = '' } = useParams()
   const auth = useCompany()
   const rows = usePartyRows(kind)
   const projects = useProjects(auth.companyId)
-  const [tab, setTab] = useState<Tab>('khata')
   const byAttendance = auth.company.labour_mode === 'attendance'
   const board = kind === 'crew' && byAttendance && canEnter(auth)
   // A crew paid as a crew before workers were paid one by one keeps its khata.
@@ -43,6 +44,10 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   const paidFromHeld = (useLocation().state as { paidFromHeld?: number } | null)?.paidFromHeld
   // A subcontractor's money is read by the job (Contract card); the khata detail sits in its tab.
   const byJob = kind === 'subcontractor'
+  const byProject = useProjectFilter()
+  const onProject = byJob ? byProject.projectId : null
+  // A subcontractor opens on Overview (contract and jobs); the khata and payments are a tap away.
+  const [tab, setTab] = useState<Tab>(byJob ? 'overview' : 'khata')
 
   if (rows.isPending) return <Spinner />
   if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
@@ -70,15 +75,16 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
             {kind === 'crew' && canEnter(auth) && !byAttendance && (
               <ButtonLink variant="secondary" to={labourPath(auth.company, { crew: r.id, project: r.project_id })}>{t('partyDetail.enterLabour')}</ButtonLink>
             )}
-            {canRecordPayments(auth) && crewHasMoney && <ButtonLink to={`/payments/new?${kind}=${r.id}`}>{t('partyDetail.recordPayment')}</ButtonLink>}
+            {canRecordPayments(auth) && crewHasMoney && <ButtonLink to={`/payments/new?${kind}=${r.id}${onProject ? `&project=${onProject}` : ''}`}>{t('partyDetail.recordPayment')}</ButtonLink>}
           </div>
         }
       />
       {r.phone && <ContactRow phone={r.phone} links={[[`${PARTY[kind].path}/${r.id}/details`, t('partyDetail.details')]]} />}
       {!!paidFromHeld && <div className="mb-4"><Notice>{t('partyDetail.paidfromheldTakenFromMoney', { paidFromHeld: formatNPR(paidFromHeld) })}</Notice></div>}
-      {/* A subcontractor is the jobs given to them: what is paid and left on them, then the jobs. */}
-      {byJob && auth.canSeeFinance && <ContractCard subcontractorId={r.id} name={r.name} />}
-      {byJob && <PackageList subcontractorId={r.id} />}
+      {/* A subcontractor is the jobs given to them: the project chips choose the project for every
+          tab; Overview has what is paid and left on the jobs, then the jobs. */}
+      {byJob && byProject.chip}
+      {byJob && !(auth.canSeeFinance && crewHasMoney) && <PackageList subcontractorId={r.id} projectId={onProject} />}
       {board && <CrewBoard crewId={r.id} projectId={r.project_id ?? null} />}
       {kind === 'worker' && byAttendance && canEnter(auth) && <WorkerCrews workerId={r.id} />}
       {auth.canSeeFinance && crewHasMoney && !byJob && (
@@ -90,7 +96,14 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
       )}
 
       {auth.canSeeFinance && crewHasMoney && (
-        <Tabs tabs={[['khata', t('partyDetail.khata')], ['payments', t('partyDetail.payments')]]} value={tab} onChange={setTab} label={t('partyDetail.oneRecords', { one: PARTY[kind].one })}>
+        <Tabs tabs={[...(byJob ? [['overview', t('partyDetail.overview')] as [Tab, string]] : []), ['khata', t('partyDetail.khata')], ['payments', t('partyDetail.payments')]]}
+          value={tab} onChange={setTab} label={t('partyDetail.oneRecords', { one: PARTY[kind].one })}>
+          {tab === 'overview' && byJob && (
+            <>
+              <ContractCard subcontractorId={r.id} name={r.name} projectId={onProject} />
+              <PackageList subcontractorId={r.id} projectId={onProject} />
+            </>
+          )}
           {tab === 'khata' && byJob && (
             <div className="mb-4 grid items-start gap-4">
               {/* The Contract card has the money; the khata below adds up to the balance. Here only
@@ -100,7 +113,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
               {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
             </div>
           )}
-          {tab === 'khata' && <Khata kind={kind} partyId={r.id} />}
+          {tab === 'khata' && <Khata key={onProject ?? 'all'} kind={kind} partyId={r.id} startProject={onProject} noPicker={byJob} />}
           {tab === 'payments' && <PaymentList kind={kind} partyId={r.id} />}
         </Tabs>
       )}
@@ -180,10 +193,14 @@ function PartyDetails({ kind, party: r, code, empty, edit }: {
   )
 }
 
-/** A subcontractor's work packages and, for finance users, each one's figures (work_package_figures, per project). */
-function useSubcontractorPackages(subcontractorId: string) {
+/**
+ * A subcontractor's work packages (only those on projectId when given) and, for finance users,
+ * each one's figures (work_package_figures, per project).
+ */
+function useSubcontractorPackages(subcontractorId: string, projectId: string | null) {
   const auth = useCompany()
-  const packages = useWorkPackages({ subcontractorId })
+  const all = useWorkPackages({ subcontractorId })
+  const packages = { ...all, data: projectId ? all.data?.filter((w) => w.project_id === projectId) : all.data }
   const projectIds = [...new Set(packages.data?.map((w) => w.project_id) ?? [])]
   const figures = useQueries({
     queries: projectIds.map((id) => packageFiguresQuery(id, auth.canSeeFinance)),
@@ -198,13 +215,14 @@ function useSubcontractorPackages(subcontractorId: string) {
  * for what was paid on them. Money with them outside any job (an opening balance, money paid
  * ahead) is one line from the khata balance; it pays their next bill first.
  */
-function ContractCard({ subcontractorId, name }: { subcontractorId: string; name: string }) {
+function ContractCard({ subcontractorId, name, projectId }: { subcontractorId: string; name: string; projectId: string | null }) {
   const auth = useCompany()
-  const { packages, figures } = useSubcontractorPackages(subcontractorId)
+  const { packages, figures } = useSubcontractorPackages(subcontractorId, projectId)
   const balance = usePartyBalances(auth.companyId, 'subcontractor', true).data?.find((b) => b.party_id === subcontractorId)
   // With no work going on, money they still hold is not coming off a bill: ask if they gave it back.
   const workGoingOn = packages.data?.some((w) => w.status === 'active') ?? true
-  const askGiveBack = !workGoingOn && (
+  // Money held is company-wide: asked about only when every project is shown.
+  const askGiveBack = !workGoingOn && !projectId && (
     <div className="mb-6">
       <RefundCard kind="subcontractor" partyId={subcontractorId}
         intro={(held) => t('partyDetail.nameStillHoldsHeld', { name, held })} />
@@ -220,8 +238,9 @@ function ContractCard({ subcontractorId, name }: { subcontractorId: string; name
   const paid = sum((f) => f.paid_paisa, false)
   const noAgreed = figures.rows.some((f) => live.has(f.work_package_id) && f.agreed_value_paisa == null)
   const due = sum((f) => f.approved_paisa, false) - paid
-  // The khata balance less what the jobs account for: money outside any job.
-  const outside = balance && balance.company_level ? balance.balance_paisa - due : 0
+  // The khata balance less what the jobs account for: money outside any job. The balance is
+  // company-wide, so only when every project is shown.
+  const outside = balance && balance.company_level && !projectId ? balance.balance_paisa - due : 0
   return (
     <>
       <Card title={t('partyDetail.contract')} className="mb-6">
@@ -256,20 +275,20 @@ function ContractCard({ subcontractorId, name }: { subcontractorId: string; name
 const PACKAGE_ORDER = { active: 0, completed: 1, cancelled: 2 } as const
 
 /** The subcontractor's work packages, with each one's agreed value, approved work and balance for finance users. */
-function PackageList({ subcontractorId }: { subcontractorId: string }) {
+function PackageList({ subcontractorId, projectId }: { subcontractorId: string; projectId: string | null }) {
   const auth = useCompany()
-  const { packages, figures: { rows: figures } } = useSubcontractorPackages(subcontractorId)
+  const { packages, figures: { rows: figures } } = useSubcontractorPackages(subcontractorId, projectId)
   const list = [...(packages.data ?? [])].sort((a, b) => PACKAGE_ORDER[a.status] - PACKAGE_ORDER[b.status])
   return (
     <section className="mb-6">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-ink">{t('partyDetail.workPackages')}</h2>
-        {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/new?subcontractor=${subcontractorId}`}>{t('partyDetail.newWorkPackage')}</ButtonLink>}
+        {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/new?subcontractor=${subcontractorId}${projectId ? `&project=${projectId}` : ''}`}>{t('partyDetail.newWorkPackage')}</ButtonLink>}
       </div>
       {packages.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void packages.refetch()}>{packages.error && friendlyError(packages.error)}</ErrorBanner>
       {packages.data?.length === 0 && (
-        <p className="text-sm text-subtle">{t('partyDetail.noWorkPackagesOn')}</p>
+        <p className="text-sm text-subtle">{projectId ? t('partyDetail.noWorkOnThisProject') : t('partyDetail.noWorkPackagesOn')}</p>
       )}
       {list.length > 0 && (
         <ul className="divide-y divide-line rounded-xl border border-line bg-surface">

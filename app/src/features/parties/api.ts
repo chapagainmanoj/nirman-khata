@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 import { rpc } from '../supply/api'
-import { PARTY, type PartyKind } from './kinds'
+import { PARTY, type PartyKind, type PaysBy } from './kinds'
 
 export function usePartyBalances(companyId: string, kind: PartyKind, enabled: boolean) {
   return useQuery({
@@ -81,9 +81,11 @@ export function useParties(companyId: string, kind: PartyKind) {
     // supplier page read these short rows (no categories) and crash.
     queryKey: [PARTY[kind].table, companyId, 'brief'],
     queryFn: async () => {
-      const { data, error } = await supabase.from(PARTY[kind].table).select('id, name, active, phone').eq('company_id', companyId).order('name')
+      // A subcontractor also says how they are paid (direct or against bills).
+      const columns = kind === 'subcontractor' ? 'id, name, active, phone, pays_by' : 'id, name, active, phone'
+      const { data, error } = await supabase.from(PARTY[kind].table).select(columns).eq('company_id', companyId).order('name')
       if (error) throw error
-      return data as Array<{ id: string; name: string; active: boolean; phone: string | null }>
+      return data as unknown as Array<{ id: string; name: string; active: boolean; phone: string | null; pays_by?: PaysBy }>
     },
   })
 }

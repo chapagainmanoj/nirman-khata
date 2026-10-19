@@ -2147,14 +2147,14 @@ isOneToOne: false
                   ]
                 },"subcontractors": {
                   Row: {
-                    "active": boolean,"address": string | null,"company_id": string,"contact_person": string | null,"created_at": string,"created_by": string | null,"id": string,"name": string,"notes": string | null,"pan_vat": string | null,"phone": string | null,"updated_at": string,"work_types": (string)[]
+                    "active": boolean,"address": string | null,"company_id": string,"contact_person": string | null,"created_at": string,"created_by": string | null,"id": string,"name": string,"notes": string | null,"pan_vat": string | null,"pays_by": string,"phone": string | null,"updated_at": string,"work_types": (string)[]
                   }
                   ComputedFields: never
                   Insert: {
-                    "active"?: boolean,"address"?: string | null,"company_id": string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name": string,"notes"?: string | null,"pan_vat"?: string | null,"phone"?: string | null,"updated_at"?: string,"work_types"?: (string)[]
+                    "active"?: boolean,"address"?: string | null,"company_id": string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name": string,"notes"?: string | null,"pan_vat"?: string | null,"pays_by"?: string,"phone"?: string | null,"updated_at"?: string,"work_types"?: (string)[]
                   }
                   Update: {
-                    "active"?: boolean,"address"?: string | null,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"pan_vat"?: string | null,"phone"?: string | null,"updated_at"?: string,"work_types"?: (string)[]
+                    "active"?: boolean,"address"?: string | null,"company_id"?: string,"contact_person"?: string | null,"created_at"?: string,"created_by"?: string | null,"id"?: string,"name"?: string,"notes"?: string | null,"pan_vat"?: string | null,"pays_by"?: string,"phone"?: string | null,"updated_at"?: string,"work_types"?: (string)[]
                   }
                   Relationships: [
                     {
@@ -2788,6 +2788,14 @@ isOneToOne: false
       referencedColumns: ["company_id","id"]
     }
                   ]
+                },"supplier_projects": {
+                  Row: {
+                    "company_id": string | null,"project_id": string | null,"supplier_id": string | null
+                  }
+                  ComputedFields: never
+                  Relationships: [
+                    
+                  ]
                 }
           }
           Functions: {
@@ -2946,6 +2954,9 @@ isOneToOne: false
 { Args: { "p_package"?: string,"p_party": string,"p_project": string }; Returns: number
                            },
 "pay_subcontractor":
+{ Args: { "p_op_key": string,"p_pay": Json }; Returns: Json
+                           },
+"pay_work_done":
 { Args: { "p_op_key": string,"p_pay": Json }; Returns: Json
                            },
 "pay_worker":

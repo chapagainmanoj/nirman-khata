@@ -24,7 +24,7 @@ const BY_CHECK: Record<string, MessageKey> = {
 }
 
 // Our own error codes: the readable part follows the colon.
-const PREFIXED = ['attendance_off', 'day_closed', 'day_verified', 'day_too_old', 'attendance_overlap', 'already_paid']
+const PREFIXED = ['attendance_off', 'day_closed', 'day_verified', 'day_too_old', 'attendance_overlap', 'already_paid', 'held_changed']
 
 const BY_CODE: Record<string, MessageKey> = {
   '23505': 'error.code.23505',

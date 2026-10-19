@@ -12,17 +12,21 @@
 // No peski choice for a worker: any money beyond their days is simply an advance.
 // A subcontractor's approved work is paid the same way (pay_subcontractor): what they hold (peski,
 // money paid ahead, an opening balance) pays the ticked work first, and only the rest is cash.
+// Every subcontractor payment names its work (a work package; one can be added here). One paid
+// directly (GLOSSARY: Direct Payment) with nothing unpaid on that work: the amount is the work done,
+// and pay_work_done records it and pays it in one step, what they hold first. Ticking "advance"
+// makes it peski instead.
 // The payment id and operation key stay with the device draft until the server confirms,
 // so a retry after a lost connection never records it twice (acceptance #13).
-import { useMutation } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState, type ReactNode } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { Link, useNavigate, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
-import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, type Crumb } from '../../components/ui'
+import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
 import { formatDate, todayKathmandu, type IsoDate } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
@@ -32,11 +36,11 @@ import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
 import { useParties, usePartyHeld, usePartyOpenItems } from '../parties/api'
 import { DOC_WORD, PARTY, PARTY_KINDS, partyFromParams, type PartyKind } from '../parties/kinds'
 import { useProjects } from '../projects/api'
-import { projectChoices } from '../projects/current'
-import { useCharges, useUsableHeld, useWorkPackage } from '../subcontract/api'
+import { projectChoices, useCurrentProject } from '../projects/current'
+import { useCharges, useUsableHeld, useWorkPackage, useWorkPackages } from '../subcontract/api'
 import { useWorkerAdvance } from '../labour/api'
 import { rpc, useRefreshMoney } from './api'
-import { canPost } from './permissions'
+import { canManageSuppliers, canPost } from './permissions'
 import { TrashIcon } from '../../components/icons'
 import { t } from '../../lib/i18n'
 
@@ -47,6 +51,11 @@ type Values = {
   party_id: string
   package_id: string
   is_peski: boolean // only when nothing is unpaid
+  advance: boolean // a subcontractor paid directly: peski for work not done yet, not work done
+  charge_id: string // a direct payment: the work charge it records, and the keys of its two steps
+  approve_op_key: string
+  pay_op_key: string
+  cash_sent: number | null // a direct payment: the cash sent, sent again on a retry until the server answers
   payment_date: string
   amount: string
   method: keyof typeof PAYMENT_METHODS
@@ -82,7 +91,7 @@ export function PaymentNewPage() {
   const form = useForm<Values>({
     defaultValues: {
       id: newId(), op_key: newId(), party_kind: start.kind, party_id: start.id, package_id: params.get('package') ?? '',
-      is_peski: true, payment_date: todayKathmandu(), amount: '', method: 'cash', reference: '', notes: '',
+      is_peski: true, advance: false, charge_id: newId(), approve_op_key: newId(), pay_op_key: newId(), cash_sent: null, payment_date: todayKathmandu(), amount: '', method: 'cash', reference: '', notes: '',
       allocations: [], settle: {}, extra_project: projectParam, photos: [], days: null, sent: false,
     },
   })
@@ -177,9 +186,19 @@ export function PaymentNewPage() {
   const subMode = billsMode && v.party_kind === 'subcontractor'
   const tickedDocs = openDocs.filter((d) => shown.has(docKey(d)) && docKey(d) in v.settle)
   const tickedOwed = tickedDocs.reduce((s, d) => s + d.amount_paisa, 0)
-  const usable = useUsableHeld(subMode ? v.party_id : '', [...new Set(tickedDocs.map((d) => d.project_id!))], v.package_id || null)
-  const heldLess = subMode ? Math.min(usable.paisa, tickedOwed) : 0
-  const cashDue = tickedOwed - heldLess
+  // A subcontractor with nothing to tick: the payment is for a work, chosen below.
+  const isSub = v.party_kind === 'subcontractor'
+  const forWork = isSub && !!v.party_id && !billsMode
+  // Paid directly, and nothing unpaid on the chosen work: the amount is the work done.
+  const direct = forWork && party?.pays_by === 'direct' && !!v.package_id && !(v.advance && !anyUnpaid)
+  const usable = useUsableHeld(subMode || direct ? v.party_id : '',
+    direct ? (pkgProject ? [pkgProject] : []) : [...new Set(tickedDocs.map((d) => d.project_id!))], v.package_id || null)
+  const heldLess = subMode ? Math.min(usable.paisa, tickedOwed) : direct ? Math.min(usable.paisa, amountPaisa ?? 0) : 0
+  const cashDue = subMode ? tickedOwed - heldLess : direct ? (amountPaisa ?? 0) - heldLess : 0
+  // A direct payment already sent shows (and sends again) the cash it was sent with: if it was saved
+  // and the reply lost, what they hold is now less, and a new figure would not match its op_key.
+  const directCash = direct ? v.cash_sent ?? cashDue : 0
+  const directHeld = direct && v.cash_sent != null ? Math.max(0, (amountPaisa ?? 0) - v.cash_sent) : heldLess
   useEffect(() => {
     if (subMode && usable.ready) setValue('amount', paisaToInput(cashDue))
   }, [subMode, usable.ready, cashDue]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -265,6 +284,42 @@ export function PaymentNewPage() {
     },
   })
 
+  // Work done and paid in one step: what they hold first, then the cash (pay_work_done).
+  const queryClient = useQueryClient()
+  const payDirect = useMutation({
+    mutationFn: async (vals: Values) => {
+      const cash = vals.cash_sent ?? cashDue
+      setValue('sent', true)
+      setValue('cash_sent', cash)
+      await draft.save()
+      const r = (await rpc('pay_work_done', { p_op_key: vals.op_key, p_pay: {
+        id: vals.id, charge_id: vals.charge_id, approve_op_key: vals.approve_op_key, pay_op_key: vals.pay_op_key,
+        subcontractor_id: vals.party_id, work_package_id: vals.package_id,
+        work_paisa: parseNPR(vals.amount) ?? 0, amount_paisa: cash,
+        payment_date: vals.payment_date, method: vals.method,
+        reference: (WITH_REFERENCE.has(vals.method) && vals.reference.trim()) || null, notes: vals.notes || null,
+      } })) as { payment_id: string | null; held_used_paisa: number }
+      const failed = r.payment_id ? await uploadPending({ userId: auth.userId, companyId: auth.companyId }, { payment_id: r.payment_id }, vals.photos) : 0
+      return { paymentId: r.payment_id, held: r.held_used_paisa, failed }
+    },
+    onSuccess: async ({ paymentId, held, failed }, vals) => {
+      await draft.clear()
+      await refresh()
+      await queryClient.invalidateQueries({ queryKey: ['charges', vals.package_id] })
+      await queryClient.invalidateQueries({ queryKey: ['package-figures'] })
+      navigate(paymentId ? `/payments/${paymentId}` : `/work/${vals.package_id}`,
+        { replace: true, state: paymentId ? (failed ? { photoFailed: failed } : undefined) : { paidFromHeld: held } })
+    },
+    // The server answered (an SQLSTATE code): nothing was saved, so the cash is worked out again from
+    // what they hold, read afresh. No answer (offline, timeout): it may have been saved; keep the cash.
+    onError: (e) => {
+      if (!/^[0-9A-Z]{5}$/.test((e as { code?: string }).code ?? '')) return
+      setValue('cash_sent', null)
+      void draft.save()
+      void queryClient.invalidateQueries({ queryKey: ['balances', 'usable-held'] })
+    },
+  })
+
   const save = useMutation({
     mutationFn: async (vals: Values) => {
       const settlements = billsMode || vals.package_id
@@ -309,6 +364,15 @@ export function PaymentNewPage() {
       if (!problem) paySub.mutate(vals)
       return
     }
+    if (forWork) {
+      const problem = !vals.package_id ? t('paymentNew.chooseTheWork')
+        : amountPaisa === null || amountPaisa <= 0 ? t('paymentNew.enterTheAmountPaid')
+        : direct && !usable.ready && vals.cash_sent == null ? t('paymentNew.waitAMomentChecking')
+        : ''
+      setError(problem)
+      if (!problem) (direct ? payDirect : save).mutate(vals)
+      return
+    }
     const split = splitOf(vals)
     const splitSum = split.reduce((s, a) => s + a.amount_paisa, 0)
     const problem =
@@ -325,9 +389,9 @@ export function PaymentNewPage() {
   }
 
   const fixedParty = !!start.id && v.party_id === start.id && !choosingParty
+  const fromPackage = params.get('package')
 
   // Where the payment was started from: a bill, a work package, a party, or the Payments list.
-  const fromPackage = params.get('package')
   const fromBill = params.get('bill')
   const billDoc = fromBill ? openItems.data?.find((i) => i.kind === 'bill' && i.doc_id === fromBill) : undefined
   const startParty = parties.data?.find((p) => p.id === start.id)
@@ -341,35 +405,30 @@ export function PaymentNewPage() {
 
   return (
     <>
-      <PageHeader title={t('paymentNew.recordPayment')} crumbs={crumbs} subtitle={t('paymentNew.paymentsReduceWhatYou')} />
+      <PageHeader title={t('paymentNew.recordPayment')} crumbs={crumbs} subtitle={direct ? t('paymentNew.directSubtitle') : t('paymentNew.paymentsReduceWhatYou')} />
       {draft.restoredAt && <div className="mb-4"><Notice>{t('paymentNew.restoredAPaymentYou')}</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>
-          {pkg.data && (
-            <p className="mb-3 text-sm text-subtle">
-              {t('paymentNew.forWorkPackage')}{' '}<span className="font-medium text-ink">{pkg.data.scope}</span> {t('paymentNew.onCode', { code: pkg.data.projects?.code })}{anyUnpaid ? t('paymentNew.theyHaveUnpaidWork') : t('paymentNew.nothingIsUnpaidSo')}
-            </p>
-          )}
-          {v.package_id || fixedParty ? (
+          {fromPackage || fixedParty ? (
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm">
                 <span className="text-subtle">{t('paymentNew.paidTo')}{' '}</span>
-                <span className="font-semibold text-ink">{v.package_id ? pkg.data?.subcontractors?.name : party?.name}</span>
+                <span className="font-semibold text-ink">{fromPackage ? pkg.data?.subcontractors?.name : party?.name}</span>
                 <span className="text-subtle"> · {kindLabel}</span>
               </p>
-              {!v.package_id && <Button type="button" variant="ghost" onClick={() => setChoosingParty(true)}>{t('paymentNew.change')}</Button>}
+              {!fromPackage && <Button type="button" variant="ghost" onClick={() => setChoosingParty(true)}>{t('paymentNew.change')}</Button>}
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               <Field label={t('paymentNew.paidTo')} htmlFor="p-kind">
                 <Select id="p-kind" value={v.party_kind}
-                  onChange={(e) => { setValue('party_kind', e.target.value as PartyKind); setValue('party_id', ''); setValue('days', null); setSettle({}) }}>
+                  onChange={(e) => { setValue('party_kind', e.target.value as PartyKind); setValue('party_id', ''); setValue('package_id', ''); setValue('days', null); setSettle({}) }}>
                   {PARTY_KINDS.filter((k) => k !== 'worker' || auth.company.labour_mode === 'attendance' || v.party_kind === 'worker')
                     .map((k) => <option key={k} value={k}>{PARTY[k].one}</option>)}
                 </Select>
               </Field>
               <Field label={kindLabel} htmlFor="p-supplier">
-                <Select id="p-supplier" value={v.party_id} onChange={(e) => { setValue('party_id', e.target.value); setValue('days', null); setSettle({}) }}>
+                <Select id="p-supplier" value={v.party_id} onChange={(e) => { setValue('party_id', e.target.value); setValue('package_id', ''); setValue('days', null); setSettle({}) }}>
                   <option value="">{t('paymentNew.chooseValue', { value: kindLabel.toLowerCase() })}</option>
                   {parties.data?.filter((s) => s.active || s.id === v.party_id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
@@ -420,6 +479,32 @@ export function PaymentNewPage() {
           </Card>
         )}
 
+        {isSub && v.party_id && (forWork || !!v.package_id) && (
+          <WorkCard subcontractorId={v.party_id} value={v.package_id} preferProject={projectParam}
+            onChange={(id) => { setValue('package_id', id); setSettle({}) }}>
+            {forWork && party?.pays_by === 'direct' && !anyUnpaid && (
+              <Controller control={control} name="advance" render={({ field }) => (
+                <Checkbox label={t('paymentNew.thisIsAnAdvance')} checked={field.value} onChange={(e) => field.onChange(e.target.checked)}
+                  hint={field.value ? t('paymentNew.advanceHint') : t('paymentNew.workDoneHint')} />
+              )} />
+            )}
+            {forWork && !direct && !!v.package_id && (
+              <p className="text-sm text-subtle">{anyUnpaid ? t('paymentNew.theyHaveUnpaidWork') : t('paymentNew.nothingIsUnpaidSo')}</p>
+            )}
+            {direct && directHeld > 0 && (
+              <ul className="flex flex-col border-t border-line pt-2">
+                <li className="flex justify-between gap-3 text-sm">
+                  <span className="text-subtle">{t('paymentNew.lessMoneyTheyHold')}</span>
+                  <span className="shrink-0 whitespace-nowrap tabular-nums text-ink">− {formatNPR(directHeld)}</span>
+                </li>
+                <li className="flex justify-between gap-3 text-sm font-semibold text-ink">
+                  <span>{t('paymentNew.toPayInCash')}</span><span className="shrink-0 whitespace-nowrap tabular-nums">{usable.ready || v.cash_sent != null ? formatNPR(directCash) : '…'}</span>
+                </li>
+              </ul>
+            )}
+          </WorkCard>
+        )}
+
         {billsMode && (
           <Card title={v.package_id ? t('paymentNew.whichApprovedWorkDoes') : v.party_kind === 'worker' ? t('paymentNew.whichDaysDoesIt') : t('paymentNew.whichBillsDoesIt')}>
             <ul className="flex flex-col gap-2">
@@ -460,7 +545,7 @@ export function PaymentNewPage() {
           </Card>
         )}
 
-        {v.party_id && !billsMode && !isWorker && !v.package_id && (
+        {v.party_id && !billsMode && !isWorker && !isSub && !v.package_id && (
           <Card title={t('paymentNew.whichProjectIsIt')}>
             {!anyUnpaid && (
               <div className="mb-2">
@@ -506,9 +591,10 @@ export function PaymentNewPage() {
 
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label={t('paymentNew.amountPaid')} htmlFor="p-amount" hint={isWorker
+            <Field label={direct ? t('paymentNew.amountForTheWork') : t('paymentNew.amountPaid')} htmlFor="p-amount" hint={isWorker
                 ? t('paymentNew.setFromTheTicked')
                 : subMode ? t('paymentNew.whatIsLeftAfter')
+                : direct ? t('paymentNew.amountForTheWorkHint')
                 : billsMode ? t('paymentNew.setFromTheTicked2') : undefined}>
               <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="p-amount" value={field.value} onChange={field.onChange} />} />
             </Field>
@@ -569,10 +655,11 @@ export function PaymentNewPage() {
           </Notice>
         )}
         <ErrorBanner>{error || (!confirmDup && payWorker.error && friendlyError(payWorker.error)) || (save.error && friendlyError(save.error))
-          || (paySub.error && friendlyError(paySub.error))}</ErrorBanner>
+          || (paySub.error && friendlyError(paySub.error)) || (payDirect.error && friendlyError(payDirect.error))}</ErrorBanner>
         <FormActions>
-          <Button type="submit" busy={save.isPending || payWorker.isPending || paySub.isPending}>
-            {subMode && !amountPaisa && heldLess > 0 ? t('paymentNew.payFromMoneyThey')
+          <Button type="submit" busy={save.isPending || payWorker.isPending || paySub.isPending || payDirect.isPending}>
+            {direct && amountPaisa ? (directCash > 0 ? t('paymentNew.recordPaymentOf', { amount: formatNPR(directCash) }) : t('paymentNew.payFromMoneyThey'))
+              : subMode && !amountPaisa && heldLess > 0 ? t('paymentNew.payFromMoneyThey')
               : amountPaisa ? t('paymentNew.recordPaymentOf', { amount: formatNPR(amountPaisa) }) : t('paymentNew.recordPayment')}
           </Button>
           <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>{t('common.cancel')}</Button>
@@ -582,5 +669,90 @@ export function PaymentNewPage() {
         </FormActions>
       </form>
     </>
+  )
+}
+
+/**
+ * "Which work is it for?": the subcontractor's active work, the current project's first; one
+ * work is chosen for them. A work not set up yet is added here (name and project; the default
+ * subcontract heading), so paying never waits on the work package form.
+ */
+function WorkCard({ subcontractorId, value, preferProject, onChange, children }: {
+  subcontractorId: string; value: string; preferProject: string; onChange: (id: string) => void; children?: ReactNode
+}) {
+  const auth = useCompany()
+  const queryClient = useQueryClient()
+  const current = useCurrentProject()
+  const projects = useProjects(auth.companyId)
+  const packages = useWorkPackages({ subcontractorId })
+  const prefer = preferProject || current.project?.id || ''
+  const list = (packages.data ?? [])
+    .filter((w) => w.status === 'active' || w.id === value)
+    .sort((a, b) => Number(b.project_id === prefer) - Number(a.project_id === prefer))
+  const [adding, setAdding] = useState(false)
+  const [scope, setScope] = useState('')
+  const [project, setProject] = useState(prefer)
+  const [newWorkId] = useState(newId)
+  const canAdd = canManageSuppliers(auth)
+  const sites = projectChoices(projects.data, 'site')
+
+  // One active work: it is the one.
+  useEffect(() => {
+    if (!value && packages.data && list.length === 1) onChange(list[0].id)
+  }, [packages.data, value]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const add = useMutation({
+    mutationFn: () => rpc('save_work_package', { p_package: {
+      id: newWorkId, project_id: project, subcontractor_id: subcontractorId, scope: scope.trim(),
+    } }),
+    onSuccess: async (id) => {
+      await queryClient.invalidateQueries({ queryKey: ['work-packages'] })
+      setAdding(false)
+      onChange(id as string)
+    },
+  })
+
+  return (
+    <Card title={t('paymentNew.whichWorkIsIt')}>
+      {packages.isPending && <Spinner />}
+      <ErrorBanner onRetry={() => void packages.refetch()}>{packages.error && friendlyError(packages.error)}</ErrorBanner>
+      {packages.data && list.length === 0 && !adding && <p className="mb-2 text-sm text-subtle">{t('paymentNew.noWorkYet')}</p>}
+      {list.length > 0 && (
+        <ul className="mb-2 flex flex-col">
+          {list.map((w) => (
+            <li key={w.id} className="border-b border-line last:border-0">
+              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm">
+                <input type="radio" name="work" className="size-5 accent-brand" checked={value === w.id} onChange={() => onChange(w.id)} />
+                <span className="min-w-0 break-words">
+                  <span className="font-medium text-ink">{w.scope}</span>
+                  <span className="text-subtle"> · {w.projects?.code}</span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      {adding ? (
+        <div className="mb-2 grid gap-3 sm:grid-cols-2">
+          <Field label={t('paymentNew.newWorkName')} htmlFor="wk-scope" hint={t('paymentNew.newWorkNameHint')}>
+            <Input id="wk-scope" value={scope} onChange={(e) => setScope(e.target.value)} />
+          </Field>
+          <Field label={t('paymentNew.project')} htmlFor="wk-project">
+            <Select id="wk-project" value={project} onChange={(e) => setProject(e.target.value)}>
+              <option value="">{t('paymentNew.choose')}</option>
+              {sites.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
+            </Select>
+          </Field>
+          <ErrorBanner>{add.error && friendlyError(add.error)}</ErrorBanner>
+          <div className="flex gap-2 sm:col-span-2">
+            <Button type="button" busy={add.isPending} disabled={!scope.trim() || !project} onClick={() => add.mutate()}>{t('paymentNew.addWork')}</Button>
+            <Button type="button" variant="ghost" onClick={() => setAdding(false)}>{t('common.cancel')}</Button>
+          </div>
+        </div>
+      ) : canAdd ? (
+        <Button type="button" variant="secondary" onClick={() => { setProject((p) => p || prefer); setAdding(true) }}>{t('paymentNew.newWork')}</Button>
+      ) : packages.data && list.length === 0 && <p className="text-sm text-subtle">{t('paymentNew.askAdminToAddWork')}</p>}
+      {children && <div className="mt-3 flex flex-col gap-2">{children}</div>}
+    </Card>
   )
 }

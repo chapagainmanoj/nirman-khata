@@ -48,14 +48,17 @@ function useUnpaidBills(supplierId: string, enabled: boolean) {
   return { ...items, bills }
 }
 
-/** Under the "To pay" totals: what is owed on each site, when more than one site is owed. */
-export function OwedByProject({ supplierId }: { supplierId: string }) {
+/**
+ * Under the "To pay" totals: what is owed on each site, when more than one site is owed. With the
+ * page on one project (projectId), that project's line only, so the company total is not mistaken for it.
+ */
+export function OwedByProject({ supplierId, projectId }: { supplierId: string; projectId?: string | null }) {
   const auth = useCompany()
   const { bills } = useUnpaidBills(supplierId, true)
   const projects = useProjects(auth.companyId)
   const byProject = new Map<string, number>()
-  for (const b of bills) byProject.set(b.project_id, (byProject.get(b.project_id) ?? 0) + b.amount_paisa)
-  if (byProject.size < 2) return null
+  for (const b of bills) if (!projectId || b.project_id === projectId) byProject.set(b.project_id, (byProject.get(b.project_id) ?? 0) + b.amount_paisa)
+  if (byProject.size < (projectId ? 1 : 2)) return null
   return (
     <ul className="mt-2 text-sm">
       {[...byProject].sort((a, b) => b[1] - a[1]).map(([id, paisa]) => {
@@ -71,9 +74,10 @@ export function OwedByProject({ supplierId }: { supplierId: string }) {
   )
 }
 
-export function UnpaidBills({ supplierId }: { supplierId: string }) {
+export function UnpaidBills({ supplierId, projectId }: { supplierId: string; projectId?: string | null }) {
   const auth = useCompany()
-  const items = useUnpaidBills(supplierId, true)
+  const all = useUnpaidBills(supplierId, true)
+  const items = { ...all, bills: projectId ? all.bills.filter((b) => b.project_id === projectId) : all.bills }
   const projects = useProjects(auth.companyId)
   const code = (id: string) => projects.data?.find((p) => p.id === id)?.code ?? ''
   if (items.isPending) return <Card title={t('supplierParts.unpaidBills')}><Spinner /></Card>
@@ -114,7 +118,7 @@ function useUnbilled(supplierId: string) {
       // In batches, so a long list of ids does not make the request URL too long.
       const ids = st.data.map((s) => s.id!)
       const batches = await Promise.all(Array.from({ length: Math.ceil(ids.length / 100) }, (_, i) => supabase.from('delivery_lines')
-        .select('id, material_text, materials(name), units(code), deliveries(id, receipt_date, projects(code))')
+        .select('id, material_text, materials(name), units(code), deliveries(id, receipt_date, project_id, projects(code))')
         .in('id', ids.slice(i * 100, i * 100 + 100))))
       const failed = batches.find((b) => b.error)
       if (failed?.error) throw failed.error
@@ -126,13 +130,15 @@ function useUnbilled(supplierId: string) {
   })
 }
 
-export function ComingFromThem({ supplierId }: { supplierId: string }) {
+export function ComingFromThem({ supplierId, projectId }: { supplierId: string; projectId?: string | null }) {
   const auth = useCompany()
-  const slips = useOpenSlips({ companyId: auth.companyId, supplierId })
-  const unbilled = useUnbilled(supplierId)
-  if (slips.isPending || unbilled.isPending) return null
-  const error = slips.error || unbilled.error
-  if (error) return <Card title={t('supplierParts.onTheWayAnd')}><ErrorBanner onRetry={() => { void slips.refetch(); void unbilled.refetch() }}>{friendlyError(error)}</ErrorBanner></Card>
+  const slips = useOpenSlips({ companyId: auth.companyId, supplierId, ...(projectId ? { projectId } : {}) })
+  const all = useUnbilled(supplierId)
+  const lines = all.data ?? []
+  const unbilled = { data: projectId ? lines.filter((l) => l.deliveries?.project_id === projectId) : lines }
+  if (slips.isPending || all.isPending) return null
+  const error = slips.error || all.error
+  if (error) return <Card title={t('supplierParts.onTheWayAnd')}><ErrorBanner onRetry={() => { void slips.refetch(); void all.refetch() }}>{friendlyError(error)}</ErrorBanner></Card>
   if (!slips.data.length && !unbilled.data.length) return null
   return (
     <Card title={t('supplierParts.onTheWayAnd')}>

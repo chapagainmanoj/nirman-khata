@@ -170,8 +170,10 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
           {photos.length === 0 && <p className="mb-3 text-sm text-subtle">{t('delivery.photo.ask')}</p>}
           <Attachments owner={{ delivery_id: id }} canAdd label={t('delivery.photo.take')} />
         </Card>
-        <div className="mt-4 flex gap-2">
-          {slip ? <ButtonLink to={`/slips/${slip.slip.id}`}>{t('delivery.saved.slip')}</ButtonLink> : <ButtonLink to={`/projects/${projectId}`}>{t('delivery.saved.project')}</ButtonLink>}
+        <div className="mt-4 flex flex-wrap gap-2">
+          {/* The next step for a delivery is its bill. */}
+          <ButtonLink to={`/bills/new?supplier=${supplierId}&delivery=${id}`}>{t('delivery.saved.bill')}</ButtonLink>
+          {slip ? <ButtonLink variant="secondary" to={`/slips/${slip.slip.id}`}>{t('delivery.saved.slip')}</ButtonLink> : <ButtonLink variant="secondary" to={`/projects/${projectId}`}>{t('delivery.saved.project')}</ButtonLink>}
         </div>
       </>
     )

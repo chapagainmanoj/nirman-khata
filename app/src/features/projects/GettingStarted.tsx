@@ -40,7 +40,7 @@ export function GettingStarted() {
   if (!auth.isAdmin || hidden || !counts.data) return null
   const c = counts.data
   const steps: Array<[boolean, string, string, string, string]> = [
-    [c.suppliers > 0, t('gettingStarted.addYourSuppliers'), t('gettingStarted.theShopsAndDealers'), '/suppliers', t('gettingStarted.addSuppliers')],
+    [c.suppliers > 0, t('gettingStarted.addYourSuppliers'), t('gettingStarted.theShopsAndDealers'), '/suppliers?add=1', t('gettingStarted.addSuppliers')],
     [c.openings > 0, t('gettingStarted.setOpeningBalances'), t('gettingStarted.whatYouOwedEach'), '/suppliers', t('gettingStarted.setBalances')],
     [c.projects > 0, t('gettingStarted.addYourProjects'), t('gettingStarted.eachSiteWithIts'), '/projects/new', t('gettingStarted.addAProject')],
     [c.assignments > 0, t('gettingStarted.addStaffAndAssign'), t('gettingStarted.siteStaffSeeOnly'), '/staff', t('gettingStarted.addStaff')],

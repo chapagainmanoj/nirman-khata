@@ -82,6 +82,8 @@ test('simple forms fold the less-used fields; values and detailed mode keep them
   await expect(page.getByRole('heading', { name: 'Record payment' })).toBeVisible()
   await page.getByRole('navigation', { name: 'Main' }).getByRole('link', { name: 'More' }).click()
   await page.getByRole('link', { name: 'Suppliers' }).click()
+  // Nothing recorded with them yet, so they are not on the Working on project's list.
+  await page.getByRole('group', { name: 'Projects shown' }).getByRole('button', { name: 'All projects' }).click()
   await page.getByRole('link', { name: /Pokhara Cement Traders/ }).click()
   await expect(page.getByRole('heading', { name: 'Pokhara Cement Traders' })).toBeVisible()
 

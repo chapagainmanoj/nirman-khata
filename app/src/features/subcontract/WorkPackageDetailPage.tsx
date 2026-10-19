@@ -31,6 +31,12 @@ export function WorkPackageDetailPage() {
   const figures = usePackageFigures(pkg.data?.project_id ?? '', auth.canSeeFinance)
   const charges = useCharges(packageId, auth.canSeeFinance)
   const [claiming, setClaiming] = useState(false)
+  // "Add bill" sits in the header; the form opens in the bills section, which is below the cards on a phone.
+  const bills = useRef<HTMLElement>(null)
+  const addBill = () => {
+    setClaiming(true)
+    requestAnimationFrame(() => bills.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+  }
   // Back from paying, when what they hold paid it all (pay_subcontractor made no payment).
   const paidFromHeld = (useLocation().state as { paidFromHeld?: number } | null)?.paidFromHeld
 
@@ -41,6 +47,12 @@ export function WorkPackageDetailPage() {
   const f = figures.data?.find((x) => x.work_package_id === w.id)
   const [statusLabel, statusTone] = PACKAGE_STATUS[w.status]
   const unit = w.units?.code
+  // Paid directly (GLOSSARY: Direct Payment): each payment is the work done, so paying is the main
+  // action and bills are added only if they still have drafts here.
+  const direct = w.subcontractors?.pays_by === 'direct'
+  const pays = canRecordPayments(auth) && auth.canSeeFinance
+  const hasDrafts = !!charges.data?.some((c) => c.status === 'draft')
+  const showAddBill = auth.canSeeFinance && !claiming && (!direct || hasDrafts)
 
   return (
     <>
@@ -58,9 +70,11 @@ export function WorkPackageDetailPage() {
         actions={
           <div className="flex flex-wrap gap-2">
             {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/${w.id}/edit`}>{t('common.edit')}</ButtonLink>}
-            {canRecordPayments(auth) && auth.canSeeFinance && (
-              <ButtonLink to={`/payments/new?subcontractor=${w.subcontractor_id}&package=${w.id}`}>{t('workPackageDetail.payPeskiOrBill')}</ButtonLink>
+            {pays && (
+              <ButtonLink variant={direct ? 'primary' : 'secondary'} to={`/payments/new?subcontractor=${w.subcontractor_id}&package=${w.id}`}>
+                {direct ? t('workPackageDetail.payForWork') : t('workPackageDetail.recordPayment')}</ButtonLink>
             )}
+            {showAddBill && <Button variant={direct ? 'secondary' : 'primary'} onClick={addBill}>{t('workPackageDetail.addBill')}</Button>}
           </div>
         }
       />
@@ -100,20 +114,30 @@ export function WorkPackageDetailPage() {
       </div>
 
       {auth.canSeeFinance && (
-        <section className="mt-6">
-          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-ink">{t('workPackageDetail.workDoneBills')}</h2>
-            {!claiming && <Button variant="secondary" onClick={() => setClaiming(true)}>{t('workPackageDetail.addBill')}</Button>}
-          </div>
+        <section ref={bills} className="mt-6 scroll-mt-20">
+          <h2 className="mb-2 text-base font-semibold text-ink">{direct ? t('workPackageDetail.workDone') : t('workPackageDetail.workDoneBills')}</h2>
           {claiming && <BillForm packageId={w.id} subcontractorId={w.subcontractor_id} onDone={() => setClaiming(false)} />}
           {charges.isPending && <Spinner />}
           <ErrorBanner onRetry={() => void charges.refetch()}>{charges.error && friendlyError(charges.error)}</ErrorBanner>
           {charges.data?.length === 0 && !claiming && (
-            <p className="text-sm text-subtle">{t('workPackageDetail.noBillsYetAdd')}</p>
+            <p className="text-sm text-subtle">{direct ? t('workPackageDetail.nothingPaidYet') : t('workPackageDetail.noBillsYetAdd')}</p>
           )}
-          <ul className="grid gap-3 lg:grid-cols-2">
-            {charges.data?.map((c) => <ChargeItem key={c.id} c={c} subcontractorId={w.subcontractor_id} />)}
-          </ul>
+          {!!charges.data?.length && (
+            <div className="overflow-hidden rounded-xl border border-line bg-surface">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-line text-left text-xs text-subtle">
+                    <th scope="col" className="py-2 pr-3 pl-4 font-medium">{t('workPackageDetail.bill')}</th>
+                    <th scope="col" className="py-2 pr-3 text-right font-medium">{t('workPackageDetail.billed')}</th>
+                    <th scope="col" className="hidden py-2 pr-3 text-right font-medium sm:table-cell">{t('workPackageDetail.paid')}</th>
+                    <th scope="col" className="hidden py-2 pr-3 font-medium sm:table-cell">{t('workPackageDetail.status')}</th>
+                    <th scope="col" className="py-2 pr-4"><span className="sr-only">{t('workPackageDetail.actions')}</span></th>
+                  </tr>
+                </thead>
+                {charges.data.map((c) => <ChargeItem key={c.id} c={c} subcontractorId={w.subcontractor_id} />)}
+              </table>
+            </div>
+          )}
         </section>
       )}
 
@@ -209,11 +233,16 @@ function BillForm({ packageId, subcontractorId, onDone }: { packageId: string; s
   )
 }
 
+/**
+ * One bill as a table row: number and date, billed, paid, status, and Pay or Approve. "More" opens
+ * a row under it with the rest: approval details, reject, reverse, delete and photos.
+ */
 function ChargeItem({ c, subcontractorId }: { c: Charge; subcontractorId: string }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
   const refresh = useRefreshMoney()
   const [approving, setApproving] = useState(false)
+  const [open, setOpen] = useState(false)
   const [label, tone] = CHARGE_STATUS[c.status]
   const after = async () => {
     await queryClient.invalidateQueries({ queryKey: ['charges', c.work_package_id] })
@@ -228,61 +257,84 @@ function ChargeItem({ c, subcontractorId }: { c: Charge; subcontractorId: string
   )
   const outstanding = (c.approved_paisa ?? 0) - c.settled_paisa
   const [paidLabel, paidTone] = settlementLabel(outstanding, c.settled_paisa)
+  const approved = c.status === 'approved'
+  const badges = (
+    <span className="flex flex-wrap gap-1">
+      <Badge tone={tone}>{label}</Badge>
+      {approved && <Badge tone={paidTone}>{paidLabel}</Badge>}
+    </span>
+  )
+  const link = 'inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 items-center text-xs font-semibold'
 
   return (
-    <li className="rounded-xl border border-line bg-surface p-4">
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 text-sm">
-          <div className="font-semibold text-ink">{c.claim_no ? t('workPackageDetail.billClaimno', { claimNo: c.claim_no }) : t('workPackageDetail.bill')}</div>
+    <tbody className="border-b border-line last:border-0">
+      <tr className="align-top">
+        <td className="py-2 pr-3 pl-4">
+          <div className="font-medium text-ink">{c.claim_no ? t('workPackageDetail.billClaimno', { claimNo: c.claim_no }) : t('workPackageDetail.bill')}</div>
           <div className="text-xs text-subtle"><DateText value={c.charge_date} display={auth.dateDisplay} />{c.description && ` · ${c.description}`}</div>
-        </div>
-        <span className="flex gap-1">
-          <Badge tone={tone}>{label}</Badge>
-          {c.status === 'approved' && <Badge tone={paidTone}>{paidLabel}</Badge>}
-        </span>
-      </div>
-      <div className="mt-2 text-sm">
-        <Detail label={t('workPackageDetail.billed')}>{formatNPR(c.claimed_paisa)}</Detail>
-        {/* Approved as billed on the bill date (one-step entry): the two lines would only repeat it. */}
-        {c.approved_paisa != null && c.approved_paisa !== c.claimed_paisa && <Detail label={t('workPackageDetail.approvedCost')}>{formatNPR(c.approved_paisa)}</Detail>}
-        {c.approved_date && c.approved_date !== c.charge_date && <Detail label={t('workPackageDetail.approvedOn')}><DateText value={c.approved_date} display={auth.dateDisplay} /></Detail>}
-        {c.status === 'approved' && <Detail label={t('workPackageDetail.paid')}>{formatNPR(c.settled_paisa)}</Detail>}
-        {/* Part paid: what is left, as on bills and labour. */}
-        {c.status === 'approved' && outstanding > 0 && c.settled_paisa > 0 && <Detail label={t('workPackageDetail.stillDue')}>{formatNPR(outstanding)}</Detail>}
-        {c.decision_note && <Detail label={c.status === 'rejected' ? t('workPackageDetail.reason') : t('common.note')}>{c.decision_note}</Detail>}
-      </div>
-
-      <div className="mt-2 flex flex-wrap gap-2">
-        {c.status === 'draft' && canPost(auth) && !approving && <Button onClick={() => setApproving(true)}>{t('workPackageDetail.approve')}</Button>}
-        {c.status === 'approved' && outstanding > 0 && canRecordPayments(auth) && (
-          <ButtonLink variant="secondary" to={`/payments/new?subcontractor=${subcontractorId}&doc=${c.id}`}>{t('workPackageDetail.payThis')}</ButtonLink>
-        )}
-        {c.status === 'draft' && (c.created_by === auth.userId || canPost(auth)) && (
-          <ConfirmButton confirmLabel={t('workPackageDetail.deleteBill')} disabled={remove.isPending} onConfirm={() => remove.mutate()}>{t('workPackageDetail.delete')}</ConfirmButton>
-        )}
-      </div>
-      {approving && <ApproveForm c={c} onDone={async () => { setApproving(false); await after() }} onCancel={() => setApproving(false)} />}
-      {c.status === 'draft' && canPost(auth) && !approving && (
-        <div className="mt-2">
-          <ReasonButton variant="ghost" title={t('workPackageDetail.rejectThisBill')} confirmLabel={t('workPackageDetail.reject')} busy={reject.isPending}
-            error={reject.error && friendlyError(reject.error)} onConfirm={(reason) => reject.mutate(reason)}>
-            {t('workPackageDetail.reject')}</ReasonButton>
-        </div>
+          {/* Phone: the status and paid columns move here. */}
+          <div className="mt-1 sm:hidden">{badges}</div>
+        </td>
+        <td className="py-2 pr-3 text-right tabular-nums">
+          {formatNPR(c.claimed_paisa)}
+          {/* Approved as billed (one-step entry): the second figure would only repeat it. */}
+          {c.approved_paisa != null && c.approved_paisa !== c.claimed_paisa && (
+            <div className="text-xs text-subtle">{t('workPackageDetail.approvedCost')} {formatNPR(c.approved_paisa)}</div>
+          )}
+          {approved && <div className="text-xs text-subtle sm:hidden">{t('workPackageDetail.paid')} {formatNPR(c.settled_paisa)}</div>}
+        </td>
+        <td className="hidden py-2 pr-3 text-right tabular-nums sm:table-cell">
+          {approved && formatNPR(c.settled_paisa)}
+          {/* Part paid: what is left, as on bills and labour. */}
+          {approved && outstanding > 0 && c.settled_paisa > 0 && <div className="text-xs text-subtle">{t('workPackageDetail.stillDue')} {formatNPR(outstanding)}</div>}
+        </td>
+        <td className="hidden py-2 pr-3 sm:table-cell">{badges}</td>
+        <td className="py-2 pr-4 text-right whitespace-nowrap">
+          {approved && outstanding > 0 && canRecordPayments(auth) && (
+            <div><Link to={`/payments/new?subcontractor=${subcontractorId}&doc=${c.id}`} className={`${link} text-brand hover:underline`}>{t('workPackageDetail.payThis')}</Link></div>
+          )}
+          {c.status === 'draft' && canPost(auth) && !approving && (
+            <div><button type="button" className={`${link} text-brand hover:underline`} onClick={() => { setApproving(true); setOpen(true) }}>{t('workPackageDetail.approve')}</button></div>
+          )}
+          <div>
+            <button type="button" className={`${link} text-slate hover:underline`} aria-expanded={open} onClick={() => setOpen(!open)}>
+              {open ? t('workPackageDetail.less') : t('workPackageDetail.more')}</button>
+          </div>
+        </td>
+      </tr>
+      {open && (
+        <tr>
+          <td colSpan={5} className="px-4 pb-3">
+            <div className="rounded-lg bg-muted p-3 text-sm">
+              {c.approved_date && c.approved_date !== c.charge_date && <Detail label={t('workPackageDetail.approvedOn')}><DateText value={c.approved_date} display={auth.dateDisplay} /></Detail>}
+              {c.decision_note && <Detail label={c.status === 'rejected' ? t('workPackageDetail.reason') : t('common.note')}>{c.decision_note}</Detail>}
+              {approving && <ApproveForm c={c} onDone={async () => { setApproving(false); await after() }} onCancel={() => setApproving(false)} />}
+              <div className="flex flex-wrap gap-2">
+                {c.status === 'draft' && canPost(auth) && !approving && (
+                  <ReasonButton variant="ghost" title={t('workPackageDetail.rejectThisBill')} confirmLabel={t('workPackageDetail.reject')} busy={reject.isPending}
+                    error={reject.error && friendlyError(reject.error)} onConfirm={(reason) => reject.mutate(reason)}>
+                    {t('workPackageDetail.reject')}</ReasonButton>
+                )}
+                {c.status === 'draft' && (c.created_by === auth.userId || canPost(auth)) && (
+                  <ConfirmButton confirmLabel={t('workPackageDetail.deleteBill')} disabled={remove.isPending} onConfirm={() => remove.mutate()}>{t('workPackageDetail.delete')}</ConfirmButton>
+                )}
+                {approved && canPost(auth) && (
+                  <ReasonButton variant="ghost" title={t('workPackageDetail.reverseThisApprovedWork')} hint={t('workPackageDetail.costGoesBackDown')}
+                    confirmLabel={t('workPackageDetail.reverse')} busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
+                    withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: t('workPackageDetail.reversalDate') }}
+                    onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
+                    {t('workPackageDetail.reverse')}</ReasonButton>
+                )}
+              </div>
+              <ErrorBanner>{(remove.error || reject.error) && friendlyError(remove.error || reject.error)}</ErrorBanner>
+              <div className="mt-2">
+                <Attachments owner={{ charge_id: c.id }} canAdd={c.status === 'draft'} canRemove={c.status === 'draft'} label={t('workPackageDetail.addBillPhoto')} />
+              </div>
+            </div>
+          </td>
+        </tr>
       )}
-      {c.status === 'approved' && canPost(auth) && (
-        <div className="mt-2">
-          <ReasonButton variant="ghost" title={t('workPackageDetail.reverseThisApprovedWork')} hint={t('workPackageDetail.costGoesBackDown')}
-            confirmLabel={t('workPackageDetail.reverse')} busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
-            withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: t('workPackageDetail.reversalDate') }}
-            onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
-            {t('workPackageDetail.reverse')}</ReasonButton>
-        </div>
-      )}
-      <ErrorBanner>{(remove.error || reject.error) && friendlyError(remove.error || reject.error)}</ErrorBanner>
-      <div className="mt-2">
-        <Attachments owner={{ charge_id: c.id }} canAdd={c.status === 'draft'} canRemove={c.status === 'draft'} label={t('workPackageDetail.addBillPhoto')} />
-      </div>
-    </li>
+    </tbody>
   )
 }
 

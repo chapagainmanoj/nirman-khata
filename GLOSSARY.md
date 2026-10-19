@@ -79,6 +79,14 @@ A Worker's place on a Crew: which workers are on a project's crew, and whether t
 - **Relations:** one Worker on one Crew; a worker can be on the crews of several projects. A worker brought in for a day on a crew they are not on is marked there without becoming a member.
 - **In code:** `crew_members` (`crew_id`, `worker_id`, `active`; no delete; set inactive to take them off the crew). Added with `add_crew_worker`.
 
+## Direct Payment
+How most subcontractors are paid: each payment is for work done on one Work Package, and no bill is entered. Recording it records the work as an approved Work charge for the amount and pays it, in one step; Peski they hold for that work pays it first, then cash. Chosen per subcontractor ("How do you pay them?"): **Directly for work done** (default) or **Against their bills** (bill, approve, then pay).
+
+- **Not:** Peski. Money given before the work is done is still Peski: the payment form's "This is an advance (work not done yet)" tick.
+- **Relations:** a Subcontractor has one mode; every subcontractor payment names its Work Package (added from the payment form if they have none). Unpaid approved bills, if any, are still paid by ticking them.
+- **In code:** `subcontractors.pays_by` (`'direct' | 'bills'`; `PaysBy`); `pay_work_done` (save + approve the charge and `pay_subcontractor`, one transaction; `held_changed` if what they hold changed since the form was opened). Migration `20261107000100_subcontractor_direct_pay.sql`.
+- **Notes:** Product owner, 2026-10-19: a bill is not necessary to pay a subcontractor; direct payment is the default. Subcontractors who already had bills were set to "Against their bills".
+
 ## Expense (Kharcha)
 Everyday word for any spending on a project: materials, labour, subcontract work and everything else. Not a record type in the app.
 
@@ -219,7 +227,8 @@ The three figures in a Party's Khata. **Tirnu parne** (to be paid) is everything
 A subcontractor's bill (or running measurement) for work done on one work package. Approved, it is project cost and raises what the company owes them; a draft or rejected one is neither.
 
 - **In code:** `subcontract_charges` (`claimed_paisa`, `approved_paisa`); "claim" in SQL and older code.
-- **In UI:** "Work done (bills)" on the work package page; one bill is "Bill RA-1". Accounts and Admin add and approve a bill in one step (optionally going on to pay it); others save a draft that waits for approval.
+- **In UI:** "Work done (bills)" on the work package page ("Work done" for a subcontractor paid directly); one bill is "Bill RA-1". Accounts and Admin add and approve a bill in one step (optionally going on to pay it); others save a draft that waits for approval.
+- **Notes:** A Direct Payment creates one, approved and paid, described "Paid directly" (or the payment's note).
 - **Aliases to avoid:** "Claim" in the UI (contractors say bill).
 
 ## Worker
@@ -237,6 +246,7 @@ The project a person is working on right now, chosen once in the sidebar or top 
 - **Not:** a permission or a server setting. It is remembered on the device only, per person and company.
 - **Relations:** one of the site-work projects (Active or On hold; see Project status). With exactly one such project it is chosen automatically.
 - **In code:** `features/projects/current.tsx` (`useCurrentProject`, `useWorkingOnDefault`); forms read their list from `projectChoices(projects, 'site' | 'money')`.
+- **Notes:** Suppliers and Subcontractors lists and pages follow it too: a supplier is on a project through its order slips, deliveries or bills (`supplier_projects` view), a subcontractor through their work packages. No separate link: a party added a minute ago shows under the project once something is recorded with them there (product owner, 2026-10-19).
 - **Notes:** A new form takes its project from, in order: the link (`?project=`), the record it comes from (an order slip, a delivery, the record being edited), Working on, else "Choose project". Payment is the exception: it never takes Working on, because a payment with no project is normal and a guess could put it on the wrong one.
 
 ---

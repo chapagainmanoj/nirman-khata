@@ -15,9 +15,10 @@ export function useSubcontractors(companyId: string) {
   })
 }
 
-export function useWorkPackages(filter: { projectId?: string; subcontractorId?: string }) {
+export function useWorkPackages(filter: { projectId?: string; subcontractorId?: string }, enabled = true) {
   return useQuery({
     queryKey: ['work-packages', filter],
+    enabled,
     queryFn: async () => {
       let q = supabase.from('work_packages')
         .select('*, subcontractors(name), projects(code, name), units(code), cost_headings(name)')
@@ -38,7 +39,7 @@ export function useWorkPackage(packageId: string) {
     queryFn: async () => {
       const [pkg, terms] = await Promise.all([
         supabase.from('work_packages')
-          .select('*, subcontractors(name, phone), projects(code, name), units(code, name), cost_headings(name)')
+          .select('*, subcontractors(name, phone, pays_by), projects(code, name), units(code, name), cost_headings(name)')
           .eq('id', packageId).maybeSingle(),
         supabase.from('work_package_terms').select('*').eq('id', packageId).maybeSingle(),
       ])

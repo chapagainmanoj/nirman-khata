@@ -265,17 +265,19 @@ export function MatchCard({ kind, partyId }: { kind: PartyKind; partyId: string 
   )
 }
 
-export function Khata({ kind, partyId, projectId: fixedProject }: { kind: PartyKind; partyId: string; projectId?: string }) {
+/** fixedProject: always that project, no choice. startProject: opens on it (the page's project), still changeable. */
+// noPicker: the page chooses the project (a subcontractor's project chips), so the khata has no picker of its own.
+export function Khata({ kind, partyId, projectId: fixedProject, startProject, noPicker }: { kind: PartyKind; partyId: string; projectId?: string; startProject?: string | null; noPicker?: boolean }) {
   const auth = useCompany()
   const projects = useProjects(auth.companyId)
-  const [projectId, setProjectId] = useState(fixedProject ?? '')
+  const [projectId, setProjectId] = useState(fixedProject ?? startProject ?? '')
   const khata = usePartyKhata(partyId, projectId || null, true)
   const code = (id: string | null) => projects.data?.find((p) => p.id === id)?.code
   const rows = [...(khata.data ?? [])].reverse() // newest first on a phone
 
   return (
     <Card>
-      {!fixedProject && (projectId || !!khata.data?.length) && (
+      {!fixedProject && !noPicker && (projectId || !!khata.data?.length) && (
         <div className="mb-3 sm:max-w-sm">
           <Field label={t('partyParts.project')} htmlFor="khata-project">
             <Select id="khata-project" value={projectId} onChange={(e) => setProjectId(e.target.value)}>

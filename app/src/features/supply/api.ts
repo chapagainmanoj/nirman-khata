@@ -81,6 +81,22 @@ export function useSuppliers(companyId: string) {
   })
 }
 
+/**
+ * Suppliers with an order slip, delivery or bill on the project (view supplier_projects, read with
+ * the caller's rights): what ties a supplier to a project.
+ */
+export function useSupplierProjects(projectId: string | null) {
+  return useQuery({
+    queryKey: ['supplier-projects', projectId],
+    enabled: !!projectId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('supplier_projects').select('supplier_id').eq('project_id', projectId!)
+      if (error) throw error
+      return new Set(data.map((r) => r.supplier_id!))
+    },
+  })
+}
+
 // ---------------------------------------------------------------------------
 // Slips
 // ---------------------------------------------------------------------------

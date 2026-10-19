@@ -379,7 +379,11 @@ The same rules apply to subcontractor and labour payments.
 
 Examples: plaster, masonry, plumbing, electrical, painting, tiling.
 
-- Subcontractor record: name, phone, optional PAN, work types.
+- Subcontractor record: name, phone, optional PAN, work types, and how they are paid:
+  **directly for work done** (default) or **against their bills** (product owner, 2026-10-19).
+- Paid directly: one payment is the work done. It records an approved work charge for the amount and
+  pays it in one step, peski first; no bill is entered. Money before the work is still peski (a tick).
+- Every subcontractor payment names its work package; one can be added from the payment form.
 - **Work package** per project: subcontractor, scope, heading, agreed value (lump sum or rate x quantity, e.g. per sq.ft), planned dates, status, progress.
 - Record claims/bills from the subcontractor.
 - Record **approved work charge** separately from payments. Approved charge = cost.

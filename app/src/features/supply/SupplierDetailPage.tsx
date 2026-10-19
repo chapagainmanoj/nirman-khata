@@ -8,6 +8,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { ButtonLink, Card, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { BalanceCard, ContactRow, Khata, MatchCard, PaymentList, Tabs } from '../parties/PartyParts'
+import { useProjectFilter } from '../lists/ProjectFilter'
 import { useBills, useSuppliers } from './api'
 import { ShowMore } from '../../components/ShowMore'
 import { BillRow } from './BillRow'
@@ -24,6 +25,8 @@ export function SupplierDetailPage() {
   const suppliers = useSuppliers(auth.companyId)
   const [tab, setTab] = useState<Tab>(auth.canSeeFinance ? 'khata' : 'bills')
   const hasRates = !!useTheirRates(supplierId, auth.canSeeFinance).data?.length
+  const byProject = useProjectFilter()
+  const onProject = byProject.projectId
 
   if (suppliers.isPending) return <Spinner />
   if (suppliers.error) return <ErrorBanner onRetry={() => void suppliers.refetch()}>{friendlyError(suppliers.error)}</ErrorBanner>
@@ -44,8 +47,8 @@ export function SupplierDetailPage() {
         subtitle={s.categories.join(' · ') || undefined}
         actions={
           <div className="flex flex-wrap gap-2">
-            {pays && <ButtonLink to={`/payments/new?supplier=${s.id}`}>{t('supplierDetail.recordPayment')}</ButtonLink>}
-            {canEnter(auth) && <ButtonLink variant={pays ? 'secondary' : 'primary'} to={`/bills/new?supplier=${s.id}`}>{t('supplierDetail.enterBill')}</ButtonLink>}
+            {pays && <ButtonLink to={`/payments/new?supplier=${s.id}${onProject ? `&project=${onProject}` : ''}`}>{t('supplierDetail.recordPayment')}</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant={pays ? 'secondary' : 'primary'} to={`/bills/new?supplier=${s.id}${onProject ? `&project=${onProject}` : ''}`}>{t('supplierDetail.enterBill')}</ButtonLink>}
           </div>
         }
       />
@@ -53,15 +56,17 @@ export function SupplierDetailPage() {
         [`/suppliers/${s.id}/details`, t('supplierDetail.details')],
         hasRates && [`/suppliers/${s.id}/rates`, t('supplierDetail.theirRates')],
       ]} />
+      {/* The page follows the sidebar's project like the lists; the balance stays company-wide. */}
+      {byProject.chip}
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        {auth.canSeeFinance && <BalanceCard kind="supplier" partyId={s.id}><OwedByProject supplierId={s.id} /></BalanceCard>}
-        {auth.canSeeFinance && <UnpaidBills supplierId={s.id} />}
-        {canEnter(auth) && <ComingFromThem supplierId={s.id} />}
+        {auth.canSeeFinance && <BalanceCard kind="supplier" partyId={s.id}><OwedByProject supplierId={s.id} projectId={onProject} /></BalanceCard>}
+        {auth.canSeeFinance && <UnpaidBills supplierId={s.id} projectId={onProject} />}
+        {canEnter(auth) && <ComingFromThem supplierId={s.id} projectId={onProject} />}
       </div>
 
       <Tabs tabs={tabs} value={tab} onChange={setTab} label={t('supplierDetail.supplierRecords')}>
-        {tab === 'khata' && <Khata kind="supplier" partyId={s.id} />}
-        {tab === 'bills' && <BillList supplierId={s.id} />}
+        {tab === 'khata' && <Khata key={onProject ?? 'all'} kind="supplier" partyId={s.id} startProject={onProject} />}
+        {tab === 'bills' && <BillList supplierId={s.id} projectId={onProject} />}
         {tab === 'payments' && (
           <div className="flex flex-col gap-4">
             {canRecordPayments(auth) && <MatchCard kind="supplier" partyId={s.id} />}
@@ -152,8 +157,8 @@ export function SupplierRatesPage() {
   )
 }
 
-function BillList({ supplierId }: { supplierId: string }) {
-  const bills = useBills({ supplierId })
+function BillList({ supplierId, projectId }: { supplierId: string; projectId: string | null }) {
+  const bills = useBills(projectId ? { supplierId, projectId } : { supplierId })
   return (
     <Card>
       {bills.isPending && <Spinner />}

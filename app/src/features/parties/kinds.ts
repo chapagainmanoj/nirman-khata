@@ -4,6 +4,8 @@
 import { t, translated } from '../../lib/i18n'
 
 export type PartyKind = 'supplier' | 'subcontractor' | 'crew' | 'payee' | 'worker'
+/** How a subcontractor is paid (GLOSSARY: Direct Payment): each payment is the work done, or against their bills. */
+export type PaysBy = 'direct' | 'bills'
 
 type PartyInfo = {
   one: string

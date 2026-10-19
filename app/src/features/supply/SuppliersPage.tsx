@@ -1,28 +1,39 @@
-// Suppliers shared across projects (req §8.2) with what is owed to each (req §12.2).
+// Suppliers shared across projects (req §8.2) with what is owed to each (req §12.2). The list opens
+// on the sidebar's project, like Bills: suppliers with a slip, delivery or bill there, with "All
+// projects" a tap away. "?add=1" (Getting started) opens the form to add one.
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Badge, Button, Card, EmptyState, ErrorBanner, Field, Input, PageHeader, Spinner } from '../../components/ui'
 import { ChevronRightIcon } from '../../components/icons'
 import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
+import { newId } from '../../lib/ids'
 import { supabase } from '../../lib/supabase'
 import { usePartyBalances } from '../parties/api'
 import { BalanceText } from '../parties/PartyParts'
-import { useSuppliers } from './api'
+import { useProjectFilter } from '../lists/ProjectFilter'
+import { useSupplierProjects, useSuppliers } from './api'
 import { canManageSuppliers } from './permissions'
 
 export function SuppliersPage() {
   const auth = useCompany()
   const suppliers = useSuppliers(auth.companyId)
   const balances = usePartyBalances(auth.companyId, 'supplier', auth.canSeeFinance)
-  const [adding, setAdding] = useState(false)
+  const [params] = useSearchParams()
+  const [adding, setAdding] = useState(params.get('add') === '1' && canManageSuppliers(auth))
   const [search, setSearch] = useState('')
+  const byProject = useProjectFilter()
+  const onProject = useSupplierProjects(byProject.projectId)
+  const here = byProject.projectId ? onProject.data : null
+  // Added just now: nothing recorded with them yet, but they stay in sight on the project's list.
+  const [added, setAdded] = useState<string[]>([])
   const balance = new Map(balances.data?.map((b) => [b.party_id, b]))
   const companyLevel = balances.data?.[0]?.company_level ?? false
   const q = search.trim().toLowerCase()
-  const list = suppliers.data?.filter((s) => !q || s.name.toLowerCase().includes(q) || s.categories.join(' ').toLowerCase().includes(q))
+  const list = suppliers.data?.filter((s) => (!byProject.projectId || !!here?.has(s.id) || added.includes(s.id))
+    && (!q || s.name.toLowerCase().includes(q) || s.categories.join(' ').toLowerCase().includes(q)))
   const total = balances.data?.reduce((sum, b) => sum + b.balance_paisa, 0) ?? 0
 
   return (
@@ -32,7 +43,8 @@ export function SuppliersPage() {
         subtitle={auth.canSeeFinance && balances.data ? <>{t('suppliers.total')}{' '}<BalanceText paisa={total} /></> : undefined}
         actions={canManageSuppliers(auth) && !adding && <Button variant="tonal" onClick={() => setAdding(true)}>{t('suppliers.addSupplier')}</Button>}
       />
-      {adding && <SupplierForm onDone={() => setAdding(false)} />}
+      {adding && <SupplierForm onDone={(id) => { setAdding(false); if (id) setAdded((a) => [...a, id]) }} />}
+      {byProject.chip}
       {auth.canSeeFinance && !companyLevel && balances.data && (
         <p className="mb-3 text-xs text-subtle">{t('suppliers.balancesIncludeOnlyThe')}</p>
       )}
@@ -47,6 +59,8 @@ export function SuppliersPage() {
       <ErrorBanner onRetry={() => void balances.refetch()}>
         {balances.error && t('suppliers.balancesCouldNotBe', { error: friendlyError(balances.error) })}
       </ErrorBanner>
+      <ErrorBanner onRetry={() => void onProject.refetch()}>{onProject.error && friendlyError(onProject.error)}</ErrorBanner>
+      {here && !q && (suppliers.data?.length ?? 0) > 0 && list?.length === 0 && byProject.empty(t('suppliers.suppliers').toLowerCase(), null)}
       {q && list?.length === 0 && <p className="text-sm text-subtle">{t('suppliers.noSuppliersMatchValue', { value: search.trim() })}</p>}
       {suppliers.data?.length === 0 && (
         <EmptyState title={t('suppliers.noSuppliersYet')}>{t('suppliers.addTheShopsAnd')}</EmptyState>
@@ -88,10 +102,12 @@ type SupplierValues = {
 
 export function SupplierForm({ supplier, onDone }: {
   supplier?: { id: string } & Partial<Record<keyof SupplierValues, unknown>> & { categories: string[] }
-  onDone: () => void
+  /** Called with the new supplier's id when one was added. */
+  onDone: (addedId?: string) => void
 }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
+  const [newSupplierId] = useState(newId)
   const [v, setV] = useState<SupplierValues>({
     name: String(supplier?.name ?? ''), contact_person: String(supplier?.contact_person ?? ''), phone: String(supplier?.phone ?? ''),
     address: String(supplier?.address ?? ''), pan_vat: String(supplier?.pan_vat ?? ''),
@@ -108,13 +124,13 @@ export function SupplierForm({ supplier, onDone }: {
       }
       const { error } = supplier
         ? await supabase.from('suppliers').update(row).eq('id', supplier.id)
-        : await supabase.from('suppliers').insert({ ...row, company_id: auth.companyId })
+        : await supabase.from('suppliers').insert({ ...row, id: newSupplierId, company_id: auth.companyId })
       if (error) throw error
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['suppliers'] })
       await queryClient.invalidateQueries({ queryKey: ['balances'] })
-      onDone()
+      onDone(supplier ? undefined : newSupplierId)
     },
   })
 
@@ -125,7 +141,7 @@ export function SupplierForm({ supplier, onDone }: {
 
   // Editing has its own page, whose heading names it.
   return (
-    <Card title={supplier ? undefined : t('suppliers.newSupplier')} className="mb-4">
+    <Card className="mb-4">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label={t('suppliers.businessName')} htmlFor="sup-name"><Input id="sup-name" value={v.name} onChange={set('name')} required /></Field>
@@ -143,7 +159,7 @@ export function SupplierForm({ supplier, onDone }: {
         <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
         <div className="flex gap-2">
           <Button type="submit" busy={save.isPending} disabled={!v.name.trim()}>{t('common.save')}</Button>
-          <Button type="button" variant="secondary" onClick={onDone}>{t('common.cancel')}</Button>
+          <Button type="button" variant="secondary" onClick={() => onDone()}>{t('common.cancel')}</Button>
         </div>
       </form>
     </Card>

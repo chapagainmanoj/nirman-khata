@@ -152,7 +152,8 @@ test('nav follows the role; "+" starts on the current project; counts and sectio
   await page.getByRole('button', { name: /^To approve/ }).click()
   await expect(page.getByRole('link', { name: /OS-0001/ })).toBeVisible()
   // "Enter bill" from a supplier's page names no project: a new line starts on Working on (P-1).
-  await page.goto('/suppliers')
+  // Shrestha's slip is on P-2, so the list (on P-1) needs All projects to show them.
+  await page.goto('/suppliers?all=1')
   await page.getByRole('link', { name: /Shrestha Suppliers/ }).click()
   await page.getByRole('link', { name: 'Enter bill' }).first().click()
   await page.getByRole('button', { name: 'Add material line' }).click()

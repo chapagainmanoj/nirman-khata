@@ -126,6 +126,9 @@ test('paged lists, rate hint, refund and password reset', async ({ page }) => {
   await page.screenshot(shots('m6-04-refund'))
   await page.goto(`/suppliers/${supplierId}`)
   await expect(refundCard).toContainText('Rs. 500')
+  // A refund is on no project: the khata shows it with All projects.
+  const shown = page.getByRole('group', { name: 'Projects shown' })
+  if (await shown.isVisible()) await shown.getByRole('button', { name: 'All projects' }).click()
   await expect(page.getByRole('link', { name: /Refund RF-0001/ })).toBeVisible() // in the khata
   await page.goto('/reports/payments?project=&from=2026-09-01')
   await expect(page.getByRole('region', { name: 'Report' }).getByRole('row').filter({ hasText: 'RF-0001 (refund)' })).toContainText('-Rs. 2,000')

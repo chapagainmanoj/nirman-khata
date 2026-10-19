@@ -79,6 +79,8 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await page.goto('/subcontractors')
   await page.getByRole('button', { name: 'Add subcontractor' }).click()
   await page.getByLabel('Name').fill('Tamang Plaster')
+  // This flow is the bills one: bill, approve, then pay (a new subcontractor is paid directly by default).
+  await page.getByLabel(/Against their bills/).check()
   await page.getByRole('button', { name: 'Save' }).click()
   await expect(page.getByRole('link', { name: /Tamang Plaster/ })).toBeVisible()
 
@@ -93,7 +95,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   const packageUrl = page.url()
 
   // Peski of 20,000 before any work is approved.
-  await page.getByRole('link', { name: 'Pay peski or bill' }).click()
+  await page.getByRole('link', { name: 'Record payment' }).click()
   await expect(page.getByRole('heading', { name: 'Record payment' })).toBeVisible()
   await expect(page.getByText('Tamang Plaster').first()).toBeVisible()
   await page.getByLabel('Amount paid').fill('20,000')
@@ -126,6 +128,7 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await expect(contract.getByText('Left to pay on the contract').locator('xpath=following-sibling::dd[1]')).toContainText('Rs. 80,000')
   await expect(contract.getByText('Due now').locator('xpath=following-sibling::dd[1]')).toContainText('Rs. 10,000')
   // No second balance card on the Khata tab: just the opening balance (none yet) and the entries.
+  await page.getByRole('tab', { name: 'Khata' }).click()
   await expect(page.getByRole('heading', { name: 'Balance', exact: true })).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Set opening balance' })).toBeVisible()
 
