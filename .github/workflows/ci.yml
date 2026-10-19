@@ -55,6 +55,9 @@ jobs:
       - name: File tests (files function, presigned links, permissions)
         run: bash supabase/tests/files.sh
 
+      - name: Staff and registration tests (admin-users, register functions)
+        run: bash supabase/tests/staff.sh
+
       - name: Export tests (full company export)
         run: bash supabase/tests/export.sh
 

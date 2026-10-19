@@ -88,7 +88,7 @@ function AddStaffForm({ onDone }: { onDone: () => void }) {
 
   const create = useMutation({
     mutationFn: () =>
-      callFunction<{ user_id: string; warning?: string }>('admin-users', {
+      callFunction<{ user_id: string }>('admin-users', {
         action: 'create_staff', company_id: auth.companyId, full_name: name, login, password, roles, ...perms, project_ids: projectIds,
       }),
     onSuccess: async () => {

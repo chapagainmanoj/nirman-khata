@@ -11,8 +11,12 @@ export function json(body: unknown, status = 200): Response {
   })
 }
 
-export function fail(message: string, status = 400): Response {
-  return json({ error: message }, status)
+/**
+ * An error the app shows. `message` is plain English for people; `code` is stable, so the app can
+ * show its own (translated) words for it (app/src/lib/errors.ts, `function.<code>`).
+ */
+export function fail(message: string, status = 400, code?: string): Response {
+  return json(code ? { error: message, code } : { error: message }, status)
 }
 
 export const MIN_PASSWORD_LENGTH = 8

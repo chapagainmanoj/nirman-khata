@@ -26,20 +26,20 @@ Deno.serve(async (req) => {
     auth: { persistSession: false },
   })
   const { data: userData } = await caller.auth.getUser()
-  if (!userData.user) return fail('Not signed in', 401)
+  if (!userData.user) return fail('Not signed in', 401, 'not_signed_in')
 
   let companyId = ''
   try {
     companyId = (await req.json()).company_id ?? ''
   } catch {
-    return fail('Invalid request body')
+    return fail('Invalid request body', 400, 'invalid_request')
   }
   if (!/^[0-9a-f-]{36}$/.test(companyId)) return fail('Company is required')
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } })
   const { data: membership } = await admin.from('memberships').select('roles')
     .eq('company_id', companyId).eq('user_id', userData.user.id).eq('active', true).maybeSingle()
-  if (!membership?.roles?.includes('admin')) return fail('Only an admin can export company data', 403)
+  if (!membership?.roles?.includes('admin')) return fail('Only an admin can export company data', 403, 'forbidden')
 
   try {
     // Read as the caller: the database checks the admin role again.
@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     const snap = toSnapshot(data as Snapshot)
     const attachmentBytes = snap.attachments.reduce((s, a) => s + Number(a.size_bytes ?? 0), 0)
     if (attachmentBytes > MAX_ATTACHMENT_BYTES) {
-      return fail('This company has too many photos to export in one file. Ask support for a full export.', 413)
+      return fail('This company has too many photos to export in one file. Ask support for a full export.', 413, 'export_too_big')
     }
 
     const files: Record<string, Uint8Array> = {}

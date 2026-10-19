@@ -1,4 +1,5 @@
 // Turn database and network errors into messages a site engineer can act on.
+import { FunctionError } from './functions'
 import { type MessageKey, t } from './i18n'
 
 type ErrorLike = { message?: string; code?: string; details?: string } | null | undefined
@@ -32,6 +33,24 @@ const BY_CODE: Record<string, MessageKey> = {
   '42501': 'error.code.42501',
 }
 
+// SQLSTATEs our own functions raise with a message written for people (raise exception ... using
+// errcode). Any other database or PostgREST error is internal: its text is not shown.
+const OURS = new Set(['P0001', 'P0002', '22023'])
+const SQLSTATE = /^[0-9A-Z]{5}$/
+
+/** The server answered and refused (a database error code): nothing was saved, unlike a lost answer. */
+export function serverAnswered(error: unknown): boolean {
+  const code = (error as ErrorLike)?.code ?? ''
+  return SQLSTATE.test(code) || code.startsWith('PGRST')
+}
+
+// Edge Function codes with words of our own (supabase/functions/_shared/http.ts).
+const FUNCTION_CODES = new Set([
+  'not_signed_in', 'invalid_request', 'forbidden', 'platform_admin', 'name_required', 'company_name_required', 'invalid_login',
+  'password_short', 'roles_required', 'login_taken', 'not_approved', 'half_registered', 'not_found', 'service_down',
+  'export_too_big', 'server_error',
+])
+
 /** A request lib/supabase stopped waiting for: retrying it at once only makes the wait longer. */
 export function isTimeout(error: unknown): boolean {
   return !!(error as ErrorLike)?.message?.includes('request_timeout')
@@ -40,6 +59,11 @@ export function isTimeout(error: unknown): boolean {
 export function friendlyError(error: unknown): string {
   const e = error as ErrorLike
   if (!e) return t('error.generic')
+  if (error instanceof FunctionError) {
+    if (error.code === 'offline') return t('error.offline')
+    if (error.code && FUNCTION_CODES.has(error.code)) return t(`function.${error.code}` as MessageKey)
+    return error.message || t('error.generic')
+  }
   if (e.message?.includes('Failed to fetch')) return t('error.offline')
   // lib/supabase: no answer within the time limit (a weak signal that never times out by itself).
   if (isTimeout(e)) return t('error.timeout')
@@ -74,5 +98,13 @@ export function friendlyError(error: unknown): string {
     }
     return t(BY_CODE[e.code])
   }
+  // The session ran out (PostgREST: JWT expired or invalid).
+  if (e.code === 'PGRST301' || e.code === 'PGRST303') return t('error.session')
+  // A database or PostgREST error that is not ours (a column, a type, a policy): not for people.
+  if (e.code && (e.code.startsWith('PGRST') || (SQLSTATE.test(e.code) && !OURS.has(e.code)))) {
+    console.error('Unexpected server error', e)
+    return t('error.generic')
+  }
+  // Our own SQL messages (P0001, 22023, P0002) and errors the app throws with words of its own.
   return e.message || t('error.generic')
 }

@@ -29,7 +29,7 @@ import { MoneyInput } from '../../components/MoneyInput'
 import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
 import { formatDate, todayKathmandu, type IsoDate } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
-import { friendlyError } from '../../lib/errors'
+import { friendlyError, serverAnswered } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { billTitle, PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, paisaToInput, parseNPR } from '../../lib/money'
@@ -291,7 +291,7 @@ export function PaymentNewPage() {
     // The server answered (an SQLSTATE code): nothing was saved, so the cash is worked out again from
     // what they hold, read afresh. No answer (offline, timeout): it may have been saved; keep the cash.
     onError: (e) => {
-      if (!/^[0-9A-Z]{5}$/.test((e as { code?: string }).code ?? '')) return
+      if (!serverAnswered(e)) return
       setValue('cash_sent', null)
       void draft.save()
       void queryClient.invalidateQueries({ queryKey: ['balances', 'usable-held'] })

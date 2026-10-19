@@ -2811,6 +2811,9 @@ isOneToOne: false
 "add_progress_update":
 { Args: { "p_update": Json }; Returns: Json
                            },
+"add_staff_member":
+{ Args: { "p_by": string,"p_can_approve_slips": boolean,"p_can_record_payments": boolean,"p_can_view_finance": boolean,"p_company": string,"p_projects": (string)[],"p_roles": (Database["public"]['Enums']["app_role"])[],"p_user": string }; Returns: string
+                           },
 "allocate_payment":
 { Args: { "p_changes": Json,"p_op_key": string,"p_payment": string,"p_reason": string }; Returns: Json
                            },

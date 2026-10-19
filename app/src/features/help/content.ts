@@ -6,7 +6,7 @@ import type { NavRole } from '../../components/nav'
 import type { IsoDate } from '../../lib/dates'
 
 /** Change this whenever the text below changes. */
-export const HELP_UPDATED: IsoDate = '2026-10-18'
+export const HELP_UPDATED: IsoDate = '2026-10-19'
 
 type Rule = (r: NavRole) => boolean
 
@@ -56,7 +56,8 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Aafu assign bhayeko projects herne.',
       'Naya project banaune (Admin): Thekka Rakam (contract amount) ra Lagat Anuman (spending budget).',
       'Project details: client, thau (district, municipality, ward), manager, planned ra actual dates.',
-      'Summary: Thekka Rakam, Lagat Anuman, kharcha, client bata payeko, baki; kunai miti samma ko rakam herne.',
+      'Summary: Thekka Rakam, Lagat Anuman, Cost so far (ahile samma ko kharcha), client bata payeko, baki; kunai miti samma ko rakam herne.',
+      'Not counted yet: bill naaeko delivery, post nagareko draft bill ra verify nagareko Hajiri; yo Cost so far ma gandaina.',
       'Paid, Due ra They hold: Due ma tapaai le tirnu baki matra; party sanga rahela paisa (peski wa badhi tireko) They hold ma chhuttai.',
       'Where the money went: saamaan, thekka, jyala ra anya kharcha ma kati gayo; heading anusar herna tala ko Cost by heading report.',
       'Activity: garna baki kaam (bill haalne, bill post garne, daily report pathaune, miti milaune).',
@@ -97,6 +98,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     show: canEnter,
     items: [
       'Ek supplier lai Maag Slip banaune: line pichhe project, kahile chahinchha, site contact, nirdeshan.',
+      'Saman chhanda heading anusar group ma dekhinchha (Rod, Cement, Sand...); haalai chaleko heading mathi.',
       'Approve wa reject garne (anumati bhaye), cancel wa close short garne.',
       'WhatsApp ma supplier lai share garne.',
       'Kati saman aayo (progress) ra deliveries herne.',
@@ -131,6 +133,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Discount, dhuwani (transport), VAT, tirne miti, bill photo; delivery link garne.',
       'Draft save garne, Accounts lai pathaune, wa save and post garne.',
       'Bills list table ma: miti, bill, supplier, project, jamma, status (Unpaid, Part paid ra kati due, Paid).',
+      'Bills kholda post garna wa draft baki bhaye To post / Drafts tab aafai khulchha; natra All.',
       'Bill ma kati tireko, kati baki herne; Pay this bill.',
       'Credit note (saman firta wa chhut) haalne; credit wa bill reverse garne.',
     ],
@@ -146,6 +149,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Tick gareko bill bhanda badi tire, baki bill (purano pahile) tirna "Pay … with it" thichne. Sabai bill tiresi pani bachyo bhane matra overpaid: arko bill bata katchha.',
       'Kunai bill tick nagari tireko paisa: khata ko baki ghatchha tara bill Unpaid nai dekhinchha. Pachhi Match payments to bills ma milaune.',
       'Bill nabhayeko party lai: project anusar split garne; kei baki nabhaye Peski bhanera mark garne.',
+      'Subcontractor lai tirda "Which work package is it for?" chhanne; work package chhaina bhane tyahi "Add work package".',
       'Payment ma What it paid herne; project split badalne; bill bata unmatch garne; reverse garne.',
     ],
   },
@@ -157,6 +161,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Bill binako kharcha haalne: JCB, dhuwani, fuel, Khaja, sano kharid.',
       'Kaslai tiryo, ke ko lagi, heading, project, receipt photo; aahile tireko wa pachhi.',
       'Project binako kharcha Company Expense ho: record matra, project cost hoina.',
+      'Kehi matra tireko kharcha ra Jyala ma kati due baki chha list mai dekhinchha.',
     ],
   },
   {
@@ -182,6 +187,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     title: 'Party haru (Supplier, Subcontractor, Crew)',
     items: [
       'Party thapne wa edit garne: naam, contact, phone, thegana, PAN/VAT, bhuktani sart, kaam ko kisim.',
+      'Subcontractor ma "How do you pay them?": Directly for work done (default, bill chahindaina) wa Against their bills (bill, approve, ani tirne).',
+      'List ra party ko page ma chaliraheko project ko party matra: supplier Maag Slip, delivery wa bill bata, subcontractor work package bata. Sabai herna "Show all projects".',
       'On the way and not billed: saman aayo tara bill aayena.',
       'Their rates: supplier ko rate herne.',
       'Maag Slip banaune, WhatsApp garne.',
@@ -204,6 +211,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     show: canEnter,
     items: [
       'Naya work package: Thekka Rakam wa rate, anumaanit parimaan, heading, planned dates, progress.',
+      'Directly for work done bhayeko subcontractor: payment record garda tyo nai Work done hunchha (approved ra tireko, ek patak); bill haalnu pardaina. Unsanga peski bhaye pahile katchha.',
+      'Kaam suru hunu agadi diyeko paisa: payment ma "This is an advance (work not done yet)" tick garne; tyo Peski ho.',
       'Status: Active (suru ma), Completed, wa Cancelled.',
       'Work done (bills): bill thapne photo sanga. Accounts/Admin le "Save and pay" (approve ra tirne ek patak) wa "Save, pay later"; arule save garchhan, approve pachhi.',
       'Bill tirda subcontractor sanga rahela paisa (peski, agadi tireko, opening balance) aafai pahile katchha; baki matra cash. Sabai katiye cash tirnu pardaina.',
@@ -215,6 +224,7 @@ export const HELP_SECTIONS: HelpSection[] = [
     key: 'reports',
     title: 'Reports',
     items: [
+      'Cost by heading ma Quantity pani: saman kati (unit anusar, firta ghatayera), Jyala kati ghanta ra person-days.',
       'Project cost summary, Cost by heading, Budget vs recorded cost, Supplier ledger (khata), Subcontractor ledger.',
       'Payment register, Material purchases, Pending orders and deliveries, Daily activity, Progress history, Labour cost.',
       'Miti, project, party anusar filter; Excel ma export; print wa PDF.',
@@ -234,8 +244,9 @@ export const HELP_SECTIONS: HelpSection[] = [
     key: 'catalog',
     title: 'Catalog (saman ko suchi)',
     items: [
+      'Saman ko puro suchi pahile dekhi thapiyeko chha: rod, cement, sand (masino, crusher), gitti, eenta, block, dhunga, tile, granite, GI ra MS pipe, jhyal-dhoka, putty ra paint, electrical, plumbing.',
       'Saman thapne: naam, local name, short code, specification, default unit, default heading.',
-      'Unit thapne.',
+      'Unit thapne (Sq.ft, Litre, Running ft samet); nachahine saman Deactivate garne.',
     ],
   },
   {

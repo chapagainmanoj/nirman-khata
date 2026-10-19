@@ -24,13 +24,13 @@ Deno.serve(async (req) => {
   })
   const { data: userData } = await caller.auth.getUser()
   const user = userData.user
-  if (!user) return fail('Not signed in', 401)
+  if (!user) return fail('Not signed in', 401, 'not_signed_in')
 
   let body: Body
   try {
     body = await req.json()
   } catch {
-    return fail('Invalid request body')
+    return fail('Invalid request body', 400, 'invalid_request')
   }
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } })
 
@@ -91,6 +91,6 @@ Deno.serve(async (req) => {
     return fail('Unknown action')
   } catch (e) {
     console.error(e)
-    return fail('The file service did not answer. Try again.', 502)
+    return fail('The file service did not answer. Try again.', 502, 'service_down')
   }
 })

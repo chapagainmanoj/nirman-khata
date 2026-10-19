@@ -3,6 +3,7 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.117.3'
 import { corsHeaders, fail, json, MIN_PASSWORD_LENGTH } from '../_shared/http.ts'
 import { parseLoginId } from '../_shared/login-id.ts'
+import { readBody, text } from '../_shared/validate.ts'
 
 const url = Deno.env.get('SUPABASE_URL')!
 const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!
@@ -13,28 +14,24 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return fail('Method not allowed', 405)
 
-  let body: { company_name?: string; full_name?: string; login?: string; password?: string }
-  try {
-    body = await req.json()
-  } catch {
-    return fail('Invalid request body')
-  }
+  const body = await readBody(req)
+  if (!body) return fail('Invalid request body', 400, 'invalid_request')
 
-  const companyName = body.company_name?.trim()
-  const fullName = body.full_name?.trim()
-  const login = parseLoginId(body.login ?? '')
-  const password = body.password ?? ''
-  if (!companyName) return fail('Company name is required')
-  if (!fullName) return fail('Your name is required')
-  if (!login) return fail('Enter a valid Nepali mobile number (98XXXXXXXX) or email')
-  if (password.length < MIN_PASSWORD_LENGTH) return fail(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`)
+  const companyName = text(body.company_name).trim()
+  const fullName = text(body.full_name).trim()
+  const login = parseLoginId(text(body.login))
+  const password = text(body.password)
+  if (!companyName) return fail('Company name is required', 400, 'company_name_required')
+  if (!fullName) return fail('Your name is required', 400, 'name_required')
+  if (!login) return fail('Enter a valid Nepali mobile number (98XXXXXXXX) or email', 400, 'invalid_login')
+  if (password.length < MIN_PASSWORD_LENGTH) return fail(`Password must be at least ${MIN_PASSWORD_LENGTH} characters`, 400, 'password_short')
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false } })
   // On the hosted project only approved logins may register (the allow list).
   // create_company() checks again; this only avoids creating a login we would delete.
   const { data: approved, error: precheckError } = await admin.rpc('registration_precheck', { p_login_email: login.email })
-  if (precheckError) return fail('Could not create the account', 500)
-  if (!approved) return fail(NOT_APPROVED, 403)
+  if (precheckError) return fail('Could not create the account', 500, 'server_error')
+  if (!approved) return fail(NOT_APPROVED, 403, 'not_approved')
 
   const { data: created, error: createError } = await admin.auth.admin.createUser({
     email: login.email,
@@ -44,7 +41,7 @@ Deno.serve(async (req) => {
   })
   if (createError || !created.user) {
     const taken = createError?.message?.toLowerCase().includes('already')
-    return fail(taken ? 'This phone or email is already registered' : 'Could not create the account', taken ? 409 : 500)
+    return taken ? fail('This phone or email is already registered', 409, 'login_taken') : fail('Could not create the account', 500, 'server_error')
   }
 
   // Create the company as the new user, so create_company() sees auth.uid().
@@ -60,9 +57,13 @@ Deno.serve(async (req) => {
 
   if (companyError) {
     const { error: deleteError } = await admin.auth.admin.deleteUser(created.user.id)
-    if (deleteError) console.error('register: could not delete the half-created login', created.user.id, deleteError.message)
-    if ('code' in companyError && companyError.code === '42501') return fail(NOT_APPROVED, 403)
-    return fail('Could not create the company', 500)
+    if (deleteError) {
+      // The login stays without a company: trying again would only say "already registered".
+      console.error('register: could not delete the half-created login', created.user.id, deleteError.message)
+      return fail('The account was made but the company was not. Contact us to finish it; do not register again.', 500, 'half_registered')
+    }
+    if ('code' in companyError && companyError.code === '42501') return fail(NOT_APPROVED, 403, 'not_approved')
+    return fail('Could not create the company', 500, 'server_error')
   }
   return json({ company_id: companyId, login_email: login.email })
 })

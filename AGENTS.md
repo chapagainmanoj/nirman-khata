@@ -34,7 +34,7 @@ Node 22, pnpm 11, Docker. Root: `pnpm install && pnpm --dir app install`.
 | Unit tests | `pnpm --dir app test` |
 | Typecheck + build | `pnpm --dir app build` |
 | Lint | `pnpm --dir app lint` |
-| DB tests | `pnpm db:test`, `pnpm db:test:race`, `pnpm db:test:files`, `pnpm db:test:export` |
+| DB tests | `pnpm db:test`, `pnpm db:test:race`, `pnpm db:test:files`, `pnpm db:test:staff`, `pnpm db:test:export` |
 | E2E | `pnpm --dir app e2e` (needs db + dev server) |
 Demo logins: mobile `9800000001`–`9800000005`, password `password123` (roles in README).
 
@@ -66,6 +66,11 @@ Demo logins: mobile `9800000001`–`9800000005`, password `password123` (roles i
   success, so retries and double taps are safe.
 - Forms save drafts on the device through `lib/drafts.ts` (keyed by user + company).
 - Show errors with `lib/errors.ts`, which maps constraint names to plain messages; add new ones there.
+  SQL messages are shown only for our own codes (`P0001`, `P0002`, `22023` via `raise exception ... using errcode`);
+  other database/PostgREST errors show a generic message. Edge Functions answer with `fail(message, status, code)`;
+  give a new code words in `i18n.ts` as `function.<code>` and add it to `FUNCTION_CODES` in `lib/errors.ts`.
+- Edge Functions check their body at run time with `_shared/validate.ts` (`text`, `flag`, `isUuid`, `uuidList`):
+  a type annotation does not validate JSON, and `!!"false"` is true.
 - After a mutation, `refresh(queryClient, ...changed)` from `data/refresh.ts` with every kind of data it changed
   (`'deliveries'`, `'ledger'`, ...). A new query family needs one line in `SHOWS` (a test fails until it has it).
   Don't await a wide refresh before the next UI step of a form (it reorders things on a slow phone).
