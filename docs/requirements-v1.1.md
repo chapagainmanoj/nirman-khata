@@ -416,7 +416,7 @@ Measurement books, retention and deductions are future scope.
 - Each worker's page has their details, the crews they are on (each opening that crew's calendar with them chosen) and their khata. It has no calendar of its own. (Revised 2026-10-17: the separate day roster and the time card were removed, so attendance is entered and seen in one place.)
 - Days closed before workers became payees stay owed to their crew. Days added to labour cost before Draft and Verified count as verified.
 - **Advances before payday** (revised 2026-10-18): a worker may be paid more than they are owed ("paid ahead") or given peski while nothing is owed; no separate Advance button. When their next days are verified, that money comes off those days first (Farchhyaut), from any project, so the payment form asks only for the rest. The crew page shows money a worker holds as "Paid ahead", never as a minus amount.
-- Draft days are counted, never priced: the worker's summary says how many are drafts, the project's "Not in spent yet" line and a "Verify attendance" to-do give the number of days not verified.
+- Draft days are counted, never priced: the worker's summary says how many are drafts, the project's "Not counted yet" line and a "Verify attendance" to-do give the number of days not verified.
 
 ---
 
@@ -498,7 +498,7 @@ Example day:
 - Physical progress vs budget used
 - Pending orders/deliveries, unbilled receipts
 - Recent activity, latest report date
-- **Data completeness banner** next to recorded cost: count and estimated value of unbilled deliveries, unposted draft bills, and days since the last daily report. Cost figures are labelled "recorded cost" (on the project page, "Spent", with paid and due under it and "Left" of the spending budget beside it), never "total cost".
+- **Data completeness banner** next to recorded cost: count and estimated value of unbilled deliveries, unposted draft bills, and days since the last daily report. Cost figures are labelled "recorded cost" (on the project page, "Cost so far", with paid and due under it and "Left" of the spending budget beside it), never "total cost".
 
 ### 18.3 Reports
 1. Project cost summary

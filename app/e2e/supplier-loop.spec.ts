@@ -84,7 +84,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.goto('/projects')
   await page.getByRole('link', { name: /Ward 5 school building/ }).click()
   // Delivered but not billed is listed under Spent, not added in.
-  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('1 delivered item with no bill yet')
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('1 delivered item without a bill')
   // The to-do sits on the Activity tab and opens the project's deliveries.
   await page.getByRole('tab', { name: 'Activity' }).click()
   await page.getByRole('button', { name: 'Enter bills' }).click()
@@ -207,7 +207,7 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.goto('/projects')
   await page.getByRole('link', { name: /Ward 5 school building/ }).click()
   // Summary strip and the contract and budget card show the same figure.
-  await expect(row(page, 'Spent').first()).toContainText('Rs. 51,000')
+  await expect(row(page, 'Cost so far')).toContainText('Rs. 51,000')
   await expect(row(page, 'Spent').last()).toContainText('Rs. 51,000')
   await expect(row(page, 'Paid').last()).toContainText('Rs. 51,000')
   await expect(row(page, 'Due').last()).toContainText('Rs. 0')

@@ -189,7 +189,7 @@ function SummaryStrip({ projectId }: { projectId: string }) {
     <section aria-label={t('projectDetail.summary')} className="rounded-xl border border-line bg-surface p-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <div className="text-sm font-medium text-subtle">{t('projectDetail.spent')}</div>
+          <div className="text-sm font-medium text-subtle">{t('projectDetail.costSoFar')}</div>
           <div className="text-3xl font-semibold text-ink tabular-nums">{formatNPR(spent)}</div>
           <div className="mt-1 text-sm text-subtle">
             {t('projectDetail.paid')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(f.cash_paid_paisa)}</span>

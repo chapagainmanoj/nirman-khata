@@ -67,7 +67,7 @@ test('dashboard, reports and exports agree', async ({ page }) => {
 
   // Project page: recorded cost by source, and a link to the cost-by-heading report.
   await page.getByRole('link', { name: /P-1 · Karki house/ }).click()
-  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Spent')
+  await expect(page.getByRole('region', { name: 'Summary' })).toContainText('Cost so far')
   await expect(page.getByRole('link', { name: 'Cost by heading report' })).toHaveAttribute('href', `/reports/cost-by-heading?project=${projectId}`)
   await expect(page.getByRole('listitem').filter({ hasText: 'Own labour' }).filter({ hasText: 'Rs. 6,000' }).first()).toBeVisible()
   await page.screenshot(shots('m5-02-project'))
