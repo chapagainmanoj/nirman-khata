@@ -20,6 +20,7 @@ import { BalanceText } from '../parties/PartyParts'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { canManageSuppliers, canPost, canRecordPayments } from '../supply/permissions'
 import { useCharges, usePackageFigures, useWorkPackage } from './api'
+import { t } from '../../lib/i18n'
 
 type Charge = NonNullable<ReturnType<typeof useCharges>['data']>[number]
 
@@ -35,7 +36,7 @@ export function WorkPackageDetailPage() {
 
   if (pkg.isPending) return <Spinner />
   if (pkg.error) return <ErrorBanner onRetry={() => void pkg.refetch()}>{friendlyError(pkg.error)}</ErrorBanner>
-  if (!pkg.data) return <EmptyState title="Work package not found">It does not exist or you are not assigned to its project.</EmptyState>
+  if (!pkg.data) return <EmptyState title={t('workPackageDetail.workPackageNotFound')}>{t('workPackageDetail.itDoesNotExist')}</EmptyState>
   const w = pkg.data
   const f = figures.data?.find((x) => x.work_package_id === w.id)
   const [statusLabel, statusTone] = PACKAGE_STATUS[w.status]
@@ -45,7 +46,7 @@ export function WorkPackageDetailPage() {
     <>
       <PageHeader
         title={w.scope}
-        crumbs={[{ to: '/parties', label: 'Parties' }, { to: '/subcontractors', label: 'Subcontractors' }]}
+        crumbs={[{ to: '/parties', label: t('workPackageDetail.parties') }, { to: '/subcontractors', label: t('workPackageDetail.subcontractors') }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Link className="text-slate" to={`/subcontractors/${w.subcontractor_id}`}>{w.subcontractors?.name}</Link>
@@ -56,41 +57,41 @@ export function WorkPackageDetailPage() {
         }
         actions={
           <div className="flex flex-wrap gap-2">
-            {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/${w.id}/edit`}>Edit</ButtonLink>}
+            {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/${w.id}/edit`}>{t('common.edit')}</ButtonLink>}
             {canRecordPayments(auth) && auth.canSeeFinance && (
-              <ButtonLink to={`/payments/new?subcontractor=${w.subcontractor_id}&package=${w.id}`}>Pay peski or bill</ButtonLink>
+              <ButtonLink to={`/payments/new?subcontractor=${w.subcontractor_id}&package=${w.id}`}>{t('workPackageDetail.payPeskiOrBill')}</ButtonLink>
             )}
           </div>
         }
       />
-      {!!paidFromHeld && <div className="mb-4"><Notice>{formatNPR(paidFromHeld)} taken from money they hold. Nothing paid in cash.</Notice></div>}
+      {!!paidFromHeld && <div className="mb-4"><Notice>{t('workPackageDetail.paidfromheldTakenFromMoney', { paidFromHeld: formatNPR(paidFromHeld) })}</Notice></div>}
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Card title="Work">
-          <Detail label="Progress">{Number(w.progress_pct)}%</Detail>
-          <Detail label="Heading">{w.cost_headings?.name}</Detail>
-          <Detail label="Priced">{w.rate_basis === 'rate' ? `Rate per ${w.units?.name ?? ''}` : 'Lump sum'}</Detail>
-          {w.terms?.quantity != null && <Detail label="Expected quantity">{Number(w.terms.quantity).toLocaleString('en-IN')} {unit}</Detail>}
-          <Detail label="Planned">{(w.planned_start || w.planned_end) && <><DateText value={w.planned_start} display={auth.dateDisplay} />{w.planned_end && <> to <DateText value={w.planned_end} display={auth.dateDisplay} /></>}</>}</Detail>
-          <Detail label="Notes">{w.notes}</Detail>
+        <Card title={t('workPackageDetail.work')}>
+          <Detail label={t('workPackageDetail.progress')}>{Number(w.progress_pct)}%</Detail>
+          <Detail label={t('workPackageDetail.heading')}>{w.cost_headings?.name}</Detail>
+          <Detail label={t('workPackageDetail.priced')}>{w.rate_basis === 'rate' ? t('workPackageDetail.ratePerValue', { value: w.units?.name ?? '' }) : t('workPackageDetail.lumpSum')}</Detail>
+          {w.terms?.quantity != null && <Detail label={t('workPackageDetail.expectedQuantity')}>{Number(w.terms.quantity).toLocaleString('en-IN')} {unit}</Detail>}
+          <Detail label={t('workPackageDetail.planned')}>{(w.planned_start || w.planned_end) && <><DateText value={w.planned_start} display={auth.dateDisplay} />{w.planned_end && <> {t('workPackageDetail.to')}{' '}<DateText value={w.planned_end} display={auth.dateDisplay} /></>}</>}</Detail>
+          <Detail label={t('workPackageDetail.notes')}>{w.notes}</Detail>
         </Card>
         {auth.canSeeFinance && (
-          <Card title="Money">
+          <Card title={t('workPackageDetail.money')}>
             {figures.isPending && <Spinner />}
             <ErrorBanner onRetry={() => void figures.refetch()}>{figures.error && friendlyError(figures.error)}</ErrorBanner>
             {f && (
               <>
-                <Detail label="Agreed value">{formatNPR(f.agreed_value_paisa)}</Detail>
-                {w.terms?.rate_paisa != null && <Detail label="Rate">{formatNPR(w.terms.rate_paisa)} per {unit}</Detail>}
-                <Detail label="Work done (cost)">
+                <Detail label={t('workPackageDetail.agreedValue')}>{formatNPR(f.agreed_value_paisa)}</Detail>
+                {w.terms?.rate_paisa != null && <Detail label={t('workPackageDetail.rate')}>{t('workPackageDetail.ratePerUnit', { rate: formatNPR(w.terms.rate_paisa), unit })}</Detail>}
+                <Detail label={t('workPackageDetail.workDoneCost')}>
                   {formatNPR(f.approved_paisa)}
                   {f.agreed_value_paisa ? <span className="text-subtle"> · {percent(f.approved_paisa, f.agreed_value_paisa)}</span> : null}
                 </Detail>
-                {f.pending_claims_paisa > 0 && <Detail label="Bills waiting">{formatNPR(f.pending_claims_paisa)}</Detail>}
-                <Detail label="Paid">{formatNPR(f.paid_paisa)}</Detail>
-                <Detail label="Balance"><BalanceText paisa={f.balance_paisa} /></Detail>
-                <Detail label="Remaining value">{formatNPR(f.remaining_value_paisa)}</Detail>
+                {f.pending_claims_paisa > 0 && <Detail label={t('workPackageDetail.billsWaiting')}>{formatNPR(f.pending_claims_paisa)}</Detail>}
+                <Detail label={t('workPackageDetail.paid')}>{formatNPR(f.paid_paisa)}</Detail>
+                <Detail label={t('workPackageDetail.balance')}><BalanceText paisa={f.balance_paisa} /></Detail>
+                <Detail label={t('workPackageDetail.remainingValue')}>{formatNPR(f.remaining_value_paisa)}</Detail>
                 {f.remaining_value_paisa !== null && f.remaining_value_paisa < 0 && (
-                  <p className="mt-2 text-sm text-warn-ink">Approved work is more than the agreed value.</p>
+                  <p className="mt-2 text-sm text-warn-ink">{t('workPackageDetail.approvedWorkIsMore')}</p>
                 )}
               </>
             )}
@@ -101,14 +102,14 @@ export function WorkPackageDetailPage() {
       {auth.canSeeFinance && (
         <section className="mt-6">
           <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base font-semibold text-ink">Work done (bills)</h2>
-            {!claiming && <Button variant="secondary" onClick={() => setClaiming(true)}>Add bill</Button>}
+            <h2 className="text-base font-semibold text-ink">{t('workPackageDetail.workDoneBills')}</h2>
+            {!claiming && <Button variant="secondary" onClick={() => setClaiming(true)}>{t('workPackageDetail.addBill')}</Button>}
           </div>
           {claiming && <BillForm packageId={w.id} subcontractorId={w.subcontractor_id} onDone={() => setClaiming(false)} />}
           {charges.isPending && <Spinner />}
           <ErrorBanner onRetry={() => void charges.refetch()}>{charges.error && friendlyError(charges.error)}</ErrorBanner>
           {charges.data?.length === 0 && !claiming && (
-            <p className="text-sm text-subtle">No bills yet. Add the subcontractor's bill or running measurement when it comes.</p>
+            <p className="text-sm text-subtle">{t('workPackageDetail.noBillsYetAdd')}</p>
           )}
           <ul className="grid gap-3 lg:grid-cols-2">
             {charges.data?.map((c) => <ChargeItem key={c.id} c={c} subcontractorId={w.subcontractor_id} />)}
@@ -117,8 +118,8 @@ export function WorkPackageDetailPage() {
       )}
 
       {auth.canSeeFinance && (
-        <Card title="Agreement and measurements" className="mt-6">
-          <Attachments owner={{ work_package_id: w.id }} canAdd={canManageSuppliers(auth)} label="Add agreement or measurement photo" />
+        <Card title={t('workPackageDetail.agreementAndMeasurements')} className="mt-6">
+          <Attachments owner={{ work_package_id: w.id }} canAdd={canManageSuppliers(auth)} label={t('workPackageDetail.addAgreementOrMeasurement')} />
         </Card>
       )}
     </>
@@ -179,30 +180,30 @@ function BillForm({ packageId, subcontractorId, onDone }: { packageId: string; s
   }
   return (
     <form onSubmit={(e) => submit(e)} className="mb-4 flex flex-col gap-3 rounded-xl border border-line bg-surface p-4">
-      <div className="font-semibold text-ink">New bill</div>
+      <div className="font-semibold text-ink">{t('workPackageDetail.newBill')}</div>
       <p className="text-sm text-subtle">
         {approveNow
-          ? 'Saving adds this work to project cost and to what you owe them, from the bill date.'
-          : 'Accounts approves it before it counts as cost.'}
+          ? t('workPackageDetail.savingAddsThisWork')
+          : t('workPackageDetail.accountsApprovesItBefore')}
       </p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={approveNow ? 'Amount' : 'Amount billed'} htmlFor="cl-amount" hint={approveNow ? 'What you agree to pay for this work' : undefined}>
+        <Field label={approveNow ? t('workPackageDetail.amount') : t('workPackageDetail.amountBilled')} htmlFor="cl-amount" hint={approveNow ? t('workPackageDetail.whatYouAgreeTo') : undefined}>
           <MoneyInput id="cl-amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
-        <Field label="Bill date" htmlFor="cl-date"><DateInput id="cl-date" value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
-        <Field label="Bill number" htmlFor="cl-no" hint="Optional, e.g. RA-1"><Input id="cl-no" value={claimNo} onChange={(e) => setClaimNo(e.target.value)} /></Field>
-        <Field label="Work done" htmlFor="cl-desc" hint="Optional, e.g. 1,600 sq.ft ground floor walls"><Input id="cl-desc" value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
+        <Field label={t('workPackageDetail.billDate')} htmlFor="cl-date"><DateInput id="cl-date" value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
+        <Field label={t('workPackageDetail.billNumber')} htmlFor="cl-no" hint={t('workPackageDetail.optionalEGRa')}><Input id="cl-no" value={claimNo} onChange={(e) => setClaimNo(e.target.value)} /></Field>
+        <Field label={t('workPackageDetail.workDone')} htmlFor="cl-desc" hint={t('workPackageDetail.optionalEG1')}><Input id="cl-desc" value={description} onChange={(e) => setDescription(e.target.value)} /></Field>
       </div>
       <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
       <div className="flex flex-wrap gap-2">
         {approveNow && canRecordPayments(auth) && (
-          <Button type="button" busy={save.isPending && save.variables} disabled={!parseNPR(amount) || save.isPending} onClick={(e) => submit(e, true)}>Save and pay</Button>
+          <Button type="button" busy={save.isPending && save.variables} disabled={!parseNPR(amount) || save.isPending} onClick={(e) => submit(e, true)}>{t('workPackageDetail.saveAndPay')}</Button>
         )}
         <Button type="submit" variant={approveNow && canRecordPayments(auth) ? 'secondary' : 'primary'} busy={save.isPending && !save.variables}
           disabled={!parseNPR(amount) || save.isPending}>
-          {approveNow ? 'Save, pay later' : 'Save bill'}
+          {approveNow ? t('workPackageDetail.savePayLater') : t('workPackageDetail.saveBill')}
         </Button>
-        <Button type="button" variant="ghost" onClick={onDone}>Cancel</Button>
+        <Button type="button" variant="ghost" onClick={onDone}>{t('common.cancel')}</Button>
       </div>
     </form>
   )
@@ -232,7 +233,7 @@ function ChargeItem({ c, subcontractorId }: { c: Charge; subcontractorId: string
     <li className="rounded-xl border border-line bg-surface p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 text-sm">
-          <div className="font-semibold text-ink">{c.claim_no ? `Bill ${c.claim_no}` : 'Bill'}</div>
+          <div className="font-semibold text-ink">{c.claim_no ? t('workPackageDetail.billClaimno', { claimNo: c.claim_no }) : t('workPackageDetail.bill')}</div>
           <div className="text-xs text-subtle"><DateText value={c.charge_date} display={auth.dateDisplay} />{c.description && ` · ${c.description}`}</div>
         </div>
         <span className="flex gap-1">
@@ -241,47 +242,45 @@ function ChargeItem({ c, subcontractorId }: { c: Charge; subcontractorId: string
         </span>
       </div>
       <div className="mt-2 text-sm">
-        <Detail label="Billed">{formatNPR(c.claimed_paisa)}</Detail>
+        <Detail label={t('workPackageDetail.billed')}>{formatNPR(c.claimed_paisa)}</Detail>
         {/* Approved as billed on the bill date (one-step entry): the two lines would only repeat it. */}
-        {c.approved_paisa != null && c.approved_paisa !== c.claimed_paisa && <Detail label="Approved (cost)">{formatNPR(c.approved_paisa)}</Detail>}
-        {c.approved_date && c.approved_date !== c.charge_date && <Detail label="Approved on"><DateText value={c.approved_date} display={auth.dateDisplay} /></Detail>}
-        {c.status === 'approved' && <Detail label="Paid">{formatNPR(c.settled_paisa)}</Detail>}
+        {c.approved_paisa != null && c.approved_paisa !== c.claimed_paisa && <Detail label={t('workPackageDetail.approvedCost')}>{formatNPR(c.approved_paisa)}</Detail>}
+        {c.approved_date && c.approved_date !== c.charge_date && <Detail label={t('workPackageDetail.approvedOn')}><DateText value={c.approved_date} display={auth.dateDisplay} /></Detail>}
+        {c.status === 'approved' && <Detail label={t('workPackageDetail.paid')}>{formatNPR(c.settled_paisa)}</Detail>}
         {/* Part paid: what is left, as on bills and labour. */}
-        {c.status === 'approved' && outstanding > 0 && c.settled_paisa > 0 && <Detail label="Still due">{formatNPR(outstanding)}</Detail>}
-        {c.decision_note && <Detail label={c.status === 'rejected' ? 'Reason' : 'Note'}>{c.decision_note}</Detail>}
+        {c.status === 'approved' && outstanding > 0 && c.settled_paisa > 0 && <Detail label={t('workPackageDetail.stillDue')}>{formatNPR(outstanding)}</Detail>}
+        {c.decision_note && <Detail label={c.status === 'rejected' ? t('workPackageDetail.reason') : t('common.note')}>{c.decision_note}</Detail>}
       </div>
 
       <div className="mt-2 flex flex-wrap gap-2">
-        {c.status === 'draft' && canPost(auth) && !approving && <Button onClick={() => setApproving(true)}>Approve</Button>}
+        {c.status === 'draft' && canPost(auth) && !approving && <Button onClick={() => setApproving(true)}>{t('workPackageDetail.approve')}</Button>}
         {c.status === 'approved' && outstanding > 0 && canRecordPayments(auth) && (
-          <ButtonLink variant="secondary" to={`/payments/new?subcontractor=${subcontractorId}&doc=${c.id}`}>Pay this</ButtonLink>
+          <ButtonLink variant="secondary" to={`/payments/new?subcontractor=${subcontractorId}&doc=${c.id}`}>{t('workPackageDetail.payThis')}</ButtonLink>
         )}
         {c.status === 'draft' && (c.created_by === auth.userId || canPost(auth)) && (
-          <ConfirmButton confirmLabel="Delete bill" disabled={remove.isPending} onConfirm={() => remove.mutate()}>Delete</ConfirmButton>
+          <ConfirmButton confirmLabel={t('workPackageDetail.deleteBill')} disabled={remove.isPending} onConfirm={() => remove.mutate()}>{t('workPackageDetail.delete')}</ConfirmButton>
         )}
       </div>
       {approving && <ApproveForm c={c} onDone={async () => { setApproving(false); await after() }} onCancel={() => setApproving(false)} />}
       {c.status === 'draft' && canPost(auth) && !approving && (
         <div className="mt-2">
-          <ReasonButton variant="ghost" title="Reject this bill" confirmLabel="Reject" busy={reject.isPending}
+          <ReasonButton variant="ghost" title={t('workPackageDetail.rejectThisBill')} confirmLabel={t('workPackageDetail.reject')} busy={reject.isPending}
             error={reject.error && friendlyError(reject.error)} onConfirm={(reason) => reject.mutate(reason)}>
-            Reject
-          </ReasonButton>
+            {t('workPackageDetail.reject')}</ReasonButton>
         </div>
       )}
       {c.status === 'approved' && canPost(auth) && (
         <div className="mt-2">
-          <ReasonButton variant="ghost" title="Reverse this approved work" hint="Cost goes back down; money paid for it is peski again, or overpaid."
-            confirmLabel="Reverse" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
-            withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
+          <ReasonButton variant="ghost" title={t('workPackageDetail.reverseThisApprovedWork')} hint={t('workPackageDetail.costGoesBackDown')}
+            confirmLabel={t('workPackageDetail.reverse')} busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
+            withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: t('workPackageDetail.reversalDate') }}
             onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
-            Reverse
-          </ReasonButton>
+            {t('workPackageDetail.reverse')}</ReasonButton>
         </div>
       )}
       <ErrorBanner>{(remove.error || reject.error) && friendlyError(remove.error || reject.error)}</ErrorBanner>
       <div className="mt-2">
-        <Attachments owner={{ charge_id: c.id }} canAdd={c.status === 'draft'} canRemove={c.status === 'draft'} label="Add bill photo" />
+        <Attachments owner={{ charge_id: c.id }} canAdd={c.status === 'draft'} canRemove={c.status === 'draft'} label={t('workPackageDetail.addBillPhoto')} />
       </div>
     </li>
   )
@@ -304,18 +303,18 @@ function ApproveForm({ c, onDone, onCancel }: { c: Charge; onDone: () => unknown
   }
   return (
     <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
-      <p className="text-sm text-subtle">Approving makes this project cost from the approval date. Payments are recorded separately.</p>
+      <p className="text-sm text-subtle">{t('workPackageDetail.approvingMakesThisProject')}</p>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Amount approved" htmlFor={`ap-amount-${c.id}`}><MoneyInput id={`ap-amount-${c.id}`} value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
-        <Field label="Approval date" htmlFor={`ap-date-${c.id}`}><DateInput id={`ap-date-${c.id}`} value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
-        <Field label={less ? 'Why less than billed?' : 'Note'} htmlFor={`ap-note-${c.id}`} hint={less ? 'Required, e.g. measured 1,600 sq.ft, not 1,800' : 'Optional'}>
+        <Field label={t('workPackageDetail.amountApproved')} htmlFor={`ap-amount-${c.id}`}><MoneyInput id={`ap-amount-${c.id}`} value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+        <Field label={t('workPackageDetail.approvalDate')} htmlFor={`ap-date-${c.id}`}><DateInput id={`ap-date-${c.id}`} value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
+        <Field label={less ? t('workPackageDetail.whyLessThanBilled') : t('common.note')} htmlFor={`ap-note-${c.id}`} hint={less ? t('workPackageDetail.requiredEGMeasured') : t('common.optional')}>
           <Input id={`ap-note-${c.id}`} value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
       </div>
       <ErrorBanner>{approve.error && friendlyError(approve.error)}</ErrorBanner>
       <div className="flex gap-2">
-        <Button type="submit" busy={approve.isPending} disabled={!approved || (less && !note.trim())}>Approve {approved ? formatNPR(approved) : ''}</Button>
-        <Button type="button" variant="secondary" onClick={onCancel}>Cancel</Button>
+        <Button type="submit" busy={approve.isPending} disabled={!approved || (less && !note.trim())}>{t('workPackageDetail.approveValue', { value: approved ? formatNPR(approved) : '' })}</Button>
+        <Button type="button" variant="secondary" onClick={onCancel}>{t('common.cancel')}</Button>
       </div>
     </form>
   )

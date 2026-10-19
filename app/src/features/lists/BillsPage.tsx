@@ -11,6 +11,7 @@ import { useBillCount, useBills, useBillsOwed } from '../supply/api'
 import { BillTable } from '../supply/BillRow'
 import { canEnter, canPost } from '../supply/permissions'
 import { useProjectFilter } from './ProjectFilter'
+import { t, type MessageKey } from '../../lib/i18n'
 
 type Tab = 'to_post' | 'drafts' | 'posted' | 'all'
 const STATUSES = {
@@ -20,20 +21,20 @@ const STATUSES = {
   all: undefined,
 } as const
 
-const EMPTY: Record<Tab, string> = {
-  to_post: 'Nothing waiting to be posted.',
-  drafts: 'No drafts.',
-  posted: 'No posted bills.',
-  all: 'No bills yet.',
+const EMPTY: Record<Tab, MessageKey> = {
+  to_post: 'bills.empty.toPost',
+  drafts: 'bills.empty.drafts',
+  posted: 'bills.empty.posted',
+  all: 'bills.empty.all',
 }
 
 // How bills get to each tab, for a tab that is empty: an owner who posts their own bills may never
 // have seen To post or Drafts fill up.
-const HOW: Record<Tab, string> = {
-  to_post: 'Bills entered by site staff or a project manager and sent with "Send to Accounts" wait here to be checked and posted. Bills entered by Admin or Accounts are posted straight away.',
-  drafts: 'A bill saved with "Save draft" waits here until it is finished.',
-  posted: 'Posted bills count in cost and in what is owed to the supplier.',
-  all: 'Enter a bill when a supplier sends one.',
+const HOW: Record<Tab, MessageKey> = {
+  to_post: 'bills.how.toPost',
+  drafts: 'bills.how.drafts',
+  posted: 'bills.how.posted',
+  all: 'bills.how.all',
 }
 
 export function BillsPage() {
@@ -59,24 +60,24 @@ export function BillsPage() {
   const shown = useBills({ ...scope, statuses: STATUSES[tab] })
   const named = (t: Exclude<Tab, 'all'>, text: string): [Tab, string] => [t, counts[t].data !== undefined ? `${text} (${counts[t].data})` : text]
   const tabs: Array<[Tab, string]> = posts
-    ? [named('to_post', 'To post'), named('drafts', 'Drafts'), named('posted', 'Posted'), ['all', 'All']]
+    ? [named('to_post', t('bills.toPost')), named('drafts', t('bills.drafts')), named('posted', t('bills.posted')), ['all', t('bills.all')]]
     : auth.canSeeFinance
-      ? [named('drafts', 'My drafts'), named('posted', 'Posted'), ['all', 'All']]
-      : [named('drafts', 'My drafts')]
+      ? [named('drafts', t('bills.myDrafts')), named('posted', t('bills.posted')), ['all', t('bills.all')]]
+      : [named('drafts', t('bills.myDrafts'))]
   const owed = useBillsOwed(auth.companyId, { projectId: projectId ?? undefined }, auth.canSeeFinance && (tab === 'posted' || tab === 'all')).data ?? 0
   const total = tab === 'all' ? null : counts[tab].data
 
   return (
     <>
-      <PageHeader title="Bills" subtitle={posts ? 'Post bills sent from site, and see what is still unpaid.' : undefined}
-        actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/bills/new?project=${recordProject}` : '/bills/new'}>{posts ? 'Enter bill' : 'Bill photo'}</ButtonLink>} />
+      <PageHeader title={t('bills.bills')} subtitle={posts ? t('bills.postBillsSentFrom') : undefined}
+        actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/bills/new?project=${recordProject}` : '/bills/new'}>{posts ? t('bills.enterBill') : t('bills.billPhoto')}</ButtonLink>} />
       {chip}
-      <Tabs tabs={tabs} value={tab} onChange={setTab} label="Bills">
+      <Tabs tabs={tabs} value={tab} onChange={setTab} label={t('bills.bills')}>
         {(settling || shown.isPending) && <Spinner />}
         <ErrorBanner onRetry={() => void shown.refetch()}>{shown.error && friendlyError(shown.error)}</ErrorBanner>
-        {!settling && shown.data?.length === 0 && empty('bills here', <EmptyState title={EMPTY[tab]}>{HOW[tab]}</EmptyState>)}
+        {!settling && shown.data?.length === 0 && empty(t('bills.what'), <EmptyState title={t(EMPTY[tab])}>{t(HOW[tab])}</EmptyState>)}
         {owed > 0 && (tab === 'posted' || tab === 'all') && (
-          <p className="mb-2 text-sm text-subtle">Still owed on these bills: <span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
+          <p className="mb-2 text-sm text-subtle">{t('bills.stillOwedOnThese')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(owed)}</span></p>
         )}
         {!settling && !!shown.data?.length && <BillTable bills={shown.data} showSupplier showProject={showProject} />}
         <ShowMore list={shown} total={total} />

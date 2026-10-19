@@ -18,6 +18,7 @@ import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { PAYMENT_METHODS } from '../../lib/labels'
+import { t } from '../../lib/i18n'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { useUnits } from '../catalog/api'
 import { useCrews } from '../costs/api'
@@ -26,7 +27,7 @@ import { useProjects } from '../projects/api'
 import { projectCrumbs } from '../projects/crumbs'
 import { rpc } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
-import { useRefreshSite, useReportDay, useStages, WEATHER } from './api'
+import { useRefreshSite, useReportDay, useStages, WEATHER, weatherLabel } from './api'
 import { TrashIcon } from '../../components/icons'
 
 type Line = { id: string; description: string; qty: string; unit_id: string }
@@ -134,11 +135,11 @@ export function DailyReportPage() {
   function submit(confirm = false) {
     const vals = getValues()
     const problem =
-      !vals.project_id ? 'Choose the project.'
-      : vals.work_date > today ? 'A report cannot be dated in the future.'
-      : !vals.work_done.trim() ? 'Say what work was done.'
-      : labourOn && vals.add_labour && !vals.crew_id ? 'Choose the crew for the labour cost.'
-      : labourOn && vals.add_labour && !(parseNPR(vals.amount) ?? 0) ? 'Enter the labour cost for the day, or untick it.'
+      !vals.project_id ? t('daily.err.project')
+      : vals.work_date > today ? t('daily.err.future')
+      : !vals.work_done.trim() ? t('daily.err.work')
+      : labourOn && vals.add_labour && !vals.crew_id ? t('daily.err.crew')
+      : labourOn && vals.add_labour && !(parseNPR(vals.amount) ?? 0) ? t('daily.err.amount')
       : ''
     setError(problem)
     if (!problem) save.mutate({ vals, confirm })
@@ -147,23 +148,23 @@ export function DailyReportPage() {
   if (saved) {
     return (
       <>
-        <PageHeader title="Report sent" crumbs={projectCrumbs(projects.data, v.project_id)} />
+        <PageHeader title={t('daily.sent.title')} crumbs={projectCrumbs(projects.data, v.project_id)} />
         <Card>
-          <p className="text-sm">The daily report is saved for the office.</p>
+          <p className="text-sm">{t('daily.sent.body')}</p>
           {saved.labour && (
             <p className="mt-2 text-sm">
-              Labour {formatNPR(saved.labour.total_paisa)}:{' '}
-              {saved.labour.payment ? `paid now (${saved.labour.payment.number}).` : 'not paid yet; it shows as owed to the crew.'}
+              {t('daily.sent.labour', { amount: formatNPR(saved.labour.total_paisa) })}{' '}
+              {saved.labour.payment ? t('daily.sent.paid', { number: saved.labour.payment.number }) : t('daily.sent.unpaid')}
             </p>
           )}
           {saved.photoFailed > 0 && (
-            <div className="mt-3"><Notice>{saved.photoFailed} photo(s) did not upload. They are kept on this phone; open the report to upload them again.</Notice></div>
+            <div className="mt-3"><Notice>{t('daily.sent.photoFailed', { n: saved.photoFailed })}</Notice></div>
           )}
         </Card>
         <div className="mt-4 flex flex-wrap gap-2">
-          <ButtonLink to={`/daily/${saved.id}`}>Open report</ButtonLink>
-          <ButtonLink variant="secondary" to={`/projects/${v.project_id}?tab=site`}>Update progress</ButtonLink>
-          <Button variant="ghost" onClick={() => { form.reset(fresh(v.project_id)); setSaved(null) }}>Another report</Button>
+          <ButtonLink to={`/daily/${saved.id}`}>{t('daily.sent.open')}</ButtonLink>
+          <ButtonLink variant="secondary" to={`/projects/${v.project_id}?tab=site`}>{t('daily.sent.progress')}</ButtonLink>
+          <Button variant="ghost" onClick={() => { form.reset(fresh(v.project_id)); setSaved(null) }}>{t('daily.sent.another')}</Button>
         </div>
       </>
     )
@@ -174,18 +175,18 @@ export function DailyReportPage() {
 
   return (
     <>
-      <PageHeader title="Daily report" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="What happened on site today. Only the work done is required." />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored a report you had not sent.</Notice></div>}
+      <PageHeader title={t('daily.title')} crumbs={projectCrumbs(projects.data, v.project_id)} subtitle={t('daily.subtitle')} />
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('daily.restored')}</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Project" htmlFor="dr-project">
+            <Field label={t('daily.project')} htmlFor="dr-project">
               <Select id="dr-project" value={v.project_id} onChange={(e) => setValue('project_id', e.target.value, { shouldDirty: true })}>
-                <option value="">Choose project</option>
+                <option value="">{t('common.project.choose')}</option>
                 {projectChoices(projects.data, 'site').map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
-            <Field label="Date" htmlFor="dr-date">
+            <Field label={t('daily.date')} htmlFor="dr-date">
               <Controller control={control} name="work_date" render={({ field }) => (
                 <DateInput id="dr-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
               )} />
@@ -193,65 +194,65 @@ export function DailyReportPage() {
           </div>
           {earlier.length > 0 && (
             <p className="mt-3 text-sm text-subtle">
-              Already sent for this day: {earlier.map((r, i) => (
-                <span key={r.id}>{i > 0 && ', '}<Link className="text-slate underline-offset-4 hover:underline" to={`/daily/${r.id}`}>{r.label}</Link></span>
-              ))}. Add another report only for different work.
+              {t('daily.earlier')} {earlier.map((r, i) => (
+                <span key={r.id}>{i > 0 && ', '}<Link className="inline-flex min-h-11 items-center text-slate underline-offset-4 hover:underline [@media(pointer:fine)]:min-h-0" to={`/daily/${r.id}`}>{r.label}</Link></span>
+              ))}{t('daily.earlier.after')}
             </p>
           )}
         </Card>
 
-        <Card title="Photos">
-          <PhotoPicker value={v.photos} onChange={(p) => setValue('photos', p, { shouldDirty: true })} label="Take site photo" what="Site photo" />
+        <Card title={t('daily.photos')}>
+          <PhotoPicker value={v.photos} onChange={(p) => setValue('photos', p, { shouldDirty: true })} label={t('daily.photos.take')} what={t('daily.photos.what')} />
         </Card>
 
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="sm:col-span-2">
-              <Field label="Work done" htmlFor="dr-work" hint="e.g. Ground floor column casting, grid A-C">
+              <Field label={t('daily.work')} htmlFor="dr-work" hint={t('daily.work.hint')}>
                 <Textarea id="dr-work" rows={3} {...register('work_done')} />
               </Field>
             </div>
-            <Field label="People on site" htmlFor="dr-head" hint="Optional"><Input id="dr-head" inputMode="numeric" {...register('headcount')} /></Field>
+            <Field label={t('daily.headcount')} htmlFor="dr-head" hint={t('common.optional')}><Input id="dr-head" inputMode="numeric" {...register('headcount')} /></Field>
             {(stages.data?.length ?? 0) > 0 && (
-              <Field label="Stage" htmlFor="dr-stage" hint="Optional">
+              <Field label={t('daily.stage')} htmlFor="dr-stage" hint={t('common.optional')}>
                 <Select id="dr-stage" {...register('stage_id')}>
-                  <option value="">Not one stage</option>
+                  <option value="">{t('daily.stage.none')}</option>
                   {stages.data?.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </Field>
             )}
           </div>
           <div className="mt-3">
-            <MoreDetails summary="Quantities, area, equipment, issues, weather"
+            <MoreDetails summary={t('daily.more')}
               open={!!(v.area || v.lines.length || v.equipment || v.issues || v.weather || v.labour_note)}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Area or floor" htmlFor="dr-area"><Input id="dr-area" {...register('area')} /></Field>
-                <Field label="Weather" htmlFor="dr-weather">
+                <Field label={t('daily.area')} htmlFor="dr-area"><Input id="dr-area" {...register('area')} /></Field>
+                <Field label={t('daily.weather')} htmlFor="dr-weather">
                   <Select id="dr-weather" {...register('weather')}>
-                    <option value="">Not noted</option>
-                    {WEATHER.map((w) => <option key={w} value={w}>{w}</option>)}
+                    <option value="">{t('daily.weather.none')}</option>
+                    {WEATHER.map((w) => <option key={w} value={w}>{weatherLabel(w)}</option>)}
                   </Select>
                 </Field>
                 <div className="sm:col-span-2">
-                  <h3 className="mb-1 text-sm font-medium text-ink">Quantities done</h3>
+                  <h3 className="mb-1 text-sm font-medium text-ink">{t('daily.qty.title')}</h3>
                   {lines.map((l, i) => (
                     <div key={l.id} className="mb-2 grid grid-cols-[1fr_5rem] gap-2 sm:grid-cols-[1fr_6rem_8rem_auto]">
-                      <Input aria-label={`Item ${i + 1}`} placeholder="e.g. PCC" value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} />
-                      <Input aria-label={`Quantity ${i + 1}`} inputMode="decimal" placeholder="Qty" value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} />
-                      <Select aria-label={`Unit ${i + 1}`} value={l.unit_id} onChange={(e) => setLine(i, { unit_id: e.target.value })}>
-                        <option value="">Unit</option>
+                      <Input aria-label={t('daily.qty.item', { n: i + 1 })} placeholder={t('daily.qty.item.placeholder')} value={l.description} onChange={(e) => setLine(i, { description: e.target.value })} />
+                      <Input aria-label={t('daily.qty.qty', { n: i + 1 })} inputMode="decimal" placeholder={t('daily.qty.qty.placeholder')} value={l.qty} onChange={(e) => setLine(i, { qty: e.target.value })} />
+                      <Select aria-label={t('daily.qty.unit', { n: i + 1 })} value={l.unit_id} onChange={(e) => setLine(i, { unit_id: e.target.value })}>
+                        <option value="">{t('common.unit')}</option>
                         {units.data?.map((u) => <option key={u.id} value={u.id}>{u.code}</option>)}
                       </Select>
-                      <Button type="button" variant="ghost" aria-label={`Remove item ${i + 1}`}
-                        onClick={() => setValue('lines', lines.filter((_, j) => j !== i))}><TrashIcon size={16} />Remove</Button>
+                      <Button type="button" variant="ghost" aria-label={t('daily.qty.remove', { n: i + 1 })}
+                        onClick={() => setValue('lines', lines.filter((_, j) => j !== i))}><TrashIcon size={16} />{t('common.remove')}</Button>
                     </div>
                   ))}
-                  <Button type="button" variant="secondary" onClick={() => setValue('lines', [...lines, blankLine()])}>Add quantity</Button>
+                  <Button type="button" variant="secondary" onClick={() => setValue('lines', [...lines, blankLine()])}>{t('daily.qty.add')}</Button>
                 </div>
-                <Field label="Equipment used" htmlFor="dr-equip"><Input id="dr-equip" {...register('equipment')} /></Field>
-                <Field label="Labour note" htmlFor="dr-lnote" hint="e.g. 4 mistri, 8 helpers"><Input id="dr-lnote" {...register('labour_note')} /></Field>
+                <Field label={t('daily.equipment')} htmlFor="dr-equip"><Input id="dr-equip" {...register('equipment')} /></Field>
+                <Field label={t('daily.labourNote')} htmlFor="dr-lnote" hint={t('daily.labourNote.hint')}><Input id="dr-lnote" {...register('labour_note')} /></Field>
                 <div className="sm:col-span-2">
-                  <Field label="Issues or delays" htmlFor="dr-issues"><Textarea id="dr-issues" rows={2} {...register('issues')} /></Field>
+                  <Field label={t('daily.issues')} htmlFor="dr-issues"><Textarea id="dr-issues" rows={2} {...register('issues')} /></Field>
                 </div>
               </div>
             </MoreDetails>
@@ -259,15 +260,15 @@ export function DailyReportPage() {
         </Card>
 
         {v.project_id && (
-          <Card title="Received this day">
+          <Card title={t('daily.received')}>
             {deliveries.length === 0 ? (
               <p className="text-sm text-subtle">
-                No deliveries recorded for this day.{' '}
-                <Link className="font-medium text-slate underline-offset-4 hover:underline" to={`/deliveries/new?project=${v.project_id}`}>Record a delivery</Link>
+                {t('daily.received.none')}{' '}
+                <Link className="font-medium text-slate underline-offset-4 hover:underline" to={`/deliveries/new?project=${v.project_id}`}>{t('daily.received.record')}</Link>
               </p>
             ) : (
               <>
-                <p className="mb-2 text-sm text-subtle">Already recorded, so there is no need to enter them again.</p>
+                <p className="mb-2 text-sm text-subtle">{t('daily.received.already')}</p>
                 <ul>
                   {deliveries.map((d) => (
                     <li key={d.id} className="border-b border-line py-2 text-sm last:border-0">
@@ -282,24 +283,24 @@ export function DailyReportPage() {
 
         {labourOn && (
           <Card>
-            <Checkbox label="Add the day's labour cost" hint="Saved as cost for the crew, once, with this report." {...register('add_labour')} />
+            <Checkbox label={t('daily.labour.add')} hint={t('daily.labour.add.hint')} {...register('add_labour')} />
             {v.add_labour && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Field label="Crew" htmlFor="dr-crew">
+                <Field label={t('daily.labour.crew')} htmlFor="dr-crew">
                   <Select id="dr-crew" value={v.crew_id} onChange={(e) => setValue('crew_id', e.target.value, { shouldDirty: true })}>
-                    <option value="">Choose crew</option>
+                    <option value="">{t('daily.labour.crew.choose')}</option>
                     {crewOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
                   </Select>
                 </Field>
-                <Field label="Labour cost for the day" htmlFor="dr-amount">
+                <Field label={t('daily.labour.amount')} htmlFor="dr-amount">
                   <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="dr-amount" value={field.value} onChange={field.onChange} />} />
                 </Field>
                 {mayPay && (
                   <div className="sm:col-span-2">
-                    <Checkbox label="Paid now" hint="Records the payment too. The cost is counted once." {...register('pay_now')} />
+                    <Checkbox label={t('daily.labour.paidNow')} hint={t('daily.labour.paidNow.hint')} {...register('pay_now')} />
                     {v.pay_now && (
                       <div className="mt-3 max-w-xs">
-                        <Field label="How" htmlFor="dr-method">
+                        <Field label={t('daily.labour.how')} htmlFor="dr-method">
                           <Select id="dr-method" {...register('method')}>
                             {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                           </Select>
@@ -315,24 +316,24 @@ export function DailyReportPage() {
 
         {byAttendance && v.project_id && (
           <Card>
-            <p className="text-sm text-ink">Labour is marked worker by worker on the attendance roster.</p>
-            <p className="mt-1 text-sm"><Link className="text-slate" to={`/labour/crew?project=${v.project_id}${v.work_date !== todayKathmandu() ? `&date=${v.work_date}` : ''}`}>Open attendance</Link></p>
+            <p className="text-sm text-ink">{t('daily.attendance')}</p>
+            <p className="text-sm"><Link className="inline-flex min-h-11 items-center text-slate underline underline-offset-2 [@media(pointer:fine)]:min-h-0" to={`/labour/crew?project=${v.project_id}${v.work_date !== todayKathmandu() ? `&date=${v.work_date}` : ''}`}>{t('daily.attendance.open')}</Link></p>
           </Card>
         )}
 
         {duplicate && (
           <Notice>
-            <span className="block">{duplicate.charAt(0).toUpperCase() + duplicate.slice(1)}. Is this a second labour entry for the same day?</span>
+            <span className="block">{duplicate.charAt(0).toUpperCase() + duplicate.slice(1)}. {t('daily.duplicate.ask')}</span>
             <span className="mt-2 flex flex-wrap gap-2">
-              <Button type="button" busy={save.isPending} onClick={() => submit(true)}>Yes, save it too</Button>
-              <Button type="button" variant="secondary" onClick={() => setDuplicate('')}>No, check first</Button>
+              <Button type="button" busy={save.isPending} onClick={() => submit(true)}>{t('daily.duplicate.yes')}</Button>
+              <Button type="button" variant="secondary" onClick={() => setDuplicate('')}>{t('daily.duplicate.no')}</Button>
             </span>
           </Notice>
         )}
         <ErrorBanner>{error || (!duplicate && save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
-          <Button type="submit" busy={save.isPending}>Send report</Button>
-          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+          <Button type="submit" busy={save.isPending}>{t('daily.send')}</Button>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>{t('common.cancel')}</Button>
         </FormActions>
       </form>
     </>

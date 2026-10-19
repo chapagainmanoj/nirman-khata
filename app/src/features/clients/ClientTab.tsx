@@ -10,6 +10,7 @@ import { formatNPR } from '../../lib/money'
 import { useAmountsAsOf } from '../projects/api'
 import { canRecordPayments } from '../supply/permissions'
 import { useClientReceipts, useClientReceived } from './api'
+import { t } from '../../lib/i18n'
 
 export function ClientTab({ projectId, clientName }: { projectId: string; clientName: string | null }) {
   const auth = useCompany()
@@ -25,27 +26,26 @@ export function ClientTab({ projectId, clientName }: { projectId: string; client
     <section className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-subtle">
-          Money {clientName ? clientName : 'the client'} paid you for this work. It is not part of your costs.
-        </p>
-        {canRecordPayments(auth) && <ButtonLink to={`/receipts/new?project=${projectId}`}>Record payment received</ButtonLink>}
+          {t('clientTab.moneyPaid', { name: clientName || t('clientTab.theClient') })}</p>
+        {canRecordPayments(auth) && <ButtonLink to={`/receipts/new?project=${projectId}`}>{t('clientTab.recordPaymentReceived')}</ButtonLink>}
       </div>
       <Card>
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <div className="text-sm font-medium text-subtle">Received from client</div>
+            <div className="text-sm font-medium text-subtle">{t('clientTab.receivedFromClient')}</div>
             <div className="text-2xl font-semibold text-ink tabular-nums">{formatNPR(got)}</div>
-            {contract !== null && <div className="mt-1 text-sm text-subtle">of <span className="font-semibold text-ink tabular-nums">{formatNPR(contract)}</span> contract</div>}
+            {contract !== null && <div className="mt-1 text-sm text-subtle">{t('clientTab.of')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(contract)}</span> {t('clientTab.contract')}</div>}
           </div>
           <div>
-            <div className="text-sm font-medium text-subtle">{left !== null && left < 0 ? 'Received more than the contract by' : 'Contract balance'}</div>
-            <div className="text-2xl font-semibold text-ink tabular-nums">{left === null ? 'Not available' : formatNPR(Math.abs(left))}</div>
+            <div className="text-sm font-medium text-subtle">{left !== null && left < 0 ? t('clientTab.receivedMoreThanThe') : t('clientTab.contractBalance')}</div>
+            <div className="text-2xl font-semibold text-ink tabular-nums">{left === null ? t('common.notAvailable') : formatNPR(Math.abs(left))}</div>
           </div>
         </div>
       </Card>
-      <Card title="Payments received">
+      <Card title={t('clientTab.paymentsReceived')}>
         {receipts.isPending && <Spinner />}
         <ErrorBanner onRetry={() => void receipts.refetch()}>{receipts.error && friendlyError(receipts.error)}</ErrorBanner>
-        {receipts.data?.length === 0 && <p className="text-sm text-subtle">No payments from the client recorded yet.</p>}
+        {receipts.data?.length === 0 && <p className="text-sm text-subtle">{t('clientTab.noPaymentsFromThe')}</p>}
         <ul>
           {receipts.data?.map((r) => (
             <li key={r.id} className="border-b border-line last:border-0">
@@ -54,7 +54,7 @@ export function ClientTab({ projectId, clientName }: { projectId: string; client
                   <span className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-ink">{r.number}</span>
                     <span className="text-subtle">{CLIENT_RECEIPT_KINDS[r.kind]}</span>
-                    {r.status === 'reversed' && <Badge tone="bad">Reversed</Badge>}
+                    {r.status === 'reversed' && <Badge tone="bad">{t('clientTab.reversed')}</Badge>}
                   </span>
                   <span className="block text-xs text-subtle">
                     <DateText value={r.receipt_date} display={auth.dateDisplay} /> · {PAYMENT_METHODS[r.method]}{r.reference ? ` · ${r.reference}` : ''}

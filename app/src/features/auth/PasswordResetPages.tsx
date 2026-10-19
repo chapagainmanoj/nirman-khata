@@ -22,31 +22,31 @@ export function ForgotPasswordPage() {
     e.preventDefault()
     setError('')
     const id = parseLoginId(login)
-    if (!id) return setError('Enter the email you sign in with.')
-    if (id.kind === 'phone') return setError('You sign in with a mobile number. Ask your company admin to reset your password.')
+    if (!id) return setError(t('passwordResetPages.enterTheEmailYou'))
+    if (id.kind === 'phone') return setError(t('passwordResetPages.youSignInWith'))
     setBusy(true)
     const { error } = await supabase.auth.resetPasswordForEmail(id.email, { redirectTo: `${window.location.origin}/reset` })
     setBusy(false)
     // Same answer whether or not the email has a login, so this page cannot be used to find accounts.
-    if (error && (error.status === undefined || error.status === 0)) return setError('Could not send. Check your connection.')
+    if (error && (error.status === undefined || error.status === 0)) return setError(t('passwordResetPages.couldNotSendCheck'))
     setSent(true)
   }
 
   return (
-    <AuthShell title="Reset your password">
+    <AuthShell title={t('passwordResetPages.resetYourPassword')}>
       {sent ? (
         <div className="flex flex-col gap-4">
-          <Notice>If this email has a login, a reset link is on its way. Open it on this phone or computer. It works once.</Notice>
-          <Link to="/login" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">Back to sign in</Link>
+          <Notice>{t('passwordResetPages.ifThisEmailHas')}</Notice>
+          <Link to="/login" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">{t('passwordResetPages.backToSignIn')}</Link>
         </div>
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
-          <p className="text-sm text-subtle">For logins with an email. If you sign in with a mobile number, ask your company admin.</p>
-          <Field label="Email" htmlFor="forgot-email">
+          <p className="text-sm text-subtle">{t('passwordResetPages.forLoginsWithAn')}</p>
+          <Field label={t('passwordResetPages.email')} htmlFor="forgot-email">
             <Input id="forgot-email" inputMode="email" value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="username" required />
           </Field>
           <ErrorBanner>{error}</ErrorBanner>
-          <Button type="submit" busy={busy}>Send reset link</Button>
+          <Button type="submit" busy={busy}>{t('passwordResetPages.sendResetLink')}</Button>
           <Link to="/login" className="flex min-h-11 items-center justify-center text-sm font-medium text-slate">{t('auth.login')}</Link>
         </form>
       )}
@@ -77,30 +77,30 @@ export function ResetPasswordPage() {
   async function submit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    if (password.length < MIN_PASSWORD) return setError(`Password must be at least ${MIN_PASSWORD} characters.`)
+    if (password.length < MIN_PASSWORD) return setError(t('passwordResetPages.passwordMustBeAt', { minPassword: MIN_PASSWORD }))
     setBusy(true)
     const { error } = await supabase.auth.updateUser({ password })
     setBusy(false)
-    if (error) return setError(error.message.includes('different') ? 'Choose a password different from the old one.' : 'Could not save. Ask for a new link and try again.')
+    if (error) return setError(error.message.includes('different') ? t('passwordResetPages.chooseAPasswordDifferent') : t('passwordResetPages.couldNotSaveAsk'))
     navigate('/', { replace: true })
   }
 
   return (
-    <AuthShell title="Choose a new password">
+    <AuthShell title={t('passwordResetPages.chooseANewPassword')}>
       {ready === 'wait' && <Spinner />}
       {ready === 'no' && (
         <div className="flex flex-col gap-4">
-          <ErrorBanner>This link has expired or was already used.</ErrorBanner>
-          <Link to="/forgot" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">Send a new link</Link>
+          <ErrorBanner>{t('passwordResetPages.thisLinkHasExpired')}</ErrorBanner>
+          <Link to="/forgot" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">{t('passwordResetPages.sendANewLink')}</Link>
         </div>
       )}
       {ready === 'yes' && (
         <form onSubmit={submit} className="flex flex-col gap-4">
-          <Field label="New password" htmlFor="new-password" hint={`At least ${MIN_PASSWORD} characters.`}>
+          <Field label={t('passwordResetPages.newPassword')} htmlFor="new-password" hint={t('passwordResetPages.atLeastMinpasswordCharacters', { minPassword: MIN_PASSWORD })}>
             <Input id="new-password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" required />
           </Field>
           <ErrorBanner>{error}</ErrorBanner>
-          <Button type="submit" busy={busy}>Save password</Button>
+          <Button type="submit" busy={busy}>{t('passwordResetPages.savePassword')}</Button>
         </form>
       )}
     </AuthShell>

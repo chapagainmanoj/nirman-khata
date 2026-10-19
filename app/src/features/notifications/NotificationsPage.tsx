@@ -7,6 +7,7 @@ import { EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/u
 import { formatDateTime } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { supabase } from '../../lib/supabase'
+import { t } from '../../lib/i18n'
 
 export function NotificationsPage() {
   const auth = useCompany()
@@ -36,10 +37,10 @@ export function NotificationsPage() {
 
   return (
     <>
-      <PageHeader title="Notifications" />
+      <PageHeader title={t('notifications.notifications')} />
       {list.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void list.refetch()}>{list.error && friendlyError(list.error)}</ErrorBanner>
-      {list.data?.length === 0 && <EmptyState title="Nothing new">Order slip approvals and decisions show up here.</EmptyState>}
+      {list.data?.length === 0 && <EmptyState title={t('notifications.nothingNew')}>{t('notifications.orderSlipApprovalsAnd')}</EmptyState>}
       <ul className="flex flex-col gap-2">
         {list.data?.map((n) => (
           <li key={n.id}>

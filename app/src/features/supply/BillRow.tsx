@@ -7,6 +7,7 @@ import { BILL_STATUS, billTitle, settlementLabel } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { useProjects } from '../projects/api'
 import type { useBills } from './api'
+import { t } from '../../lib/i18n'
 
 type Bill = NonNullable<ReturnType<typeof useBills>['data']>[number]
 
@@ -32,7 +33,7 @@ export function BillRow({ bill: b, showSupplier, showProject }: { bill: Bill; sh
         <div className="flex shrink-0 flex-col items-end gap-1 text-sm tabular-nums">
           {/* A posted bill that is part paid leads with what is still due. */}
           {b.status === 'posted' && outstanding > 0 && b.settled_paisa > 0 ? (
-            <span><span className="font-semibold text-ink">{formatNPR(outstanding)} due</span> <span className="text-xs text-subtle">of {formatNPR(total)}</span></span>
+            <span><span className="font-semibold text-ink">{t('billRow.outstandingDue', { outstanding: formatNPR(outstanding) })}</span> <span className="text-xs text-subtle">{t('billRow.ofTotal', { total: formatNPR(total) })}</span></span>
           ) : (
             <span>{formatNPR(total)}</span>
           )}
@@ -57,12 +58,12 @@ export function BillTable({ bills, showSupplier, showProject }: { bills: Bill[];
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs text-subtle">
-            <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
-            <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>Bill</th>
-            {showSupplier && <th scope="col" className={`hidden md:table-cell ${th}`}>Supplier</th>}
-            {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>Project</th>}
-            <th scope="col" className={`text-right ${th}`}>Total</th>
-            <th scope="col" className="py-2 pr-4 text-right font-medium">Status</th>
+            <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>{t('billRow.date')}</th>
+            <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>{t('billRow.bill')}</th>
+            {showSupplier && <th scope="col" className={`hidden md:table-cell ${th}`}>{t('common.supplier')}</th>}
+            {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>{t('billRow.project')}</th>}
+            <th scope="col" className={`text-right ${th}`}>{t('billRow.total')}</th>
+            <th scope="col" className="py-2 pr-4 text-right font-medium">{t('billRow.status')}</th>
           </tr>
         </thead>
         <tbody>
@@ -76,7 +77,7 @@ export function BillTable({ bills, showSupplier, showProject }: { bills: Bill[];
               <tr key={b.id} className="border-b border-line align-middle last:border-0 hover:bg-muted">
                 <td className="hidden py-2 pr-3 pl-4 whitespace-nowrap text-subtle sm:table-cell"><DateText value={b.bill_date} display={auth.dateDisplay} /></td>
                 <td className="py-2 pr-3 pl-4 sm:pl-0">
-                  <Link to={`/bills/${b.id}`} className="inline-flex min-h-8 items-center font-medium break-words text-ink hover:underline">{billTitle(b.bill_no)}</Link>
+                  <Link to={`/bills/${b.id}`} className="inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 items-center font-medium break-words text-ink hover:underline">{billTitle(b.bill_no)}</Link>
                   {/* Smaller screens: what the hidden columns say. */}
                   <div className="text-xs text-subtle md:hidden">
                     {showSupplier && b.suppliers?.name && <div className="break-words">{b.suppliers.name}</div>}
@@ -91,7 +92,7 @@ export function BillTable({ bills, showSupplier, showProject }: { bills: Bill[];
                   {/* Posted is the normal state, so it shows only how much is paid. */}
                   {b.status === 'posted' ? <Badge tone={paidTone}>{paidLabel}</Badge> : <Badge tone={tone}>{label}</Badge>}
                   {b.status === 'posted' && outstanding > 0 && b.settled_paisa > 0 && (
-                    <div className="mt-0.5 text-xs whitespace-nowrap text-ink tabular-nums">{formatNPR(outstanding)} due</div>
+                    <div className="mt-0.5 text-xs whitespace-nowrap text-ink tabular-nums">{t('billRow.outstandingDue', { outstanding: formatNPR(outstanding) })}</div>
                   )}
                 </td>
               </tr>

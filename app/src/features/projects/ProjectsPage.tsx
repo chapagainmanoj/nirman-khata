@@ -27,7 +27,7 @@ export function ProjectsPage() {
       {projects.error && <ErrorBanner onRetry={() => void projects.refetch()}>{friendlyError(projects.error)}</ErrorBanner>}
       {projects.data?.length === 0 && (
         <EmptyState title={t('projects.empty')}>
-          {auth.isAdmin ? 'Create your first project to start recording work.' : 'You are not assigned to any project yet.'}
+          {auth.isAdmin ? t('projects.createYourFirstProject') : t('projects.youAreNotAssigned')}
           {auth.isAdmin && <div className="mt-3"><ButtonLink to="/projects/new">{t('projects.new')}</ButtonLink></div>}
         </EmptyState>
       )}
@@ -43,12 +43,12 @@ export function ProjectsPage() {
                 <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge>
               </div>
               <div className="mt-2 text-sm text-subtle">
-                {[p.municipality, p.district].filter(Boolean).join(', ') || 'No location'}
+                {[p.municipality, p.district].filter(Boolean).join(', ') || t('projects.noLocation')}
               </div>
               {auth.canSeeFinance && <ProjectMoney projectId={p.id} />}
               {p.planned_end && (
                 <div className="mt-1 text-xs text-subtle">
-                  Planned finish: <DateText value={p.planned_end} display={auth.dateDisplay} />
+                  {t('projects.plannedFinish')}{' '}<DateText value={p.planned_end} display={auth.dateDisplay} />
                 </div>
               )}
             </Link>
@@ -65,9 +65,9 @@ function ProjectMoney({ projectId }: { projectId: string }) {
   if (!cost.data) return null
   return (
     <div className="mt-2 flex flex-wrap gap-x-4 text-sm tabular-nums">
-      <span className="text-subtle">Cost <span className="font-semibold text-ink">{formatNPR(cost.data.cost_paisa)}</span></span>
+      <span className="text-subtle">{t('projects.cost')}{' '}<span className="font-semibold text-ink">{formatNPR(cost.data.cost_paisa)}</span></span>
       {cost.data.payable_paisa > 0 && (
-        <span className="text-subtle">Owed <span className="font-semibold text-ink">{formatNPR(cost.data.payable_paisa)}</span></span>
+        <span className="text-subtle">{t('projects.owed')}{' '}<span className="font-semibold text-ink">{formatNPR(cost.data.payable_paisa)}</span></span>
       )}
     </div>
   )

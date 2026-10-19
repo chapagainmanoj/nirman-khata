@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 import { useCompany } from '../auth/AuthProvider'
 import { friendlyError } from '../lib/errors'
+import { t, type MessageKey } from '../lib/i18n'
 import { deviceKey } from '../lib/drafts'
 import { callFunction } from '../lib/functions'
 import { newId } from '../lib/ids'
@@ -21,9 +22,10 @@ type OwnerColumn =
 export type AttachmentOwner = { [K in OwnerColumn]: { [P in K]: string } }[OwnerColumn]
 
 // Screen readers hear "Challan photo 1 of 2", not "IMG_20261010_143022.jpg".
-const WHAT: Record<OwnerColumn, string> = {
-  delivery_id: 'Challan', bill_id: 'Bill', payment_id: 'Payment proof', work_package_id: 'Agreement',
-  charge_id: 'Claim', labour_cost_id: 'Labour', expense_id: 'Receipt', daily_report_id: 'Site', progress_update_id: 'Progress', client_receipt_id: 'Cheque',
+const WHAT: Record<OwnerColumn, MessageKey> = {
+  delivery_id: 'photo.what.challan', bill_id: 'photo.what.bill', payment_id: 'photo.what.payment', work_package_id: 'photo.what.agreement',
+  charge_id: 'photo.what.claim', labour_cost_id: 'photo.what.labour', expense_id: 'photo.what.receipt', daily_report_id: 'photo.what.site',
+  progress_update_id: 'photo.what.progress', client_receipt_id: 'photo.what.cheque',
 }
 
 /** A photo picked before its record exists. Blobs survive in the device draft (IndexedDB). */
@@ -47,8 +49,8 @@ export async function uploadAttachment(companyId: string, owner: AttachmentOwner
   const put = await fetch(url, { method: 'PUT', body: photo.blob, headers: { 'Content-Type': contentType } }).catch(() => null)
   // No answer at all is the network (or the bucket refusing this site); an answer names its code,
   // so a refused upload can be told apart from a weak signal.
-  if (!put) throw new Error('The photo did not upload. Check your network and try again.')
-  if (!put.ok) throw new Error(`The photo did not upload (the file store answered ${put.status}). Try again; if it keeps happening, tell your admin.`)
+  if (!put) throw new Error(t('photo.err.network'))
+  if (!put.ok) throw new Error(t('photo.err.store', { status: put.status }))
   await callFunction('files', { action: 'confirm', attachment_id: id })
 }
 
@@ -134,7 +136,7 @@ export const photoQueueKey = (ids: DeviceIds) => ['photo-queue', ids.userId, ids
  * Take photos while filling a form (paper first: the challan or bill is in hand before any typing).
  * They are uploaded after the record saves; until then they stay with the device draft.
  */
-export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Photo', large }: {
+export function PhotoPicker({ value, onChange, label = t('photo.take'), what = t('photo.what'), large }: {
   value: PendingPhoto[]; onChange: (photos: PendingPhoto[]) => void; label?: string; what?: string; large?: boolean
 }) {
   const [busy, setBusy] = useState(false)
@@ -163,14 +165,14 @@ export function PhotoPicker({ value, onChange, label = 'Take photo', what = 'Pho
         <ul className={large ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
           {value.map((p, i) => (
             <li key={p.id} className="flex flex-col items-center gap-1">
-              {urls[p.id] && <img src={urls[p.id]} alt={`${what} ${i + 1} of ${value.length}`} className={large ? IMG_LARGE : IMG_SMALL} decoding="async" />}
-              <Button type="button" variant="ghost" aria-label={`Remove ${what.toLowerCase()} ${i + 1}`}
-                onClick={() => onChange(value.filter((x) => x.id !== p.id))}><TrashIcon size={16} />Remove</Button>
+              {urls[p.id] && <img src={urls[p.id]} alt={t('photo.nOf', { what, n: i + 1, total: value.length })} className={large ? IMG_LARGE : IMG_SMALL} decoding="async" />}
+              <Button type="button" variant="ghost" aria-label={t('photo.remove', { what: what.toLowerCase(), n: i + 1 })}
+                onClick={() => onChange(value.filter((x) => x.id !== p.id))}><TrashIcon size={16} />{t('common.remove')}</Button>
             </li>
           ))}
         </ul>
       )}
-      <div><Button type="button" variant="secondary" busy={busy} onClick={() => void pick()}>{!busy && <CameraIcon size={18} />}{value.length ? 'Add another photo' : label}</Button></div>
+      <div><Button type="button" variant="secondary" busy={busy} onClick={() => void pick()}>{!busy && <CameraIcon size={18} />}{value.length ? t('photo.addAnother') : label}</Button></div>
       <ErrorBanner>{error ? friendlyError(error) : null}</ErrorBanner>
     </div>
   )
@@ -181,7 +183,7 @@ const IMG_SMALL = 'size-24 rounded-lg border border-line object-cover'
 const IMG_LARGE = 'max-h-[70vh] w-full rounded-lg border border-line object-contain'
 
 export function Attachments({
-  owner, canAdd, canRemove, label = 'Add photo', large,
+  owner, canAdd, canRemove, label = t('photo.add'), large,
 }: { owner: AttachmentOwner; canAdd: boolean; canRemove?: boolean; label?: string; large?: boolean }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
@@ -215,13 +217,13 @@ export function Attachments({
     mutationFn: async () => {
       const file = await platform.pickPhoto()
       if (!file) return false
-      setStatus('Uploading…')
+      setStatus(t('photo.uploading'))
       const blob = await compressImage(file)
       await uploadAttachment(auth.companyId, owner, { name: file.name, blob })
       return true
     },
     onSuccess: (added) => {
-      setStatus(added ? 'Photo added.' : '')
+      setStatus(added ? t('photo.added') : '')
       return queryClient.invalidateQueries({ queryKey })
     },
     onError: () => setStatus(''),
@@ -240,7 +242,7 @@ export function Attachments({
       {files.data && files.data.length > 0 && (
         <ul className={large ? 'flex flex-col gap-2' : 'flex flex-wrap gap-2'}>
           {files.data.map((f, i, all) => {
-            const name = `${WHAT[column]} photo ${i + 1} of ${all.length}`
+            const name = t('photo.name', { what: t(WHAT[column]), n: i + 1, total: all.length })
             return (
             <li key={f.id} className={large ? 'flex w-full flex-col items-center gap-1' : 'flex flex-col items-center gap-1'}>
               {f.url && (
@@ -256,8 +258,8 @@ export function Attachments({
                 </a>
               )}
               {canRemove && (
-                <ConfirmButton label={`Remove ${name}`} confirmLabel="Yes, remove" onConfirm={() => remove.mutate(f.id)}>
-                  Remove
+                <ConfirmButton label={t('photo.removeNamed', { name })} confirmLabel={t('photo.yesRemove')} onConfirm={() => remove.mutate(f.id)}>
+                  {t('common.remove')}
                 </ConfirmButton>
               )}
             </li>
@@ -266,7 +268,7 @@ export function Attachments({
         </ul>
       )}
       <QueuedPhotos owner={owner} />
-      {files.data?.length === 0 && !waiting.data?.length && !canAdd && <p className="text-sm text-subtle">No photos.</p>}
+      {files.data?.length === 0 && !waiting.data?.length && !canAdd && <p className="text-sm text-subtle">{t('photo.none')}</p>}
       {canAdd && (
         <div>
           <Button type="button" variant="secondary" busy={add.isPending} onClick={() => add.mutate()}>{!add.isPending && <CameraIcon size={18} />}{label}</Button>
@@ -305,10 +307,10 @@ export function QueuedPhotos({ owner }: { owner: AttachmentOwner }) {
   }
   const retry = useMutation({
     mutationFn: async () => {
-      setStatus('Uploading…')
+      setStatus(t('photo.uploading'))
       return uploadQueued(ids, owner)
     },
-    onSuccess: (failed) => setStatus(failed ? '' : 'Photos uploaded.'),
+    onSuccess: (failed) => setStatus(failed ? '' : t('photo.uploaded')),
     onError: () => setStatus(''),
     onSettled: settle,
   })
@@ -316,7 +318,7 @@ export function QueuedPhotos({ owner }: { owner: AttachmentOwner }) {
   if (!waiting.data?.length) return <Status className="text-xs text-subtle">{status}</Status>
   return (
     <>
-      <WaitingPhotos photos={waiting.data} what={WHAT[column]} busy={retry.isPending}
+      <WaitingPhotos photos={waiting.data} what={t(WHAT[column])} busy={retry.isPending}
         failed={retry.isSuccess && retry.data > 0} onRetry={() => retry.mutate()} onDiscard={(id) => discard.mutate(id)} />
       <Status className="text-xs text-subtle">{status}</Status>
       <ErrorBanner>{retry.error && friendlyError(retry.error)}</ErrorBanner>
@@ -336,20 +338,20 @@ function WaitingPhotos({ photos, what, busy, failed, onRetry, onDiscard }: {
   return (
     <div className="flex flex-col gap-2 rounded-lg border border-warn/30 bg-warn-soft p-3">
       <p className="text-sm text-ink">
-        {n === 1 ? 'This photo has' : `These ${n} photos have`} not uploaded yet. {n === 1 ? 'It is' : 'They are'} kept on this phone.
-        {failed && ' The last try failed too; check the connection.'}
+        {n === 1 ? t('photo.waiting.one') : t('photo.waiting.many', { n })}
+        {failed && t('photo.waiting.failed')}
       </p>
       <ul className="flex flex-wrap gap-2">
         {photos.map((p, i) => (
           <li key={p.id} className="flex flex-col items-center gap-1">
-            <img src={urls[p.id]} alt={`${what} photo waiting ${i + 1} of ${n}`} className={IMG_SMALL} decoding="async" />
-            <ConfirmButton label={`Discard ${what.toLowerCase()} photo ${i + 1}`} confirmLabel="Yes, discard" onConfirm={() => onDiscard(p.id)}>
-              Discard
+            <img src={urls[p.id]} alt={t('photo.waiting.alt', { what, n: i + 1, total: n })} className={IMG_SMALL} decoding="async" />
+            <ConfirmButton label={t('photo.discard.label', { what: what.toLowerCase(), n: i + 1 })} confirmLabel={t('photo.yesDiscard')} onConfirm={() => onDiscard(p.id)}>
+              {t('photo.discard')}
             </ConfirmButton>
           </li>
         ))}
       </ul>
-      <div><Button type="button" busy={busy} onClick={onRetry}>Upload again</Button></div>
+      <div><Button type="button" busy={busy} onClick={onRetry}>{t('photo.uploadAgain')}</Button></div>
     </div>
   )
 }

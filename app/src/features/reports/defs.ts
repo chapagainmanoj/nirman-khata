@@ -2,6 +2,8 @@
 // Every money figure comes from the same database readers as the dashboards and khata,
 // so a report, a dashboard and a ledger agree for the same date (acceptance #14).
 import { type DateDisplay, formatDate } from '../../lib/dates'
+import { type MessageKey, t } from '../../lib/i18n'
+import { PAYMENT_METHODS } from '../../lib/labels'
 import type { XlsxColumn } from '../../lib/xlsx'
 import { docPath, type PartyKind } from '../parties/kinds'
 import { rpc } from '../supply/api'
@@ -31,13 +33,21 @@ export type ReportDef = {
   load: (f: Filters, ctx: Ctx) => Promise<Loaded>
 }
 
+// The reports below hold message keys; reportByKey and visibleReports hand out the words through
+// t(), so the list is read in the current language rather than the one at load.
+type ColSource = Omit<Col, 'label'> & { label: MessageKey }
+type ReportSource = Omit<ReportDef, 'title' | 'description' | 'columns'> & { title: MessageKey; description: MessageKey; columns: ColSource[] }
+const localize = (r: ReportSource): ReportDef => ({
+  ...r, title: t(r.title), description: t(r.description), columns: r.columns.map((c) => ({ ...c, label: t(c.label) })),
+})
+
 const code = (ctx: Ctx, id: string | null) => ctx.projects.find((p) => p.id === id)?.code ?? ''
 const proj = (f: Filters) => (f.project ? { p_project: f.project } : {})
-const PROJECT: Col = { key: 'project', label: 'Project', kind: 'text' }
+const PROJECT: ColSource = { key: 'project', label: 'report.col.project', kind: 'text' }
 const pct = (part: number, whole: number | null) => (whole ? (part / whole) * 100 : null)
 
 const khata = (kind: PartyKind): ReportDef['load'] => async (f, ctx) => {
-  if (!f.party) return { rows: [], note: `Choose a ${kind === 'supplier' ? 'supplier' : 'subcontractor'} to see the ledger.` }
+  if (!f.party) return { rows: [], note: t(kind === 'supplier' ? 'report.chooseParty.supplier' : 'report.chooseParty.subcontractor') }
   const rows = await rpc('party_khata', { p_party: f.party, p_from: f.from, p_to: f.to, ...proj(f) })
   return {
     rows: rows.map((r) => ({
@@ -50,21 +60,21 @@ const khata = (kind: PartyKind): ReportDef['load'] => async (f, ctx) => {
     })),
   }
 }
-const KHATA_COLS: Col[] = [
-  { key: 'date', label: 'Date', kind: 'date' }, { key: 'entry', label: 'Entry', kind: 'text' }, PROJECT,
-  { key: 'charged', label: 'Tirnu parne', kind: 'money', total: true }, { key: 'paid', label: 'Tireko', kind: 'money', total: true },
-  { key: 'balance', label: 'Baki', kind: 'money' },
+const KHATA_COLS: ColSource[] = [
+  { key: 'date', label: 'report.col.date', kind: 'date' }, { key: 'entry', label: 'report.col.entry', kind: 'text' }, PROJECT,
+  { key: 'charged', label: 'report.col.tirnuParne', kind: 'money', total: true }, { key: 'paid', label: 'report.col.tireko', kind: 'money', total: true },
+  { key: 'balance', label: 'report.col.baki', kind: 'money' },
 ]
 
-export const REPORTS: ReportDef[] = [
+const REPORTS: ReportSource[] = [
   {
-    key: 'project-cost', title: 'Project cost summary', group: 'money', finance: true, period: 'asOf', asKnown: true,
-    description: 'Recorded cost, budget used, cash paid and what is owed, per project.',
+    key: 'project-cost', title: 'report.projectCost.title', group: 'money', finance: true, period: 'asOf', asKnown: true,
+    description: 'report.projectCost.description',
     columns: [
-      PROJECT, { key: 'budget', label: 'Budget', kind: 'money', total: true }, { key: 'cost', label: 'Recorded cost', kind: 'money', total: true },
-      { key: 'used', label: 'Budget used', kind: 'pct' }, { key: 'progress', label: 'Work done', kind: 'pct' },
-      { key: 'cash', label: 'Cash paid', kind: 'money', total: true }, { key: 'owed', label: 'Still owed', kind: 'money', total: true },
-      { key: 'unbilled', label: 'Unbilled items', kind: 'qty', total: true },
+      PROJECT, { key: 'budget', label: 'report.col.budget', kind: 'money', total: true }, { key: 'cost', label: 'report.col.recordedCost', kind: 'money', total: true },
+      { key: 'used', label: 'report.col.budgetUsed', kind: 'pct' }, { key: 'progress', label: 'report.col.workDone', kind: 'pct' },
+      { key: 'cash', label: 'report.col.cashPaid', kind: 'money', total: true }, { key: 'owed', label: 'report.col.stillOwed', kind: 'money', total: true },
+      { key: 'unbilled', label: 'report.col.unbilledItems', kind: 'qty', total: true },
     ],
     load: async (f, ctx) => {
       const list = f.project ? ctx.projects.filter((p) => p.id === f.project) : ctx.projects
@@ -86,11 +96,11 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'cost-by-heading', title: 'Cost by heading', group: 'money', finance: true, period: 'asOf', asKnown: true,
-    description: 'Recorded cost under each cost heading, with the quantity of material and labour.',
+    key: 'cost-by-heading', title: 'report.costByHeading.title', group: 'money', finance: true, period: 'asOf', asKnown: true,
+    description: 'report.costByHeading.description',
     columns: [
-      PROJECT, { key: 'heading', label: 'Heading', kind: 'text' }, { key: 'qty', label: 'Quantity', kind: 'text' },
-      { key: 'cost', label: 'Recorded cost', kind: 'money', total: true },
+      PROJECT, { key: 'heading', label: 'report.col.heading', kind: 'text' }, { key: 'qty', label: 'report.col.quantity', kind: 'text' },
+      { key: 'cost', label: 'report.col.recordedCost', kind: 'money', total: true },
     ],
     load: async (f, ctx) => {
       const args = { p_company: ctx.companyId, p_as_of: f.asOf, p_as_known: f.asKnown, ...proj(f) }
@@ -108,16 +118,16 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'budget-vs-cost', title: 'Budget vs recorded cost', group: 'money', finance: true, period: 'asOf', asKnown: true,
-    description: 'Each heading against its budget, using the budget revision in force on the date.',
+    key: 'budget-vs-cost', title: 'report.budgetVsCost.title', group: 'money', finance: true, period: 'asOf', asKnown: true,
+    description: 'report.budgetVsCost.description',
     columns: [
-      PROJECT, { key: 'heading', label: 'Heading', kind: 'text' }, { key: 'budget', label: 'Budget', kind: 'money', total: true },
-      { key: 'cost', label: 'Recorded cost', kind: 'money', total: true }, { key: 'remaining', label: 'Remaining', kind: 'money', total: true },
-      { key: 'used', label: 'Used', kind: 'pct' },
+      PROJECT, { key: 'heading', label: 'report.col.heading', kind: 'text' }, { key: 'budget', label: 'report.col.budget', kind: 'money', total: true },
+      { key: 'cost', label: 'report.col.recordedCost', kind: 'money', total: true }, { key: 'remaining', label: 'report.col.remaining', kind: 'money', total: true },
+      { key: 'used', label: 'report.col.used', kind: 'pct' },
     ],
     load: async (f, ctx) => {
       const rows = await rpc('report_cost_by_heading', { p_company: ctx.companyId, p_as_of: f.asOf, p_as_known: f.asKnown, ...proj(f) })
-      const revisions = [...new Set(rows.map((r) => `${code(ctx, r.project_id)}: budget revision of ${formatDate(r.budget_effective_date, ctx.dateDisplay)}`))]
+      const revisions = [...new Set(rows.map((r) => t('report.budgetRevisionOf', { code: code(ctx, r.project_id), date: formatDate(r.budget_effective_date, ctx.dateDisplay) })))]
       return {
         note: revisions.length ? revisions.join('; ') : undefined,
         rows: rows.map((r) => ({
@@ -132,23 +142,23 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'supplier-ledger', title: 'Supplier ledger (khata)', group: 'money', finance: true, period: 'range', party: 'supplier',
-    description: 'Bills, credits and payments with one supplier, and the running balance.',
+    key: 'supplier-ledger', title: 'report.supplierLedger.title', group: 'money', finance: true, period: 'range', party: 'supplier',
+    description: 'report.supplierLedger.description',
     columns: KHATA_COLS, load: khata('supplier'),
   },
   {
-    key: 'subcontractor-ledger', title: 'Subcontractor ledger', group: 'money', finance: true, period: 'range', party: 'subcontractor',
-    description: 'Approved work charges and payments with one subcontractor.',
+    key: 'subcontractor-ledger', title: 'report.subcontractorLedger.title', group: 'money', finance: true, period: 'range', party: 'subcontractor',
+    description: 'report.subcontractorLedger.description',
     columns: KHATA_COLS, load: khata('subcontractor'),
   },
   {
-    key: 'payments', title: 'Payment register', group: 'money', finance: true, period: 'range',
-    description: 'Every payment in the period, what it settled, and any reversal. Refunds received show as minus amounts.',
+    key: 'payments', title: 'report.payments.title', group: 'money', finance: true, period: 'range',
+    description: 'report.payments.description',
     columns: [
-      { key: 'date', label: 'Date', kind: 'date' }, { key: 'number', label: 'Number', kind: 'text' },
-      { key: 'party', label: 'Paid to', kind: 'text' }, { key: 'method', label: 'How', kind: 'text' },
-      { key: 'amount', label: 'Amount', kind: 'money', total: true }, { key: 'settled', label: 'Matched to bills', kind: 'money', total: true },
-      { key: 'reversed', label: 'Reversed on', kind: 'date' },
+      { key: 'date', label: 'report.col.date', kind: 'date' }, { key: 'number', label: 'report.col.number', kind: 'text' },
+      { key: 'party', label: 'report.col.paidTo', kind: 'text' }, { key: 'method', label: 'report.col.how', kind: 'text' },
+      { key: 'amount', label: 'report.col.amount', kind: 'money', total: true }, { key: 'settled', label: 'report.col.matchedToBills', kind: 'money', total: true },
+      { key: 'reversed', label: 'report.col.reversedOn', kind: 'date' },
     ],
     load: async (f, ctx) => {
       const rows = await rpc('report_payments', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f), ...(f.party ? { p_party: f.party } : {}) })
@@ -156,7 +166,8 @@ export const REPORTS: ReportDef[] = [
         rows: rows.map((r) => ({
           link: r.kind === 'refund' ? `/refunds/${r.payment_id}` : `/payments/${r.payment_id}`,
           values: {
-            date: r.payment_date, number: r.kind === 'refund' ? `${r.number} (refund)` : r.number, party: r.party_name, method: r.method.replace('_', ' '),
+            date: r.payment_date, number: r.kind === 'refund' ? t('report.refundNumber', { number: r.number }) : r.number, party: r.party_name,
+            method: PAYMENT_METHODS[r.method as keyof typeof PAYMENT_METHODS] ?? r.method,
             // With a project chosen, the part of the payment that went to it.
             amount: f.project ? r.project_paisa : r.amount_paisa, settled: r.settled_paisa, reversed: r.reversed_on,
           },
@@ -165,12 +176,12 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'material-purchases', title: 'Material purchases', group: 'money', finance: true, period: 'range', party: 'supplier',
-    description: 'Quantity and cost of each material bought, per project, from posted bills.',
+    key: 'material-purchases', title: 'report.materialPurchases.title', group: 'money', finance: true, period: 'range', party: 'supplier',
+    description: 'report.materialPurchases.description',
     columns: [
-      PROJECT, { key: 'material', label: 'Material', kind: 'text' }, { key: 'qty', label: 'Quantity', kind: 'qty' },
-      { key: 'unit', label: 'Unit', kind: 'text' }, { key: 'cost', label: 'Cost', kind: 'money', total: true },
-      { key: 'avg', label: 'Average rate', kind: 'money' }, { key: 'suppliers', label: 'Suppliers', kind: 'text' },
+      PROJECT, { key: 'material', label: 'report.col.material', kind: 'text' }, { key: 'qty', label: 'report.col.quantity', kind: 'qty' },
+      { key: 'unit', label: 'report.col.unit', kind: 'text' }, { key: 'cost', label: 'report.col.cost', kind: 'money', total: true },
+      { key: 'avg', label: 'report.col.averageRate', kind: 'money' }, { key: 'suppliers', label: 'report.col.suppliers', kind: 'text' },
     ],
     load: async (f, ctx) => {
       const rows = await rpc('report_material_purchases', {
@@ -187,13 +198,13 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'pending', title: 'Pending orders and deliveries', group: 'site', finance: false, period: 'asOf',
-    description: 'Ordered but not yet received, and received but not yet billed.',
+    key: 'pending', title: 'report.pending.title', group: 'site', finance: false, period: 'asOf',
+    description: 'report.pending.description',
     columns: [
-      { key: 'what', label: 'Waiting for', kind: 'text' }, PROJECT, { key: 'doc', label: 'Order slip / challan', kind: 'text' },
-      { key: 'date', label: 'Date', kind: 'date' }, { key: 'supplier', label: 'Supplier', kind: 'text' },
-      { key: 'item', label: 'Item', kind: 'text' }, { key: 'qty', label: 'Quantity', kind: 'qty' }, { key: 'unit', label: 'Unit', kind: 'text' },
-      { key: 'age', label: 'Days', kind: 'qty' },
+      { key: 'what', label: 'report.col.waitingFor', kind: 'text' }, PROJECT, { key: 'doc', label: 'report.col.orderSlipChallan', kind: 'text' },
+      { key: 'date', label: 'report.col.date', kind: 'date' }, { key: 'supplier', label: 'report.col.supplier', kind: 'text' },
+      { key: 'item', label: 'report.col.item', kind: 'text' }, { key: 'qty', label: 'report.col.quantity', kind: 'qty' }, { key: 'unit', label: 'report.col.unit', kind: 'text' },
+      { key: 'age', label: 'report.col.days', kind: 'qty' },
     ],
     load: async (f, ctx) => {
       const rows = await rpc('report_pending_orders', { p_company: ctx.companyId, ...proj(f) })
@@ -209,12 +220,12 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'daily-activity', title: 'Daily activity', group: 'site', finance: false, period: 'range',
-    description: 'The daily site reports sent in the period.',
+    key: 'daily-activity', title: 'report.dailyActivity.title', group: 'site', finance: false, period: 'range',
+    description: 'report.dailyActivity.description',
     columns: [
-      { key: 'date', label: 'Date', kind: 'date' }, PROJECT, { key: 'work', label: 'Work done', kind: 'text' },
-      { key: 'stage', label: 'Stage', kind: 'text' }, { key: 'people', label: 'People', kind: 'qty', total: true },
-      { key: 'issues', label: 'Issues', kind: 'text' }, { key: 'by', label: 'Sent by', kind: 'text' },
+      { key: 'date', label: 'report.col.date', kind: 'date' }, PROJECT, { key: 'work', label: 'report.col.workDone', kind: 'text' },
+      { key: 'stage', label: 'report.col.stage', kind: 'text' }, { key: 'people', label: 'report.col.people', kind: 'qty', total: true },
+      { key: 'issues', label: 'report.col.issues', kind: 'text' }, { key: 'by', label: 'report.col.sentBy', kind: 'text' },
     ],
     load: async (f, ctx) => {
       const rows = await rpc('report_daily_activity', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f) })
@@ -230,12 +241,12 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'progress', title: 'Progress history', group: 'site', finance: false, period: 'range',
-    description: 'Every progress update, with the figure before it and the reason when it went down.',
+    key: 'progress', title: 'report.progress.title', group: 'site', finance: false, period: 'range',
+    description: 'report.progress.description',
     columns: [
-      { key: 'date', label: 'As of', kind: 'date' }, PROJECT, { key: 'stage', label: 'Stage', kind: 'text' },
-      { key: 'before', label: 'Before', kind: 'pct' }, { key: 'pct', label: 'Progress', kind: 'pct' },
-      { key: 'why', label: 'Reason or note', kind: 'text' }, { key: 'by', label: 'By', kind: 'text' },
+      { key: 'date', label: 'report.col.asOf', kind: 'date' }, PROJECT, { key: 'stage', label: 'report.col.stage', kind: 'text' },
+      { key: 'before', label: 'report.col.before', kind: 'pct' }, { key: 'pct', label: 'report.col.progress', kind: 'pct' },
+      { key: 'why', label: 'report.col.reasonOrNote', kind: 'text' }, { key: 'by', label: 'report.col.by', kind: 'text' },
     ],
     load: async (f, ctx) => {
       const rows = await rpc('report_progress_history', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f) })
@@ -251,14 +262,14 @@ export const REPORTS: ReportDef[] = [
     },
   },
   {
-    key: 'labour', title: 'Labour cost', group: 'money', finance: true, labour: true, period: 'range', party: 'crew',
-    description: 'Each day of own labour, what is paid, and reversals.',
+    key: 'labour', title: 'report.labour.title', group: 'money', finance: true, labour: true, period: 'range', party: 'crew',
+    description: 'report.labour.description',
     columns: [
-      { key: 'date', label: 'Date', kind: 'date' }, PROJECT, { key: 'crew', label: 'Crew', kind: 'text' },
-      { key: 'worker', label: 'Worker', kind: 'text' },
-      { key: 'type', label: 'Work', kind: 'text' }, { key: 'people', label: 'People', kind: 'qty', total: true },
-      { key: 'amount', label: 'Amount', kind: 'money', total: true }, { key: 'paid', label: 'Paid', kind: 'money', total: true },
-      { key: 'reversed', label: 'Reversed on', kind: 'date' },
+      { key: 'date', label: 'report.col.date', kind: 'date' }, PROJECT, { key: 'crew', label: 'report.col.crew', kind: 'text' },
+      { key: 'worker', label: 'report.col.worker', kind: 'text' },
+      { key: 'type', label: 'report.col.work', kind: 'text' }, { key: 'people', label: 'report.col.people', kind: 'qty', total: true },
+      { key: 'amount', label: 'report.col.amount', kind: 'money', total: true }, { key: 'paid', label: 'report.col.paid', kind: 'money', total: true },
+      { key: 'reversed', label: 'report.col.reversedOn', kind: 'date' },
     ],
     load: async (f, ctx) => {
       const rows = await rpc('report_labour', {
@@ -277,8 +288,11 @@ export const REPORTS: ReportDef[] = [
   },
 ]
 
-export const reportByKey = (key: string) => REPORTS.find((r) => r.key === key)
+export const reportByKey = (key: string) => {
+  const r = REPORTS.find((x) => x.key === key)
+  return r && localize(r)
+}
 
 /** Money reports only with finance access; labour only when the company tracks own labour. */
 export const visibleReports = (who: { canSeeFinance: boolean; company: { labour_module_enabled: boolean } }) =>
-  REPORTS.filter((r) => (!r.finance || who.canSeeFinance) && (!r.labour || who.company.labour_module_enabled))
+  REPORTS.filter((r) => (!r.finance || who.canSeeFinance) && (!r.labour || who.company.labour_module_enabled)).map(localize)

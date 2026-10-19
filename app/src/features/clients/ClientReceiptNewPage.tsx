@@ -20,6 +20,7 @@ import { useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnDefault, useWorkingOnId } from '../projects/current'
 import { rpc } from '../supply/api'
 import { useRefreshClientMoney } from './api'
+import { t } from '../../lib/i18n'
 
 type PaymentMethod = Database['public']['Enums']['payment_method']
 type Kind = Database['public']['Enums']['client_receipt_kind']
@@ -76,8 +77,8 @@ export function ClientReceiptNewPage() {
 
   function submit(e: FormEvent) {
     e.preventDefault()
-    const why = closed ? `${closed.name} is closed. Reopen it before recording money on it.`
-      : !project ? 'Choose the project.' : paisa <= 0 ? 'Enter the amount the client paid.' : ''
+    const why = closed ? t('clientReceiptNew.nameIsClosedReopen', { name: closed.name })
+      : !project ? t('clientReceiptNew.chooseTheProject') : paisa <= 0 ? t('clientReceiptNew.enterTheAmountThe') : ''
     setProblem(why)
     if (!why) save.mutate(form.getValues())
   }
@@ -85,49 +86,49 @@ export function ClientReceiptNewPage() {
   return (
     <>
       <PageHeader
-        title="Client payment received"
-        crumbs={project ? [{ to: `/projects/${project.id}?tab=client`, label: project.name }] : [{ to: '/projects', label: 'Projects' }]}
-        subtitle="Money the client paid you for the work. It is not part of your costs."
+        title={t('clientReceiptNew.clientPaymentReceived')}
+        crumbs={project ? [{ to: `/projects/${project.id}?tab=client`, label: project.name }] : [{ to: '/projects', label: t('clientReceiptNew.projects') }]}
+        subtitle={t('clientReceiptNew.moneyTheClientPaid')}
       />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored a client payment you had not saved. Check it was not already recorded.</Notice></div>}
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('clientReceiptNew.restoredAClientPayment')}</Notice></div>}
       <Card>
         <form onSubmit={submit} className="flex flex-col gap-4">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Project" htmlFor="cr-project">
+            <Field label={t('clientReceiptNew.project')} htmlFor="cr-project">
               <Select id="cr-project" value={v.project_id} onChange={(e) => set('project_id')(e.target.value)}>
-                <option value="">Choose project</option>
+                <option value="">{t('common.project.choose')}</option>
                 {choices.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
-            <Field label="Amount" htmlFor="cr-amount"
-              hint="What the client paid for this bill or stage, including anything they kept back as TDS or retention.">
+            <Field label={t('clientReceiptNew.amount')} htmlFor="cr-amount"
+              hint={t('clientReceiptNew.whatTheClientPaid')}>
               <MoneyInput id="cr-amount" value={v.amount} onChange={(e) => set('amount')(e.target.value)} />
             </Field>
-            <Field label="Received on" htmlFor="cr-date">
+            <Field label={t('clientReceiptNew.receivedOn')} htmlFor="cr-date">
               <DateInput id="cr-date" value={v.receipt_date} onChange={set('receipt_date')} display={auth.dateDisplay} quick="past" />
             </Field>
-            <Field label="For" htmlFor="cr-kind">
+            <Field label={t('clientReceiptNew.for')} htmlFor="cr-kind">
               <Select id="cr-kind" value={v.kind} onChange={(e) => set('kind')(e.target.value as Kind)}>
                 {Object.entries(CLIENT_RECEIPT_KINDS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </Select>
             </Field>
-            <Field label="How" htmlFor="cr-method">
+            <Field label={t('clientReceiptNew.how')} htmlFor="cr-method">
               <Select id="cr-method" value={v.method} onChange={(e) => set('method')(e.target.value as PaymentMethod)}>
                 {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </Select>
             </Field>
-            <Field label="Reference" htmlFor="cr-ref" hint="Cheque or transaction number">
+            <Field label={t('clientReceiptNew.reference')} htmlFor="cr-ref" hint={t('clientReceiptNew.chequeOrTransactionNumber')}>
               <Input id="cr-ref" value={v.reference} onChange={(e) => set('reference')(e.target.value)} />
             </Field>
-            <Field label="Note" htmlFor="cr-notes">
+            <Field label={t('common.note')} htmlFor="cr-notes">
               <Input id="cr-notes" value={v.notes} onChange={(e) => set('notes')(e.target.value)} />
             </Field>
           </div>
-          <PhotoPicker value={v.photos} onChange={set('photos')} label="Add cheque or voucher photo" what="Cheque photo" />
+          <PhotoPicker value={v.photos} onChange={set('photos')} label={t('clientReceiptNew.addChequeOrVoucher')} what={t('clientReceiptNew.chequePhoto')} />
           <ErrorBanner>{problem || (save.error && friendlyError(save.error))}</ErrorBanner>
           <div className="flex gap-2">
-            <Button type="submit" busy={save.isPending}>Save payment</Button>
-            <Button type="button" variant="secondary" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+            <Button type="submit" busy={save.isPending}>{t('clientReceiptNew.savePayment')}</Button>
+            <Button type="button" variant="secondary" onClick={async () => { await draft.clear(); navigate(-1) }}>{t('common.cancel')}</Button>
           </div>
         </form>
       </Card>

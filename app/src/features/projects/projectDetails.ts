@@ -1,10 +1,11 @@
 // Project detail form values and their mapping to database columns.
 import { z } from 'zod'
+import { t } from '../../lib/i18n'
 import type { ProjectStatus } from '../../lib/supabase'
 
 export const detailsSchema = z.object({
-  code: z.string().trim().min(1, 'Code is required').max(20),
-  name: z.string().trim().min(1, 'Name is required'),
+  code: z.string().trim().min(1, { error: () => t('projectDetails.codeRequired') }).max(20),
+  name: z.string().trim().min(1, { error: () => t('projectDetails.nameRequired') }),
   client_name: z.string().trim(),
   client_phone: z.string().trim(),
   district: z.string().trim(),

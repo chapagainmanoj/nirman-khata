@@ -9,7 +9,7 @@ export function AuthShell({ title, children }: { title: string; children: ReactN
         <div className="mb-6 text-center">
           <BrandMark size={48} className="mx-auto mb-3" />
           <div className="text-2xl font-bold text-ink">{t('app.name')}</div>
-          <div className="text-sm text-subtle">Construction site and cost register</div>
+          <div className="text-sm text-subtle">{t('authShell.constructionSiteAndCost')}</div>
         </div>
         <div className="rounded-xl border border-line bg-surface p-5">
           <h1 className="mb-4 text-lg font-bold text-ink">{title}</h1>

@@ -7,6 +7,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateInput } from '../../components/DateInput'
 import { Field, Input, Select } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
+import { t } from '../../lib/i18n'
 import { isPeriod, periodLabel, periodRange, PERIODS, type DateRange, type Period } from '../../lib/periods'
 import { searchTerm } from '../../lib/search'
 import { useSuppliers } from '../supply/api'
@@ -52,8 +53,8 @@ export function useListFilters({ placeholder, choice }: { placeholder: string; c
   const suppliers = useSuppliers(auth.companyId)
   const term = searchTerm(q)
   const filter = useMemo<ListSearch>(() => {
-    const t = term.toLowerCase()
-    const supplierMatch = t ? (suppliers.data ?? []).filter((s) => s.name.toLowerCase().includes(t)).map((s) => s.id) : []
+    const needle = term.toLowerCase()
+    const supplierMatch = needle ? (suppliers.data ?? []).filter((s) => s.name.toLowerCase().includes(needle)).map((s) => s.id) : []
     const range = periodRange(when, today, auth.dateDisplay, { from: params.get('from') ?? undefined, to: params.get('to') ?? undefined })
     return { ...range, ...(term ? { search: term, supplierMatch } : {}) }
   }, [term, suppliers.data, when, today, auth.dateDisplay, params])
@@ -64,9 +65,9 @@ export function useListFilters({ placeholder, choice }: { placeholder: string; c
   const bar = (
     <div className="mb-3 flex flex-col gap-2">
       <div className="flex flex-col gap-2 sm:flex-row">
-        <Input type="search" aria-label="Search" placeholder={placeholder} value={typed} className="sm:flex-1"
+        <Input type="search" aria-label={t('filter.search')} placeholder={placeholder} value={typed} className="sm:flex-1"
           onChange={(e) => setTyped(e.target.value)} />
-        <Select aria-label="When" value={when} className="sm:w-64"
+        <Select aria-label={t('filter.when')} value={when} className="sm:w-64"
           onChange={(e) => set({ when: e.target.value === 'any' ? null : e.target.value, ...(e.target.value === 'custom' ? {} : { from: null, to: null }) })}>
           {PERIODS.map((p) => <option key={p} value={p}>{periodLabel(p, today, auth.dateDisplay)}</option>)}
         </Select>
@@ -79,10 +80,10 @@ export function useListFilters({ placeholder, choice }: { placeholder: string; c
       </div>
       {when === 'custom' && (
         <div className="grid gap-2 sm:grid-cols-2">
-          <Field label="From" htmlFor="list-from">
+          <Field label={t('filter.from')} htmlFor="list-from">
             <DateInput id="list-from" allowEmpty value={params.get('from') ?? ''} onChange={(v) => set({ from: v || null })} display={auth.dateDisplay} />
           </Field>
-          <Field label="To" htmlFor="list-to">
+          <Field label={t('filter.to')} htmlFor="list-to">
             <DateInput id="list-to" allowEmpty value={params.get('to') ?? ''} onChange={(v) => set({ to: v || null })} display={auth.dateDisplay} />
           </Field>
         </div>
@@ -93,8 +94,13 @@ export function useListFilters({ placeholder, choice }: { placeholder: string; c
   /** Empty-list text when the filters hid everything, with the way out. */
   const noMatch = (what: string) => (
     <p className="text-sm text-subtle">
-      No {what} match{filter.search ? ` “${filter.search}”` : ''}{filter.from || filter.to ? ' in these dates' : ''}{chosen ? ` (${choice?.options.find(([v]) => v === chosen)?.[1]})` : ''}.{' '}
-      <button type="button" onClick={clear} className="font-medium text-slate underline underline-offset-4">Clear search</button>
+      {t('filter.noMatch', {
+        what,
+        search: filter.search ? t('filter.noMatch.search', { search: filter.search }) : '',
+        dates: filter.from || filter.to ? t('filter.noMatch.dates') : '',
+        choice: chosen ? ` (${choice?.options.find(([v]) => v === chosen)?.[1]})` : '',
+      })}{' '}
+      <button type="button" onClick={clear} className="inline-flex min-h-11 items-center font-medium text-slate underline underline-offset-4 [@media(pointer:fine)]:min-h-0">{t('filter.clear')}</button>
     </p>
   )
 

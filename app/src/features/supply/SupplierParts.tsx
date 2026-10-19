@@ -14,6 +14,7 @@ import { usePartyBalances, usePartyOpenItems } from '../parties/api'
 import { useProjects } from '../projects/api'
 import { useOpenSlips } from './api'
 import { canEnter, canRecordPayments } from './permissions'
+import { t } from '../../lib/i18n'
 
 const qty = (n: number) => Number(n.toFixed(3)).toLocaleString('en-IN')
 
@@ -61,7 +62,7 @@ export function OwedByProject({ supplierId }: { supplierId: string }) {
         const p = projects.data?.find((x) => x.id === id)
         return (
           <li key={id} className="flex justify-between gap-3 border-b border-line py-1.5 last:border-0">
-            <span className="min-w-0 truncate text-subtle">{p ? `${p.code} · ${p.name}` : 'Project'}</span>
+            <span className="min-w-0 truncate text-subtle">{p ? `${p.code} · ${p.name}` : t('supplierParts.project')}</span>
             <span className="shrink-0 font-medium text-ink tabular-nums">{formatNPR(paisa)}</span>
           </li>
         )
@@ -75,26 +76,25 @@ export function UnpaidBills({ supplierId }: { supplierId: string }) {
   const items = useUnpaidBills(supplierId, true)
   const projects = useProjects(auth.companyId)
   const code = (id: string) => projects.data?.find((p) => p.id === id)?.code ?? ''
-  if (items.isPending) return <Card title="Unpaid bills"><Spinner /></Card>
-  if (items.error) return <Card title="Unpaid bills"><ErrorBanner onRetry={() => void items.refetch()}>{friendlyError(items.error)}</ErrorBanner></Card>
+  if (items.isPending) return <Card title={t('supplierParts.unpaidBills')}><Spinner /></Card>
+  if (items.error) return <Card title={t('supplierParts.unpaidBills')}><ErrorBanner onRetry={() => void items.refetch()}>{friendlyError(items.error)}</ErrorBanner></Card>
   if (!items.bills.length) return null
   return (
-    <Card title="Unpaid bills">
+    <Card title={t('supplierParts.unpaidBills')}>
       <ul>
         {items.bills.map((b) => (
           <li key={`${b.doc_id}:${b.project_id}`} className="flex items-center gap-3 border-b border-line py-2 last:border-0">
-            <Link to={`/bills/${b.doc_id}`} className="min-w-0 flex-1 text-sm hover:underline">
-              <span className="block font-medium text-ink">Bill {b.label}</span>
+            <Link to={`/bills/${b.doc_id}`} className="flex min-h-11 min-w-0 flex-1 flex-col justify-center text-sm hover:underline">
+              <span className="block font-medium text-ink">{t('supplierParts.billLabel', { label: b.label })}</span>
               <span className="block text-xs text-subtle">
                 {code(b.project_id)} · <DateText value={b.doc_date} display={auth.dateDisplay} /> · {relativeDay(b.doc_date)}
               </span>
             </Link>
             <span className="shrink-0 text-sm font-semibold text-ink tabular-nums">{formatNPR(b.amount_paisa)}</span>
             {canRecordPayments(auth) && (
-              <ButtonLink variant="secondary" aria-label={`Pay bill ${b.label}`}
+              <ButtonLink variant="secondary" aria-label={t('supplierParts.payBillLabel', { label: b.label })}
                 to={`/payments/new?supplier=${supplierId}&bill=${b.doc_id}&project=${b.project_id}${b.amount_paisa < b.full ? `&amount=${b.amount_paisa}` : ''}`}>
-                Pay
-              </ButtonLink>
+                {t('supplierParts.pay')}</ButtonLink>
             )}
           </li>
         ))}
@@ -132,20 +132,20 @@ export function ComingFromThem({ supplierId }: { supplierId: string }) {
   const unbilled = useUnbilled(supplierId)
   if (slips.isPending || unbilled.isPending) return null
   const error = slips.error || unbilled.error
-  if (error) return <Card title="On the way and not billed"><ErrorBanner onRetry={() => { void slips.refetch(); void unbilled.refetch() }}>{friendlyError(error)}</ErrorBanner></Card>
+  if (error) return <Card title={t('supplierParts.onTheWayAnd')}><ErrorBanner onRetry={() => { void slips.refetch(); void unbilled.refetch() }}>{friendlyError(error)}</ErrorBanner></Card>
   if (!slips.data.length && !unbilled.data.length) return null
   return (
-    <Card title="On the way and not billed">
+    <Card title={t('supplierParts.onTheWayAnd')}>
       {slips.data.length > 0 && (
         <>
-          <h3 className="text-sm font-medium text-subtle">Ordered, still to come</h3>
+          <h3 className="text-sm font-medium text-subtle">{t('supplierParts.orderedStillToCome')}</h3>
           <ul className="mb-3">
             {slips.data.map((s) => (
               <li key={s.id} className="border-b border-line last:border-0">
                 <Link to={`/slips/${s.id}`} className="flex min-h-11 items-center justify-between gap-3 py-1.5 text-sm hover:underline">
                   <span className="font-medium text-ink">{s.number}</span>
                   <span className="text-xs text-subtle">
-                    {s.fulfilment === 'partially_received' ? 'Part received' : 'Not received yet'} · ordered <DateText value={s.request_date} display={auth.dateDisplay} />
+                    {s.fulfilment === 'partially_received' ? t('supplierParts.partReceived') : t('supplierParts.notReceivedYet')} {t('supplierParts.ordered')}{' '}<DateText value={s.request_date} display={auth.dateDisplay} />
                   </span>
                 </Link>
               </li>
@@ -155,20 +155,20 @@ export function ComingFromThem({ supplierId }: { supplierId: string }) {
       )}
       {unbilled.data.length > 0 && (
         <>
-          <h3 className="text-sm font-medium text-subtle">Delivered, no bill yet</h3>
+          <h3 className="text-sm font-medium text-subtle">{t('supplierParts.deliveredNoBillYet')}</h3>
           <ul>
             {unbilled.data.map((l) => (
               <li key={l.id} className="flex justify-between gap-3 border-b border-line py-1.5 text-sm last:border-0">
                 <span className="min-w-0">
                   <span className="text-ink">{qty(l.billable)} {l.units?.code} {l.materials?.name ?? l.material_text}</span>
                   <span className="block text-xs text-subtle">
-                    {l.deliveries?.projects?.code}{l.deliveries?.receipt_date && <> · came <DateText value={l.deliveries.receipt_date} display={auth.dateDisplay} /></>}
+                    {l.deliveries?.projects?.code}{l.deliveries?.receipt_date && <> {t('supplierParts.came')}{' '}<DateText value={l.deliveries.receipt_date} display={auth.dateDisplay} /></>}
                   </span>
                 </span>
               </li>
             ))}
           </ul>
-          {canEnter(auth) && <div className="mt-2"><ButtonLink variant="secondary" to={`/bills/new?supplier=${supplierId}`}>Enter bill</ButtonLink></div>}
+          {canEnter(auth) && <div className="mt-2"><ButtonLink variant="secondary" to={`/bills/new?supplier=${supplierId}`}>{t('supplierParts.enterBill')}</ButtonLink></div>}
         </>
       )}
     </Card>
@@ -203,14 +203,14 @@ export function useTheirRates(supplierId: string, enabled = true) {
 export function TheirRates({ supplierId, emptyText }: { supplierId: string; emptyText?: string }) {
   const auth = useCompany()
   // On its own page (emptyText set) the page heading already says "Their rates".
-  const title = emptyText ? undefined : 'Their rates'
+  const title = emptyText ? undefined : t('supplierParts.theirRates')
   const rates = useTheirRates(supplierId)
   if (rates.error) return <Card title={title}><ErrorBanner onRetry={() => void rates.refetch()}>{friendlyError(rates.error)}</ErrorBanner></Card>
   if (rates.isPending) return emptyText ? <Spinner /> : null
   if (!rates.data.length) return emptyText ? <Card title={title}><p className="text-sm text-subtle">{emptyText}</p></Card> : null
   return (
     <Card title={title}>
-      <p className="mb-2 text-xs text-subtle">Last billed rate for each material.</p>
+      <p className="mb-2 text-xs text-subtle">{t('supplierParts.lastBilledRateFor')}</p>
       <ul>
         {rates.data.map((r) => (
           <li key={`${r.material_id}:${r.unit_id}`} className="flex justify-between gap-3 border-b border-line py-1.5 text-sm last:border-0">

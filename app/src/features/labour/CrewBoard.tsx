@@ -27,6 +27,7 @@ import { DateInput } from '../../components/DateInput'
 import { Button, ButtonLink, Card, ConfirmButton, EmptyState, ErrorBanner, Notice, Spinner } from '../../components/ui'
 import { formatDate, relativeDay, todayKathmandu, type IsoDate } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
+import { t } from '../../lib/i18n'
 import { formatNPR } from '../../lib/money'
 import { monthDays, monthLabel, monthOf, monthParam, parseMonth, shiftMonth, type MonthRef } from '../../lib/months'
 import { newId } from '../../lib/ids'
@@ -42,13 +43,13 @@ import { DayGrid } from './DayGrid'
 import { DaySheet, type Mark } from './DaySheet'
 import { WorkerForm } from './WorkerForm'
 
-const money = (p: number | null | undefined) => (p == null ? 'Not available' : formatNPR(p))
+const money = (p: number | null | undefined) => (p == null ? t('common.notAvailable') : formatNPR(p))
 type Company = { day_start: string; day_end: string; standard_day_minutes: number }
 /** What is owed to a worker on this project now: their verified days not paid. Drafts carry no money. */
 const owedNow = (w: CrewWorker) => w.balance_paisa
 const worked = (rows: MonthRow[]) => rows.filter((r) => !r.absent)
 /** Owed, or held by the worker (paid ahead, peski) when below zero: never a minus sign. */
-const owedText = (p: number) => (p < 0 ? `${formatNPR(-p)} ahead` : formatNPR(p))
+const owedText = (p: number) => (p < 0 ? t('crew.ahead', { amount: formatNPR(-p) }) : formatNPR(p))
 
 export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: string | null }) {
   const auth = useCompany()
@@ -112,7 +113,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
   const row = (w: CrewWorker, date: IsoDate, m: Mark | null) => ({ project_id: projectId, crew_id: crewId, worker_id: w.id, work_date: date, ...markRow(m) })
   const reason = (e: unknown) => {
     const overlap = ((e as { message?: string }).message ?? '').startsWith('attendance_overlap')
-    return `${friendlyError(e)}${overlap ? ' Change the day on their other project first.' : ''}`
+    return `${friendlyError(e)}${overlap ? t('crew.err.overlap') : ''}`
   }
 
   // Marks still on their way: Verified waits for them, so it verifies what was marked.
@@ -153,10 +154,10 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
       const r = (await rpc('set_attendance_many', { p_rows: todo.map((w) => row(w, rollDay, fullDayOf(company))) })) as
         { saved: number; failed: { worker_id: string; message: string }[] }
       if (r.failed.length) {
-        setError(r.failed.map((f) => `${todo.find((w) => w.id === f.worker_id)?.name ?? 'A worker'}: ${friendlyError({ message: f.message })}`).join(' '))
+        setError(r.failed.map((f) => `${todo.find((w) => w.id === f.worker_id)?.name ?? t('crew.err.worker')}: ${friendlyError({ message: f.message })}`).join(' '))
       }
     } catch (e) {
-      setError(`Mark everyone in was not saved: ${friendlyError(e)}`)
+      setError(t('crew.err.everyone', { reason: friendlyError(e) }))
     } finally {
       await queryClient.invalidateQueries({ queryKey: ['attendance'] })
     }
@@ -176,7 +177,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
       return true
     } catch (e) {
       if (w && chosen?.id === w.id) setDayError({ worker: w.id, date, message: friendlyError(e) })
-      else setError(`Verify was not saved: ${friendlyError(e)}`)
+      else setError(t('crew.err.verify', { reason: friendlyError(e) }))
       return false
     } finally {
       setVerifying(false)
@@ -195,21 +196,24 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
   const dayRow = day && chosen ? chosen.rows.find((r) => r.work_date === day && r.project_id === projectId) : undefined
 
   const tab = params.get('tab') === 'crew' ? 'crew' : 'attendance'
-  const monthBar = (
-    <div className="grid grid-cols-[auto_1fr_auto] items-center gap-2">
-      <Button variant="secondary" aria-label="Previous month" className="px-3" onClick={() => stepMonth(shiftMonth(month, -1))}><ChevronLeftIcon size={20} /></Button>
-      <h2 className="text-center text-base font-semibold text-ink" aria-live="polite">{monthLabel(month)}</h2>
-      <Button variant="secondary" aria-label="Next month" className="px-3" disabled={isThisMonth || days[0] > today} onClick={() => stepMonth(shiftMonth(month, 1))}><ChevronRightIcon size={20} /></Button>
+  // The month heads its own tab (h2), or sits under the chosen worker's name (h3). The arrows sit
+  // beside the month, so they read as one control.
+  const arrow = 'inline-flex size-11 items-center justify-center rounded-lg text-subtle hover:bg-muted hover:text-ink disabled:opacity-40 disabled:hover:bg-transparent'
+  const monthBar = (Heading: 'h2' | 'h3') => (
+    <div className="flex items-center gap-1">
+      <button type="button" aria-label={t('crew.month.prev')} className={arrow} onClick={() => stepMonth(shiftMonth(month, -1))}><ChevronLeftIcon size={20} /></button>
+      <Heading className="min-w-28 text-center text-base font-semibold text-ink" aria-live="polite">{monthLabel(month)}</Heading>
+      <button type="button" aria-label={t('crew.month.next')} className={arrow} disabled={isThisMonth || days[0] > today} onClick={() => stepMonth(shiftMonth(month, 1))}><ChevronRightIcon size={20} /></button>
     </div>
   )
 
   return (
     <div className="flex flex-col gap-4">
-      {!projectId && <Notice>This crew is not tied to a project, so its days cannot be marked here. Mark them on a project's crew.</Notice>}
+      {!projectId && <Notice>{t('crew.noProject')}</Notice>}
 
       <ErrorBanner>{error || (membership.error && friendlyError(membership.error))}</ErrorBanner>
       {/* Two tabs: marking days, and the crew's month with what each is owed (and adding days to cost). */}
-      <Tabs tabs={[['attendance', 'Attendance'], ['crew', `Crew in ${monthLabel(month)}`]]} value={tab} label="Crew sections"
+      <Tabs tabs={[['attendance', t('crew.tab.attendance')], ['crew', t('crew.tab.month', { month: monthLabel(month) })]]} value={tab} label={t('crew.tabs')}
         onChange={(next) => go({ tab: next === 'crew' ? 'crew' : '' })}>
         {tab === 'attendance' && (
         <div className="flex flex-col gap-4">
@@ -225,26 +229,25 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
           )}
           {projectId && crew.length > 0 && !rollInMonth && (
             <p className="text-sm text-subtle">
-              <button type="button" className="min-h-11 font-medium text-slate underline" onClick={() => stepMonth(thisMonth)}>Back to today</button> to mark the whole crew.
+              <button type="button" className="min-h-11 font-medium text-slate underline" onClick={() => stepMonth(thisMonth)}>{t('crew.backToToday')}</button>{t('crew.backToToday.after')}
             </p>
           )}
-          {/* Workers: chips on a phone, a column on a desktop. On a desktop the worker, the month bar and the
-              day names sit above the calendar only; the list starts level with the first row of boxes,
-              with its "Workers" label level with the day names. The chosen worker's sheet (name, month,
-              calendar) is one bordered block, in two grid rows for that alignment; the money is under it. */}
-          <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-x-6 lg:gap-y-0">
-            <nav aria-label="Workers" className="lg:sticky lg:top-4 lg:col-start-1 lg:row-start-2">
-              {/* As tall as the day names beside it, so the first worker is level with the first row of days. */}
-              <p aria-hidden className="hidden px-3 pb-1 text-xs leading-4 font-medium tracking-wide text-subtle uppercase lg:block">Workers</p>
-              <ul className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:mx-0 lg:flex-col lg:gap-0.5 lg:overflow-visible lg:px-0">
+          {/* One card: choosing a worker and marking their days are one tool. The workers are a column on
+              its left on a desktop, a row of chips across its top on a phone; the chosen worker's name,
+              month and calendar fill the rest. The money is in its own card under it. Not overflow-hidden:
+              a day's editor opens under its box and may reach past the card. */}
+          <div className="rounded-xl border border-line bg-surface lg:grid lg:grid-cols-[13rem_minmax(0,1fr)]">
+            <nav aria-label={t('crew.workers')} className="rounded-t-xl border-b border-line bg-side lg:rounded-tr-none lg:rounded-l-xl lg:border-r lg:border-b-0 lg:p-3">
+              <p className="hidden px-2 pt-1 pb-2 text-xs font-medium tracking-wide text-subtle uppercase lg:block">{t('crew.workers')} · {workers.length}</p>
+              <ul className="flex gap-2 overflow-x-auto px-3 py-2.5 [scrollbar-width:none] lg:flex-col lg:gap-0.5 lg:overflow-visible lg:p-0">
                 {workers.map((w) => {
                   const on = w.id === chosen?.id
                   const hours = worked(w.rows).reduce((s, r) => s + r.minutes, 0)
                   return (
                     <li key={w.id} className="shrink-0">
                       <button type="button" aria-current={on ? 'true' : undefined} onClick={() => go({ worker: w.id })}
-                        className={`flex min-h-11 w-full items-center gap-2 rounded-full border px-3 text-left text-sm lg:rounded-lg lg:border-0 lg:py-1.5
-                          ${on ? 'border-brand bg-brand-soft font-semibold text-brand-dark' : 'border-line bg-surface font-medium text-ink hover:bg-muted lg:bg-transparent lg:hover:bg-surface'}`}>
+                        className={`flex min-h-11 w-full items-center gap-2 rounded-full border px-3 text-left text-sm lg:rounded-lg lg:border-0
+                          ${on ? 'border-brand bg-brand-soft font-semibold text-brand-dark lg:bg-side-selected' : 'border-line bg-surface font-medium text-ink hover:bg-muted lg:bg-transparent lg:hover:bg-line'}`}>
                         <span className="min-w-0 flex-1 truncate">{w.name}</span>
                         <span className={`shrink-0 text-xs tabular-nums ${on ? 'text-brand-dark' : 'text-subtle'}`}>{hours ? hoursText(hours) : '—'}</span>
                       </button>
@@ -252,30 +255,33 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
                   )
                 })}
                 {projectId && (
-                  <li className="shrink-0 lg:mt-2">
-                    <Button variant="ghost" className="w-full justify-start" onClick={() => setAdding(true)} disabled={adding}>Add worker</Button>
+                  <li className="shrink-0 lg:mt-1.5 lg:border-t lg:border-line lg:pt-1.5">
+                    <button type="button" onClick={() => setAdding(true)} disabled={adding}
+                      className="flex min-h-11 w-full items-center rounded-full border border-dashed border-field px-3 text-sm font-semibold text-slate hover:bg-muted disabled:opacity-50 lg:rounded-lg lg:border-0 lg:hover:bg-line">
+                      <span aria-hidden>+&nbsp;</span>{t('crew.addWorker')}
+                    </button>
                   </li>
                 )}
               </ul>
             </nav>
 
-            <div className="flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-1">
-              {adding && projectId && <AddWorker crewId={crewId} projectId={projectId} onto={workers} onDone={(id) => { setAdding(false); if (id) go({ worker: id }) }} />}
-              {!chosen ? (
-                !adding && <EmptyState title="No workers on this crew yet">Add each worker with their daily or hourly rate, then mark their days here.</EmptyState>
-              ) : (
-                <div className="flex flex-col gap-4 rounded-t-xl border border-b-0 border-line bg-surface px-3 pt-3 pb-4 sm:px-4 sm:pt-4">
-                  <WorkerHeader w={chosen} crewId={crewId} membership={membership} month={params.get('month')} />
-                  {/* The worker above, their month below: a line edge to edge. */}
-                  <hr className="-mx-3 border-line sm:-mx-4" />
-                  {monthBar}
+            <div className="min-w-0">
+              {adding && projectId && (
+                <div className="border-b border-line p-3 sm:p-4">
+                  <AddWorker crewId={crewId} projectId={projectId} onto={workers} onDone={(id) => { setAdding(false); if (id) go({ worker: id }) }} />
                 </div>
               )}
-            </div>
-            {chosen && (
-              <div className="-mt-4 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-2 lg:mt-0">
-                <div className="rounded-b-xl border border-t-0 border-line bg-surface px-3 pb-3 sm:px-4 sm:pb-4">
-                  <DayGrid name={chosen.name} days={days} today={today} display={auth.dateDisplay} selected={day}
+              {!chosen ? (
+                !adding && <div className="p-3 sm:p-4"><EmptyState title={t('crew.empty')}>{t('crew.empty.how')}</EmptyState></div>
+              ) : (
+                <>
+                  <div className="border-b border-line px-3 py-3 sm:px-5">
+                    <WorkerHeader w={chosen} crewId={crewId} membership={membership} month={params.get('month')} />
+                  </div>
+                  <div className="px-3 pt-2 pb-4 sm:px-5 sm:pb-5">
+                    {monthBar('h3')}
+                    <div className="mt-2">
+                      <DayGrid name={chosen.name} days={days} today={today} display={auth.dateDisplay} selected={day}
                     onPick={(d) => { setDay(d); if (!d) setDayError(null) }}
                     entries={(d) => chosen.rows.filter((r) => r.work_date === d)}
                     title={day ? `${dayTitle(day, today, auth.dateDisplay)} · ${chosen.name}` : ''}
@@ -287,27 +293,29 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
                     actions={day && (dayRow && !dayRow.verified && canMark(day) ? (
                       // A draft: keep it as it is, or verify it (labour cost, owed to the worker).
                       <div className="grid grid-cols-2 gap-2">
-                        <Button variant="secondary" disabled={verifying} onClick={() => setDay(null)}>Save draft</Button>
-                        <Button busy={verifying} onClick={() => void verify(day, chosen).then((ok) => { if (ok) setDay(null) })}>Verified</Button>
+                        <Button variant="secondary" disabled={verifying} onClick={() => setDay(null)}>{t('crew.saveDraft')}</Button>
+                        <Button busy={verifying} onClick={() => void verify(day, chosen).then((ok) => { if (ok) setDay(null) })}>{t('crew.verified')}</Button>
                       </div>
-                    ) : <Button className="w-full" onClick={() => setDay(null)}>Done</Button>)} />
-                </div>
-                <WorkerSummary w={chosen} month={month} showMoney={showMoney} canPay={pays && !!projectId} projectId={projectId} />
-              </div>
-            )}
+                    ) : <Button className="w-full" onClick={() => setDay(null)}>{t('crew.done')}</Button>)} />
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
+          {chosen && <WorkerSummary w={chosen} month={month} showMoney={showMoney} canPay={pays && !!projectId} projectId={projectId} />}
         </div>
         )}
 
         {tab === 'crew' && (
         <div className="flex flex-col gap-4">
-          {monthBar}
-          {workers.length === 0 && <EmptyState title="No workers on this crew yet">Add workers on the Attendance tab.</EmptyState>}
+          {monthBar('h2')}
+          {workers.length === 0 && <EmptyState title={t('crew.empty')}>{t('crew.empty.tab')}</EmptyState>}
           {workers.length > 0 && (
-            <Card title="Hours and what each is owed">
+            <Card title={t('crew.totals')}>
               <CrewTotals workers={workers} showMoney={showMoney} onPick={(id) => go({ worker: id, tab: '' })} />
               {workers.some((w) => w.draft_days > 0) && (
-                <p className="mt-3 text-xs text-subtle">Draft days are not counted until they are verified on the Attendance tab.</p>
+                <p className="mt-3 text-xs text-subtle">{t('crew.totals.drafts')}</p>
               )}
             </Card>
           )}
@@ -338,24 +346,24 @@ function CrewDay({ crew, date, today, display, company, projectId, onDate, onMar
   // Open while there is marking to do; it stays open as the last ones are marked, for a change after.
   const [shown, setOpen] = useState(() => todo.length > 0)
   const yesterday = relativeDay(date, today) === 'yesterday'
-  const label = date === today ? 'Today' : yesterday ? 'Yesterday' : formatDate(date, display)
-  const chip = (on: boolean) => `inline-flex min-h-9 items-center rounded-full border px-3 text-sm font-medium ${on ? 'border-brand bg-brand-soft text-brand-dark' : 'border-line text-ink hover:bg-muted'}`
+  const label = date === today ? t('common.today') : yesterday ? t('common.yesterday') : formatDate(date, display)
+  const chip = (on: boolean) => `inline-flex min-h-11 [@media(pointer:fine)]:min-h-9 items-center rounded-full border px-3 text-sm font-medium ${on ? 'border-brand bg-brand-soft text-brand-dark' : 'border-line text-ink hover:bg-muted'}`
   const prev = new Date(`${today}T00:00:00Z`); prev.setUTCDate(prev.getUTCDate() - 1)
   const yesterdayIso = prev.toISOString().slice(0, 10) as IsoDate
 
   return (
-    <section aria-label={`The crew on ${label}`} className="rounded-xl border border-line bg-surface p-3">
+    <section aria-label={t('crew.day.label', { day: label })} className="rounded-xl border border-line bg-surface p-3">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm font-semibold text-ink">The crew on</span>
-        <button type="button" className={chip(date === today)} aria-pressed={date === today} onClick={() => { setOtherDay(false); onDate(today) }}>Today</button>
-        <button type="button" className={chip(yesterday)} aria-pressed={yesterday} onClick={() => { setOtherDay(false); onDate(yesterdayIso) }}>Yesterday</button>
+        <span className="text-sm font-semibold text-ink">{t('crew.day.on')}</span>
+        <button type="button" className={chip(date === today)} aria-pressed={date === today} onClick={() => { setOtherDay(false); onDate(today) }}>{t('common.today')}</button>
+        <button type="button" className={chip(yesterday)} aria-pressed={yesterday} onClick={() => { setOtherDay(false); onDate(yesterdayIso) }}>{t('common.yesterday')}</button>
         {date !== today && !yesterday
           ? <button type="button" className={chip(true)} onClick={() => setOtherDay((x) => !x)}>{label}</button>
-          : <button type="button" className="min-h-9 px-1 text-sm font-medium text-slate underline" onClick={() => setOtherDay((x) => !x)}>Other day</button>}
+          : <button type="button" className="min-h-11 [@media(pointer:fine)]:min-h-9 px-1 text-sm font-medium text-slate underline" onClick={() => setOtherDay((x) => !x)}>{t('crew.day.other')}</button>}
         <span className="ml-auto flex flex-wrap gap-2">
-          {canMark && todo.length > 0 && <Button onClick={() => onEveryone(todo)}>Mark everyone in · {hhmm(company.day_start)}–{hhmm(company.day_end)}</Button>}
+          {canMark && todo.length > 0 && <Button onClick={() => onEveryone(todo)}>{t('crew.day.everyone', { from: hhmm(company.day_start), to: hhmm(company.day_end) })}</Button>}
           {canMark && drafts > 0 && (
-            <Button variant={todo.length ? 'secondary' : 'primary'} busy={verifying} onClick={onVerify}>Verify the crew's day ({drafts})</Button>
+            <Button variant={todo.length ? 'secondary' : 'primary'} busy={verifying} onClick={onVerify}>{t('crew.day.verify', { n: drafts })}</Button>
           )}
         </span>
       </div>
@@ -366,23 +374,24 @@ function CrewDay({ crew, date, today, display, company, projectId, onDate, onMar
       )}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
         <p className="text-sm text-subtle" aria-live="polite">
-          {crew.length - todo.length - absent} in{absent ? ` · ${absent} absent` : ''}{todo.length ? ` · ${todo.length} not marked` : ' · everyone marked'}
-          {drafts > 0 ? ` · ${drafts} ${drafts === 1 ? 'draft' : 'drafts'}` : todo.length < crew.length ? ' · verified' : ''}
+          {t('crew.day.in', { n: crew.length - todo.length - absent })}{absent ? t('crew.day.absent', { n: absent }) : ''}
+          {todo.length ? t('crew.day.notMarked', { n: todo.length }) : t('crew.day.allMarked')}
+          {drafts > 0 ? t(drafts === 1 ? 'crew.day.draft' : 'crew.day.drafts', { n: drafts }) : todo.length < crew.length ? t('crew.day.verified') : ''}
         </p>
-        <button type="button" className="min-h-9 text-sm font-medium text-slate underline" aria-expanded={shown} onClick={() => setOpen((x) => !x)}>
-          {shown ? 'Hide the crew' : 'Show the crew'}
+        <button type="button" className="min-h-11 [@media(pointer:fine)]:min-h-9 text-sm font-medium text-slate underline" aria-expanded={shown} onClick={() => setOpen((x) => !x)}>
+          {shown ? t('crew.day.hide') : t('crew.day.show')}
         </button>
       </div>
       {shown && (
         <ul className="mt-1">
           {crew.map((w) => {
             const r = markOf(w)
-            const status = !r ? 'Not marked' : `${r.absent ? 'Absent' : hoursText(r.minutes)}${r.verified ? ', verified' : ', draft'}`
+            const status = !r ? t('crew.notMarked') : `${r.absent ? t('crew.absent') : hoursText(r.minutes)}${r.verified ? t('crew.status.verified') : t('crew.status.draft')}`
             const pick = (m: Mark, on: boolean) => (
               <button type="button" aria-pressed={on} disabled={!canMark}
                 onClick={() => onMark(w, m)}
                 className={`min-h-11 min-w-14 rounded-lg border px-2 text-sm font-medium disabled:opacity-40 ${on ? 'border-brand bg-brand-soft text-brand-dark' : 'border-line text-ink hover:bg-muted'}`}>
-                {m.absent ? 'Absent' : m.minutes === std ? 'Full' : 'Half'}
+                {m.absent ? t('crew.absent') : m.minutes === std ? t('crew.full') : t('crew.half')}
               </button>
             )
             return (
@@ -390,11 +399,11 @@ function CrewDay({ crew, date, today, display, company, projectId, onDate, onMar
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium text-ink">{w.name}</span>
                   <span className={`flex items-center gap-1 text-xs ${!r ? 'text-warn-ink' : 'text-subtle'}`}>
-                    {!r ? 'Not marked' : r.absent ? 'Absent' : hoursText(r.minutes)}
-                    {r && (r.verified ? <CheckIcon size={12} className="text-good-ink" aria-label="verified" /> : <span className="uppercase">· Draft</span>)}
+                    {!r ? t('crew.notMarked') : r.absent ? t('crew.absent') : hoursText(r.minutes)}
+                    {r && (r.verified ? <CheckIcon size={12} className="text-good-ink" aria-label={t('crew.verifiedIcon')} /> : <span className="uppercase">{t('crew.draftTag')}</span>)}
                   </span>
                 </span>
-                <span className="flex shrink-0 gap-1" role="group" aria-label={`${w.name} on ${label}`}>
+                <span className="flex shrink-0 gap-1" role="group" aria-label={t('crew.workerOnDay', { name: w.name, day: label })}>
                   {pick(fullDayOf(company), !!r && !r.absent && r.minutes === std)}
                   {pick(halfDayOf(company), !!r && !r.absent && r.minutes === std / 2)}
                   {pick(ABSENT, !!r?.absent)}
@@ -412,18 +421,18 @@ function WorkerHeader({ w, crewId, membership, month }: { w: CrewWorker; crewId:
   return (
     <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
       <div className="min-w-0">
-        <h3 className="text-base font-semibold text-ink">{w.name}</h3>
+        <h2 className="text-base font-semibold text-ink">{w.name}</h2>
         <p className="text-sm text-subtle">
-          {[w.work_type, rateText(w, formatNPR), !w.active ? 'left' : !w.on_crew ? 'not on this crew' : null].filter(Boolean).join(' · ')}
+          {[w.work_type, rateText(w, formatNPR), !w.active ? t('crew.worker.left') : !w.on_crew ? t('crew.worker.offCrew') : null].filter(Boolean).join(' · ')}
         </p>
       </div>
       <span className="flex flex-wrap items-center gap-x-1 text-sm">
-        <Link className="inline-flex min-h-11 items-center px-2 font-medium text-slate underline underline-offset-2" to={`/workers/${w.id}${month ? `?month=${month}` : ''}`}>Khata</Link>
+        <Link className="inline-flex min-h-11 items-center px-2 font-medium text-slate underline underline-offset-2" to={`/workers/${w.id}${month ? `?month=${month}` : ''}`}>{t('crew.worker.khata')}</Link>
         {w.on_crew ? (
-          <ConfirmButton quiet confirmLabel={`Remove ${w.name.split(' ')[0]}`} disabled={membership.isPending}
-            onConfirm={() => membership.mutate({ crewId, workerId: w.id, active: false })}>Remove from crew</ConfirmButton>
+          <ConfirmButton quiet confirmLabel={t('crew.worker.remove', { name: w.name.split(' ')[0] })} disabled={membership.isPending}
+            onConfirm={() => membership.mutate({ crewId, workerId: w.id, active: false })}>{t('crew.worker.removeFromCrew')}</ConfirmButton>
         ) : (
-          <Button variant="ghost" disabled={membership.isPending} onClick={() => membership.mutate({ crewId, workerId: w.id, active: true })}>Put on crew</Button>
+          <Button variant="ghost" disabled={membership.isPending} onClick={() => membership.mutate({ crewId, workerId: w.id, active: true })}>{t('crew.worker.putOn')}</Button>
         )}
       </span>
     </div>
@@ -431,7 +440,7 @@ function WorkerHeader({ w, crewId, membership, month }: { w: CrewWorker; crewId:
 }
 
 const dayTitle = (date: IsoDate, today: IsoDate, display: 'bs' | 'ad') =>
-  date === today ? 'Today' : relativeDay(date, today) === 'yesterday' ? 'Yesterday' : formatDate(date, display)
+  date === today ? t('common.today') : relativeDay(date, today) === 'yesterday' ? t('common.yesterday') : formatDate(date, display)
 
 /** The chosen day, in the editor at its box: the quick choices and times, and the worker's time on
  *  other projects that day; or why it cannot change. */
@@ -448,7 +457,7 @@ function DayPanel({ w, date, today, display, company, busy, editable, onMark, pr
   const elsewhere = (all.data?.rows ?? []).filter((r) => r.project_id !== projectId)
   const projectName = (pid: string | null) => {
     const p = pid && current.choices.find((x) => x.id === pid)
-    return p ? `${p.code} · ${p.name}` : 'Another project'
+    return p ? `${p.code} · ${p.name}` : t('crew.panel.otherProject')
   }
   const other = elsewhere.length > 0 && (
     <ul className="flex flex-col gap-1">
@@ -464,8 +473,8 @@ function DayPanel({ w, date, today, display, company, busy, editable, onMark, pr
   if (!editable) {
     return (
       <p className="text-sm text-subtle">
-        {row ? (row.absent ? 'Absent.' : hoursText(row.minutes)) : 'Not marked.'}{row && (row.verified ? ' Verified.' : ' Draft.')}{' '}
-        {!w.active ? `${w.name} has left, so new days cannot be marked.` : 'Days more than 7 days back are changed by Accounts or Admin.'}
+        {row ? (row.absent ? t('crew.panel.absent') : hoursText(row.minutes)) : t('crew.panel.notMarked')}{row && (row.verified ? t('crew.panel.verified') : t('crew.panel.draft'))}{' '}
+        {!w.active ? t('crew.panel.left', { name: w.name }) : t('crew.panel.tooOld')}
       </p>
     )
   }
@@ -476,17 +485,17 @@ function DayPanel({ w, date, today, display, company, busy, editable, onMark, pr
   const afternoon: Mark = { ...half, time_in: clock(toMin(hhmm(company.day_end)) - half.minutes), time_out: hhmm(company.day_end) }
   return (
     <div className="flex flex-col gap-3">
-      {error && <p role="alert" className="rounded-lg border border-bad/40 bg-bad-soft px-3 py-2 text-sm text-bad-ink">{error}</p>}
+      {error && <p role="alert" className="rounded-lg border border-danger/30 bg-danger-soft px-3 py-2 text-sm text-danger-ink">{error}</p>}
       <DaySheet key={`${row?.minutes ?? 0}:${row?.time_in ?? ''}:${row?.time_out ?? ''}:${row?.absent ?? ''}`} id={`${w.id}-${date}`} label={`${w.name}, ${dayTitle(date, today, display)}`}
         row={row} company={company} busy={busy} onMark={onMark} half={morningTaken ? afternoon : undefined}
         footer={row?.verified
-          ? <p className="text-xs text-subtle">Verified{!row.absent && row.amount_paisa != null && `: ${formatNPR(row.amount_paisa)}`}. A change adjusts what is owed.</p>
-          : row && <p className="text-xs text-subtle">Draft: not counted until verified.</p>} />
+          ? <p className="text-xs text-subtle">{t('crew.panel.verifiedFoot', { amount: !row.absent && row.amount_paisa != null ? `: ${formatNPR(row.amount_paisa)}` : '' })}</p>
+          : row && <p className="text-xs text-subtle">{t('crew.panel.draftFoot')}</p>} />
       {other && (
         <div>
-          <p className="mb-1 text-xs font-medium text-subtle">Also that day</p>
+          <p className="mb-1 text-xs font-medium text-subtle">{t('crew.panel.alsoThatDay')}</p>
           {other}
-          <p className="mt-1 text-xs text-subtle">Times here must not overlap these.</p>
+          <p className="mt-1 text-xs text-subtle">{t('crew.panel.noOverlap')}</p>
         </div>
       )}
     </div>
@@ -503,36 +512,44 @@ function WorkerSummary({ w, month, showMoney, canPay, projectId }: {
   const absentDays = w.rows.filter((r) => r.absent).length
   const earned = showMoney ? rows.reduce((s, r) => s + (r.amount_paisa ?? 0), 0) : null
   const due = showMoney ? owedNow(w) : null
-  const line = (label: string, value: string, strong?: boolean) => (
-    <div className="flex items-baseline justify-between gap-3 border-b border-line py-1.5 last:border-0">
+  const line = (label: string, value: string, strong?: boolean, tone = 'text-ink') => (
+    <div className="flex items-baseline justify-between gap-3 border-b border-line py-2.5 last:border-0">
       <dt className="text-sm text-subtle">{label}</dt>
-      <dd className={`text-sm tabular-nums ${strong ? 'font-semibold text-ink' : 'text-ink'}`}>{value}</dd>
+      <dd className={`text-sm tabular-nums ${strong ? 'font-semibold' : ''} ${tone}`}>{value}</dd>
     </div>
+  )
+  const drafts = w.draft_days > 0 && (
+    <p className="mt-2 text-xs text-subtle">{t(w.draft_days === 1 ? 'crew.summary.draftDay' : 'crew.summary.draftDays', { n: w.draft_days })}</p>
   )
   return (
     // All paying happens on the worker's payment form (pay_worker): it ticks this project's days and
-    // takes off any advance they hold (on any project).
-    <Card title={`Summary for ${w.name}`} actions={canPay && projectId && due != null && due > 0 && (
-      <ButtonLink to={`/payments/new?worker=${w.id}&project=${projectId}`}>Pay {w.name.split(' ')[0]}</ButtonLink>
+    // takes off any advance they hold (on any project). The month on the left, all months on the right.
+    <Card title={t('crew.summary', { name: w.name })} actions={canPay && projectId && due != null && due > 0 && (
+      <ButtonLink to={`/payments/new?worker=${w.id}&project=${projectId}`}>{t('crew.summary.pay', { name: w.name.split(' ')[0] })}</ButtonLink>
     )}>
-      <h4 className="mt-1 text-xs font-medium tracking-wide text-subtle uppercase">In {monthLabel(month)}</h4>
-      <dl>
-        {line('Days worked', String(daysWorked))}
-        {absentDays > 0 && line('Absent', String(absentDays))}
-        {line('Hours', hoursText(rows.reduce((s, r) => s + r.minutes, 0)))}
-        {showMoney && line('Earned', money(earned))}
-        {showMoney && line('Paid', money(w.paid_paisa))}
-      </dl>
-      {showMoney ? (
-        <>
-          <h4 className="mt-3 text-xs font-medium tracking-wide text-subtle uppercase">On this project, all months</h4>
-          <dl>{due != null && due < 0 ? line('Paid ahead', formatNPR(-due), true) : line('Owed now', money(due), true)}</dl>
-          {due != null && due < 0 && <p className="mt-1 text-xs text-subtle">Comes off {w.name.split(' ')[0]}'s next days when they are verified.</p>}
-        </>
-      ) : <p className="mt-2 text-xs text-subtle">Amounts are shown to those who see this project's money.</p>}
-      {w.draft_days > 0 && (
-        <p className="mt-2 text-xs text-subtle">{w.draft_days} {w.draft_days === 1 ? 'day is a draft' : 'days are drafts'}: not counted until verified.</p>
-      )}
+      <div className="grid gap-x-10 gap-y-3 sm:grid-cols-2">
+        <div>
+          <h3 className="mt-1 text-xs font-medium tracking-wide text-subtle uppercase">{t('crew.summary.inMonth', { month: monthLabel(month) })}</h3>
+          <dl>
+            {line(t('crew.summary.days'), String(daysWorked))}
+            {absentDays > 0 && line(t('crew.absent'), String(absentDays))}
+            {line(t('crew.summary.hours'), hoursText(rows.reduce((s, r) => s + r.minutes, 0)))}
+            {showMoney && line(t('crew.summary.earned'), money(earned))}
+            {showMoney && line(t('crew.summary.paid'), money(w.paid_paisa))}
+          </dl>
+        </div>
+        <div>
+          {showMoney ? (
+            <>
+              <h3 className="mt-1 text-xs font-medium tracking-wide text-subtle uppercase">{t('crew.summary.allMonths')}</h3>
+              {/* Paid ahead is money the worker holds: green, as "they hold" is everywhere else. */}
+              <dl>{due != null && due < 0 ? line(t('crew.summary.paidAhead'), formatNPR(-due), true, 'text-good-ink') : line(t('crew.summary.owed'), money(due), true)}</dl>
+              {due != null && due < 0 && <p className="mt-1 text-xs text-subtle">{t('crew.summary.comesOff', { name: w.name.split(' ')[0] })}</p>}
+            </>
+          ) : <p className="mt-2 text-xs text-subtle">{t('crew.summary.hidden')}</p>}
+          {drafts}
+        </div>
+      </div>
     </Card>
   )
 }
@@ -545,17 +562,17 @@ function CrewTotals({ workers, showMoney, onPick }: { workers: CrewWorker[]; sho
     <table className="w-full text-sm">
       <thead>
         <tr className="border-b border-line text-left text-xs text-subtle">
-          <th scope="col" className="py-2 pr-2 font-medium">Worker</th>
-          <th scope="col" className="py-2 pr-2 text-right font-medium">Hours</th>
-          {showMoney && <th scope="col" className="hidden py-2 pr-2 text-right font-medium sm:table-cell">Earned</th>}
-          {showMoney && <th scope="col" className="py-2 text-right font-medium">Owed now <span className="font-normal">(all months)</span></th>}
+          <th scope="col" className="py-2 pr-2 font-medium">{t('crew.col.worker')}</th>
+          <th scope="col" className="py-2 pr-2 text-right font-medium">{t('crew.summary.hours')}</th>
+          {showMoney && <th scope="col" className="hidden py-2 pr-2 text-right font-medium sm:table-cell">{t('crew.summary.earned')}</th>}
+          {showMoney && <th scope="col" className="py-2 text-right font-medium">{t('crew.col.owed')} <span className="font-normal">{t('crew.col.owed.note')}</span></th>}
         </tr>
       </thead>
       <tbody>
         {workers.map((w) => (
           <tr key={w.id} className="border-b border-line last:border-0">
             <td className="py-1.5 pr-2">
-              <button type="button" className="min-h-9 text-left font-medium text-ink hover:underline" onClick={() => onPick(w.id)}>{w.name}</button>
+              <button type="button" className="min-h-11 [@media(pointer:fine)]:min-h-9 text-left font-medium text-ink hover:underline" onClick={() => onPick(w.id)}>{w.name}</button>
             </td>
             <td className="py-1.5 pr-2 text-right tabular-nums">{hoursText(hours(w))}</td>
             {showMoney && <td className="hidden py-1.5 pr-2 text-right tabular-nums sm:table-cell">{formatNPR(earned(w))}</td>}
@@ -565,7 +582,7 @@ function CrewTotals({ workers, showMoney, onPick }: { workers: CrewWorker[]; sho
       </tbody>
       <tfoot>
         <tr className="border-t border-line font-semibold text-ink">
-          <td className="py-2 pr-2">Total</td>
+          <td className="py-2 pr-2">{t('crew.total')}</td>
           <td className="py-2 pr-2 text-right tabular-nums">{hoursText(workers.reduce((s, w) => s + hours(w), 0))}</td>
           {showMoney && <td className="hidden py-2 pr-2 text-right tabular-nums sm:table-cell">{formatNPR(workers.reduce((s, w) => s + earned(w), 0))}</td>}
           {showMoney && <td className="py-2 text-right tabular-nums">{owedText(workers.reduce((s, w) => s + due(w), 0))}</td>}
@@ -583,7 +600,7 @@ function AddWorker({ crewId, projectId, onto, onDone }: { crewId: string; projec
   const onCrew = new Set(onto.filter((w) => w.on_crew).map((w) => w.id))
   const others = (known.data ?? []).filter((w) => !onCrew.has(w.id))
   return (
-    <Card title="Add worker" actions={<Button variant="ghost" onClick={() => onDone()}>Cancel</Button>}>
+    <Card title={t('crew.addWorker')} actions={<Button variant="ghost" onClick={() => onDone()}>{t('common.cancel')}</Button>}>
       {/* Only before a tap: adding the last one refetches the list empty before the card closes. */}
       {creating || (!known.isPending && add.isIdle && others.length === 0) ? (
         <WorkerForm crewId={crewId} onDone={() => onDone()} onAdded={(id) => onDone(id)} />
@@ -599,15 +616,15 @@ function AddWorker({ crewId, projectId, onto, onDone }: { crewId: string; projec
                   className="flex min-h-12 w-full items-center gap-3 py-2 text-left hover:bg-muted">
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-ink">{w.name}</span>
-                    <span className="block text-xs text-subtle">{[w.crew_name ?? 'No crew yet', rateText(w, formatNPR)].join(' · ')}</span>
+                    <span className="block text-xs text-subtle">{[w.crew_name ?? t('crew.add.noCrew'), rateText(w, formatNPR)].join(' · ')}</span>
                   </span>
-                  <span className="text-sm font-medium text-brand">Add</span>
+                  <span className="text-sm font-medium text-brand">{t('common.add')}</span>
                 </button>
               </li>
             ))}
           </ul>
           <ErrorBanner>{add.error && friendlyError(add.error)}</ErrorBanner>
-          <Button variant="secondary" className="mt-3" onClick={() => setCreating(true)}>New worker</Button>
+          <Button variant="secondary" className="mt-3" onClick={() => setCreating(true)}>{t('crew.add.new')}</Button>
         </>
       )}
     </Card>

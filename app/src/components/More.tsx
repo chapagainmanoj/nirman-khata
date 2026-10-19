@@ -4,6 +4,7 @@
 // folding never hides something the user entered or must fix.
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { useSimpleForms } from '../auth/useSimpleForms'
+import { t } from '../lib/i18n'
 import { ChevronRightIcon } from './icons'
 
 const FILLED = (el: Element) => {
@@ -19,7 +20,7 @@ const FILLED = (el: Element) => {
   return (el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement) && el.value.trim() !== ''
 }
 
-export function More({ label = 'More details', summary, className, children }: {
+export function More({ label = t('ui.moreDetails'), summary, className, children }: {
   label?: string
   /** Shown next to the heading while closed, e.g. "VAT Rs 5,200". */
   summary?: ReactNode

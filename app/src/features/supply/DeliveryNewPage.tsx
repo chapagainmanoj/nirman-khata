@@ -14,9 +14,11 @@ import { revealField } from '../../lib/forms'
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
+import { t } from '../../lib/i18n'
 import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
 import { useMaterials, useUnits } from '../catalog/api'
+import { MaterialOptions } from '../catalog/MaterialOptions'
 import { useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc, useOpenSlips, useSlip, useSuppliers } from './api'
@@ -55,7 +57,7 @@ export function DeliveryNewPage() {
   const slipId = params.get('slip') ?? ''
   const slip = useSlip(slipId)
   if (slipId && slip.isPending) return <Spinner />
-  if (slipId && (slip.error || !slip.data)) return <ErrorBanner>{slip.error ? friendlyError(slip.error) : 'Order slip not found.'}</ErrorBanner>
+  if (slipId && (slip.error || !slip.data)) return <ErrorBanner>{slip.error ? friendlyError(slip.error) : t('delivery.slipNotFound')}</ErrorBanner>
   // Keyed so picking an open slip below starts a fresh form with that slip's lines.
   return <DeliveryForm key={`${slipId}:${params.get('project') ?? ''}`} slip={slip.data ?? null} projectParam={params.get('project') ?? ''} supplierParam={params.get('supplier') ?? ''} />
 }
@@ -135,41 +137,41 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
     const filled = lines.filter((l) => Number(l.received) > 0)
     const overRejected = filled.find((l) => Number(l.rejected) > Number(l.received))
     const problem =
-      !supplierId ? 'Choose the supplier.'
-      : !projectId ? 'Choose the project.'
-      : !slip && !reason.trim() ? 'Say why there is no order slip (e.g. urgent purchase).'
-      : !filled.length ? 'Enter at least one received quantity.'
+      !supplierId ? t('delivery.err.supplier')
+      : !projectId ? t('delivery.err.project')
+      : !slip && !reason.trim() ? t('delivery.err.reason')
+      : !filled.length ? t('delivery.err.qty')
       : filled.find((l) => !l.slip_line_id && (!l.unit_id || (!l.material_id || (l.material_id === 'other' && !l.material_text.trim()))))
-        ? 'Each item needs a material and unit.'
-      : overRejected ? 'Rejected cannot be more than received.'
+        ? t('delivery.err.item')
+      : overRejected ? t('delivery.err.rejected')
       : filled.find((l) => units.data?.find((u) => u.id === l.unit_id)?.needs_note && !l.unit_note.trim())
-        ? 'Describe the trip or load (vehicle, size).'
+        ? t('delivery.err.vehicle')
       : ''
     setError(problem)
     // The rejected field may sit in a closed fold (simple forms); show it.
-    if (overRejected && problem.startsWith('Rejected')) revealField(`dl${lines.indexOf(overRejected)}-x`)
+    if (overRejected && problem === t('delivery.err.rejected')) revealField(`dl${lines.indexOf(overRejected)}-x`)
     if (!problem) save.mutate()
   }
 
   // Where it was started from: the slip, the project, or the Deliveries list.
   const fromProject = projects.data?.find((p) => p.id === projectParam)
   const crumbs: Crumb[] = slip
-    ? [{ to: '/slips', label: 'Order slips' }, { to: `/slips/${slip.slip.id}`, label: slip.slip.number }]
+    ? [{ to: '/slips', label: t('nav.slips') }, { to: `/slips/${slip.slip.id}`, label: slip.slip.number }]
     : projectParam
-      ? [{ to: '/projects', label: 'Projects' }, { to: `/projects/${projectParam}`, label: fromProject?.name ?? 'Project' }]
-      : [{ to: '/deliveries', label: 'Deliveries' }]
+      ? [{ to: '/projects', label: t('nav.projects') }, { to: `/projects/${projectParam}`, label: fromProject?.name ?? t('delivery.crumb.project') }]
+      : [{ to: '/deliveries', label: t('nav.deliveries') }]
 
   if (saved) {
     return (
       <>
-        <PageHeader title="Delivery recorded" crumbs={crumbs} />
-        <Card title="Challan photo">
-          {photoFailed > 0 && <div className="mb-3"><Notice>A photo did not upload. It is kept on this phone; upload it again below.</Notice></div>}
-          {photos.length === 0 && <p className="mb-3 text-sm text-subtle">Take a photo of the challan so accounts can match the bill.</p>}
-          <Attachments owner={{ delivery_id: id }} canAdd label="Take challan photo" />
+        <PageHeader title={t('delivery.saved.title')} crumbs={crumbs} />
+        <Card title={t('delivery.photo')}>
+          {photoFailed > 0 && <div className="mb-3"><Notice>{t('delivery.photo.failed')}</Notice></div>}
+          {photos.length === 0 && <p className="mb-3 text-sm text-subtle">{t('delivery.photo.ask')}</p>}
+          <Attachments owner={{ delivery_id: id }} canAdd label={t('delivery.photo.take')} />
         </Card>
         <div className="mt-4 flex gap-2">
-          {slip ? <ButtonLink to={`/slips/${slip.slip.id}`}>Back to order slip</ButtonLink> : <ButtonLink to={`/projects/${projectId}`}>Back to project</ButtonLink>}
+          {slip ? <ButtonLink to={`/slips/${slip.slip.id}`}>{t('delivery.saved.slip')}</ButtonLink> : <ButtonLink to={`/projects/${projectId}`}>{t('delivery.saved.project')}</ButtonLink>}
         </div>
       </>
     )
@@ -177,70 +179,70 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
 
   return (
     <>
-      <PageHeader title="Record delivery" crumbs={crumbs} subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : undefined} />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved delivery.</Notice></div>}
+      <PageHeader title={t('delivery.title')} crumbs={crumbs} subtitle={slip ? `${slip.slip.number} · ${slip.slip.suppliers?.name}` : undefined} />
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('delivery.restored')}</Notice></div>}
       <form onSubmit={submit} className="flex flex-col gap-4">
         {!slip && <OpenSlips supplierId={supplierId} projectId={projectId} />}
-        <Card title="Challan photo">
-          <PhotoPicker value={photos} onChange={(v) => form.setValue('photos', v)} label="Take challan photo" what="Challan photo" />
+        <Card title={t('delivery.photo')}>
+          <PhotoPicker value={photos} onChange={(v) => form.setValue('photos', v)} label={t('delivery.photo.take')} what={t('delivery.photo')} />
         </Card>
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
             {!slip && (
-              <Field label="Supplier" htmlFor="dl-supplier">
+              <Field label={t('common.supplier')} htmlFor="dl-supplier">
                 <Select id="dl-supplier" value={supplierId} onChange={(e) => setSupplierId(e.target.value)}>
-                  <option value="">Choose supplier</option>
+                  <option value="">{t('common.supplier.choose')}</option>
                   {suppliers.data?.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </Field>
             )}
-            <Field label="Project (site)" htmlFor="dl-project">
+            <Field label={t('delivery.project')} htmlFor="dl-project">
               <Select id="dl-project" value={projectId}
                 onChange={(e) => { setProjectId(e.target.value); if (slip) setLines(slipLines(e.target.value)) }}>
-                <option value="">Choose project</option>
+                <option value="">{t('common.project.choose')}</option>
                 {(slip ? (projects.data ?? []).filter((p) => slipProjects.includes(p.id)) : projectChoices(projects.data, 'site')).map((p) => (
                   <option key={p.id} value={p.id}>{p.code} · {p.name}</option>
                 ))}
               </Select>
             </Field>
-            <Field label="Received on" htmlFor="dl-date"><DateInput id="dl-date" value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
-            <Field label="Challan number" htmlFor="dl-challan"><Input id="dl-challan" value={challan} onChange={(e) => setChallan(e.target.value)} /></Field>
+            <Field label={t('delivery.date')} htmlFor="dl-date"><DateInput id="dl-date" value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
+            <Field label={t('delivery.challan')} htmlFor="dl-challan"><Input id="dl-challan" value={challan} onChange={(e) => setChallan(e.target.value)} /></Field>
             {!slip && (
-              <Field label="Why no order slip?" htmlFor="dl-reason"><Input id="dl-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+              <Field label={t('delivery.reason')} htmlFor="dl-reason"><Input id="dl-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
             )}
           </div>
         </Card>
 
-        {slip && projectId && lines.length === 0 && <Notice>Everything on this order slip for this project has been received.</Notice>}
+        {slip && projectId && lines.length === 0 && <Notice>{t('delivery.allReceived')}</Notice>}
         {lines.map((l, i) => (
-          <Card key={l.id} title={l.slip_line_id ? l.label : `Item ${i + 1}`}
-            actions={lines.length > 1 && <Button type="button" variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}><TrashIcon size={16} />Remove</Button>}>
+          <Card key={l.id} title={l.slip_line_id ? l.label : t('delivery.item', { n: i + 1 })}
+            actions={lines.length > 1 && <Button type="button" variant="ghost" onClick={() => setLines(lines.filter((_, j) => j !== i))}><TrashIcon size={16} />{t('common.remove')}</Button>}>
             <div className="grid gap-3 sm:grid-cols-2">
               {!l.slip_line_id && (
                 <>
-                  <Field label="Material" htmlFor={`dl${i}-m`}>
+                  <Field label={t('common.material')} htmlFor={`dl${i}-m`}>
                     <Select id={`dl${i}-m`} value={l.material_id} onChange={(e) => {
                       const m = materials.data?.find((x) => x.id === e.target.value)
                       setLine(i, { material_id: e.target.value, unit_id: m?.default_unit_id ?? l.unit_id })
                     }}>
-                      <option value="">Choose material</option>
-                      {materials.data?.filter((m) => m.active).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                      <option value="other">Other (type it)</option>
+                      <option value="">{t('common.material.choose')}</option>
+                      <MaterialOptions companyId={auth.companyId} userId={auth.userId} />
+                      <option value="other">{t('common.material.other')}</option>
                     </Select>
                   </Field>
                   {l.material_id === 'other' && (
-                    <Field label="Material name" htmlFor={`dl${i}-mt`}>
+                    <Field label={t('common.material.name')} htmlFor={`dl${i}-mt`}>
                       <Input id={`dl${i}-mt`} value={l.material_text} onChange={(e) => setLine(i, { material_text: e.target.value })} />
                     </Field>
                   )}
-                  <Field label="Unit" htmlFor={`dl${i}-u`}>
+                  <Field label={t('common.unit')} htmlFor={`dl${i}-u`}>
                     <Select id={`dl${i}-u`} value={l.unit_id} onChange={(e) => setLine(i, { unit_id: e.target.value })}>
-                      <option value="">Unit</option>
+                      <option value="">{t('common.unit')}</option>
                       {units.data?.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </Select>
                   </Field>
                   {units.data?.find((u) => u.id === l.unit_id)?.needs_note && (
-                    <Field label="Which vehicle / size?" htmlFor={`dl${i}-un`}>
+                    <Field label={t('delivery.vehicle')} htmlFor={`dl${i}-un`}>
                       <Input id={`dl${i}-un`} value={l.unit_note} onChange={(e) => setLine(i, { unit_note: e.target.value })} />
                     </Field>
                   )}
@@ -248,36 +250,36 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
               )}
               {(() => {
                 const received = (
-                  <Field label={`Received${l.slip_line_id ? ` (${units.data?.find((u) => u.id === l.unit_id)?.code ?? ''})` : ''}`} htmlFor={`dl${i}-r`}>
+                  <Field label={l.slip_line_id ? t('delivery.received.unit', { unit: units.data?.find((u) => u.id === l.unit_id)?.code ?? '' }) : t('delivery.received')} htmlFor={`dl${i}-r`}>
                     <Input id={`dl${i}-r`} inputMode="decimal" value={l.received} onChange={(e) => setLine(i, { received: e.target.value })} />
                   </Field>
                 )
                 const rejected = (
-                  <Field label="Rejected" htmlFor={`dl${i}-x`}>
+                  <Field label={t('delivery.rejected')} htmlFor={`dl${i}-x`}>
                     <Input id={`dl${i}-x`} inputMode="decimal" value={l.rejected} onChange={(e) => setLine(i, { rejected: e.target.value })} />
                   </Field>
                 )
                 const issue = (
-                  <Field label="Problem" htmlFor={`dl${i}-i`}>
+                  <Field label={t('delivery.problem')} htmlFor={`dl${i}-i`}>
                     <Select id={`dl${i}-i`} value={l.issue} onChange={(e) => setLine(i, { issue: e.target.value })}>
-                      <option value="">No problem</option>
+                      <option value="">{t('delivery.problem.none')}</option>
                       {Object.entries(DELIVERY_ISSUES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                     </Select>
                   </Field>
                 )
                 const wrong = (l.issue || Number(l.rejected) > 0) && (
-                  <Field label="What was wrong?" htmlFor={`dl${i}-n`}>
+                  <Field label={t('delivery.wrong')} htmlFor={`dl${i}-n`}>
                     <Input id={`dl${i}-n`} value={l.note} onChange={(e) => setLine(i, { note: e.target.value })} />
                   </Field>
                 )
                 // Simple forms fold the problem fields; Detailed keeps Received and Rejected side by side.
                 if (!simple) return <><div className="grid grid-cols-2 gap-3">{received}{rejected}</div>{issue}{wrong}</>
-                const problemSummary = [Number(l.rejected) > 0 && `${l.rejected} rejected`, l.issue && DELIVERY_ISSUES[l.issue as keyof typeof DELIVERY_ISSUES]]
-                  .filter(Boolean).join(', ') || 'none'
+                const problemSummary = [Number(l.rejected) > 0 && t('delivery.problem.rejected', { qty: l.rejected }), l.issue && DELIVERY_ISSUES[l.issue as keyof typeof DELIVERY_ISSUES]]
+                  .filter(Boolean).join(', ') || t('delivery.problem.summaryNone')
                 return (
                   <>
                     {received}
-                    <More label="Problem with this item?" summary={problemSummary}>
+                    <More label={t('delivery.problem.ask')} summary={problemSummary}>
                       <div className="grid grid-cols-2 gap-3">{rejected}{issue}</div>
                       {wrong}
                     </More>
@@ -287,12 +289,12 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
             </div>
           </Card>
         ))}
-        {!slip && <div><Button type="button" variant="secondary" onClick={() => setLines([...lines, blank()])}>Add another item</Button></div>}
-        <Field label="Note" htmlFor="dl-note"><Input id="dl-note" value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+        {!slip && <div><Button type="button" variant="secondary" onClick={() => setLines([...lines, blank()])}>{t('delivery.addItem')}</Button></div>}
+        <Field label={t('common.note')} htmlFor="dl-note"><Input id="dl-note" value={note} onChange={(e) => setNote(e.target.value)} /></Field>
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
-          <Button type="submit" busy={save.isPending}>Save delivery</Button>
-          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+          <Button type="submit" busy={save.isPending}>{t('delivery.save')}</Button>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>{t('common.cancel')}</Button>
         </FormActions>
       </form>
     </>
@@ -309,8 +311,8 @@ function OpenSlips({ supplierId, projectId }: { supplierId: string; projectId: s
   const open = slips.data ?? []
   if (!open.length) return null
   return (
-    <Card title="Is this for an order slip?">
-      <p className="mb-2 text-sm text-subtle">Pick the order slip and its pending items fill in for you.</p>
+    <Card title={t('delivery.openSlips')}>
+      <p className="mb-2 text-sm text-subtle">{t('delivery.openSlips.hint')}</p>
       <ul className="divide-y divide-line">
         {open.slice(0, 5).map((s) => {
           const project = projectId || s.project_ids[0] || ''
@@ -319,7 +321,7 @@ function OpenSlips({ supplierId, projectId }: { supplierId: string; projectId: s
               <Link to={`/deliveries/new?slip=${s.id}&project=${project}`}
                 className="flex min-h-12 items-center justify-between gap-3 py-2 text-sm hover:text-brand-dark">
                 <span className="min-w-0 truncate"><span className="font-semibold text-ink">{s.number}</span> · {s.suppliers?.name}</span>
-                <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-slate">Receive against it<ChevronRightIcon size={16} /></span>
+                <span className="inline-flex shrink-0 items-center gap-0.5 font-medium text-slate">{t('delivery.openSlips.receive')}<ChevronRightIcon size={16} /></span>
               </Link>
             </li>
           )

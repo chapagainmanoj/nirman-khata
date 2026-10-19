@@ -5,6 +5,7 @@ import type { DateDisplay } from '../lib/dates'
 import { clearUserDrafts, listUserDrafts } from '../lib/drafts'
 import { applyAccent } from '../lib/accents'
 import { supabase, type AppRole, type Tables } from '../lib/supabase'
+import { t } from '../lib/i18n'
 
 type Membership = Tables<'memberships'> & { companies: Tables<'companies'> }
 
@@ -106,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (
             drafts.length > 0 &&
             !window.confirm(
-              `You have ${drafts.length} unsent draft(s) or photo(s) on this phone. Signing out deletes them. Sign out anyway?`,
+              t('authProvider.youHaveLengthUnsent', { length: drafts.length }),
             )
           ) {
             return false

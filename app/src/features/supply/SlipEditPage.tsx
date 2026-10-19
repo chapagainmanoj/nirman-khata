@@ -1,7 +1,7 @@
 // Create or edit an order slip (maag slip) on the phone (req §9.2). One supplier per slip;
 // each line names its project. The form is kept on the device until it is saved.
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useState } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
@@ -12,10 +12,12 @@ import { Button, Card, ErrorBanner, Field, FormActions, Input, MoreDetails, Noti
 import { todayKathmandu } from '../../lib/dates'
 import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
+import { t } from '../../lib/i18n'
 import { newId } from '../../lib/ids'
 import { paisaToInput, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
+import { MaterialOptions } from '../catalog/MaterialOptions'
 import { useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc, saveUnlessSent, useSlip, useSuppliers } from './api'
@@ -55,7 +57,7 @@ export function SlipEditPage() {
   if (slipId && existing.error) return <ErrorBanner onRetry={() => void existing.refetch()}>{friendlyError(existing.error)}</ErrorBanner>
   const data = slipId ? existing.data : null
   if (slipId && (!data || !data.perms?.can_edit)) {
-    return <ErrorBanner>This order slip cannot be edited.</ErrorBanner>
+    return <ErrorBanner>{t('slip.cannotEdit')}</ErrorBanner>
   }
   const initial: SlipValues | undefined = data
     ? {
@@ -75,8 +77,8 @@ export function SlipEditPage() {
 
 function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }) {
   const crumbs: Crumb[] = initial
-    ? [{ to: '/slips', label: 'Order slips' }, { to: `/slips/${initial.id}`, label: number ?? 'Order slip' }]
-    : [{ to: '/slips', label: 'Order slips' }]
+    ? [{ to: '/slips', label: t('nav.slips') }, { to: `/slips/${initial.id}`, label: number ?? t('slip.crumb') }]
+    : [{ to: '/slips', label: t('nav.slips') }]
   const auth = useCompany()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
@@ -85,7 +87,6 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
   const projects = useProjects(auth.companyId)
   const materials = useMaterials(auth.companyId)
   const units = useUnits(auth.companyId)
-  const recent = useRecentMaterials(auth.userId)
   const [error, setError] = useState('')
   const [showNeeded, setShowNeeded] = useState(false)
 
@@ -114,14 +115,6 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
       form.getValues('lines').forEach((l, i) => !l.project_id && setValue(`lines.${i}.project_id`, workable[0].id))
     }
   }, [workable.length]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Recently ordered materials first (req §9.2).
-  const materialOptions = useMemo(() => {
-    const rank = new Map(recent.data?.map((id, i) => [id, i]))
-    return [...(materials.data?.filter((m) => m.active) ?? [])].sort(
-      (a, b) => (rank.get(a.id) ?? 999) - (rank.get(b.id) ?? 999) || a.name.localeCompare(b.name),
-    )
-  }, [materials.data, recent.data])
 
   const save = useMutation({
     mutationFn: async ({ v, submit }: { v: SlipValues; submit: boolean }) => {
@@ -167,16 +160,16 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
   })
 
   function validate(v: SlipValues): string {
-    if (!v.supplier_id) return 'Choose a supplier.'
-    if (!v.lines.length) return 'Add at least one material.'
+    if (!v.supplier_id) return t('slip.err.supplier')
+    if (!v.lines.length) return t('slip.err.lines')
     for (const [i, l] of v.lines.entries()) {
-      const n = `Line ${i + 1}`
-      if (!l.project_id) return `${n}: choose the project.`
-      if (!l.material_id || (l.material_id === OTHER && !l.material_text.trim())) return `${n}: choose or type the material.`
-      if (!(Number(l.qty) > 0)) return `${n}: enter the quantity.`
-      if (!l.unit_id) return `${n}: choose the unit.`
-      if (units.data?.find((u) => u.id === l.unit_id)?.needs_note && !l.unit_note.trim()) return `${n}: describe the trip or load (vehicle, size).`
-      if (l.est_rate && parseNPR(l.est_rate) === null) return `${n}: the rate is not a valid amount.`
+      const n = i + 1
+      if (!l.project_id) return t('slip.err.project', { n })
+      if (!l.material_id || (l.material_id === OTHER && !l.material_text.trim())) return t('slip.err.material', { n })
+      if (!(Number(l.qty) > 0)) return t('slip.err.qty', { n })
+      if (!l.unit_id) return t('slip.err.unit', { n })
+      if (units.data?.find((u) => u.id === l.unit_id)?.needs_note && !l.unit_note.trim()) return t('slip.err.vehicle', { n })
+      if (l.est_rate && parseNPR(l.est_rate) === null) return t('slip.err.rate', { n })
     }
     return ''
   }
@@ -198,27 +191,27 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
 
   return (
     <>
-      <PageHeader title={initial ? 'Edit order slip' : 'New order slip'} crumbs={crumbs} subtitle="One supplier. Each line says which project it is for." />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved order slip.</Notice></div>}
+      <PageHeader title={initial ? t('slip.title.edit') : t('slip.title.new')} crumbs={crumbs} subtitle={t('slip.subtitle')} />
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('slip.restored')}</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); run(true) }} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Supplier" htmlFor="slip-supplier">
+            <Field label={t('common.supplier')} htmlFor="slip-supplier">
               <Select id="slip-supplier" value={watch('supplier_id')} onChange={(e) => form.setValue('supplier_id', e.target.value, { shouldDirty: true })}>
-                <option value="">Choose supplier</option>
+                <option value="">{t('common.supplier.choose')}</option>
                 {suppliers.data?.filter((s) => s.active).map((s) => (
                   <option key={s.id} value={s.id}>{s.name}{s.categories.length ? ` (${s.categories.join(', ')})` : ''}</option>
                 ))}
               </Select>
             </Field>
             {(showNeeded || watch('required_date')) ? (
-              <Field label="Needed by" htmlFor="slip-required">
+              <Field label={t('slip.neededBy')} htmlFor="slip-required">
                 <Controller control={control} name="required_date" render={({ field }) => (
                   <DateInput id="slip-required" value={field.value} onChange={field.onChange} display={auth.dateDisplay} allowEmpty quick="future" />
                 )} />
               </Field>
             ) : (
-              <div className="sm:self-end"><Button type="button" variant="ghost" onClick={() => setShowNeeded(true)}>+ Add needed-by date</Button></div>
+              <div className="sm:self-end"><Button type="button" variant="ghost" onClick={() => setShowNeeded(true)}>{t('slip.neededBy.add')}</Button></div>
             )}
           </div>
         </Card>
@@ -227,61 +220,59 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
           const materialId = watch(`lines.${i}.material_id`)
           const unit = units.data?.find((u) => u.id === watch(`lines.${i}.unit_id`))
           return (
-            <Card key={line.key} title={`Line ${i + 1}`}
-              actions={lines.fields.length > 1 && <Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />Remove</Button>}>
+            <Card key={line.key} title={t('slip.line', { n: i + 1 })}
+              actions={lines.fields.length > 1 && <Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />{t('common.remove')}</Button>}>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="Material" htmlFor={`l${i}-material`}>
+                <Field label={t('common.material')} htmlFor={`l${i}-material`}>
                   <Select id={`l${i}-material`} value={materialId} onChange={(e) => pickMaterial(i, e.target.value)}>
-                    <option value="">Choose material</option>
-                    {materialOptions.map((m) => (
-                      <option key={m.id} value={m.id}>{m.name}{m.local_name && m.local_name !== m.name ? ` (${m.local_name})` : ''}</option>
-                    ))}
-                    <option value={OTHER}>Other (type it)</option>
+                    <option value="">{t('common.material.choose')}</option>
+                    <MaterialOptions companyId={auth.companyId} userId={auth.userId} />
+                    <option value={OTHER}>{t('common.material.other')}</option>
                   </Select>
                 </Field>
                 {materialId === OTHER && (
-                  <Field label="Material name" htmlFor={`l${i}-text`}><Input id={`l${i}-text`} {...register(`lines.${i}.material_text`)} /></Field>
+                  <Field label={t('common.material.name')} htmlFor={`l${i}-text`}><Input id={`l${i}-text`} {...register(`lines.${i}.material_text`)} /></Field>
                 )}
                 <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)] gap-2">
-                  <Field label="Quantity" htmlFor={`l${i}-qty`}>
+                  <Field label={t('slip.qty')} htmlFor={`l${i}-qty`}>
                     <Input id={`l${i}-qty`} inputMode="decimal" {...register(`lines.${i}.qty`)} />
                   </Field>
-                  <Field label="Unit" htmlFor={`l${i}-unit`}>
+                  <Field label={t('common.unit')} htmlFor={`l${i}-unit`}>
                     <Select id={`l${i}-unit`} value={watch(`lines.${i}.unit_id`)} onChange={(e) => setValue(`lines.${i}.unit_id`, e.target.value)}>
-                      <option value="">Unit</option>
+                      <option value="">{t('common.unit')}</option>
                       {units.data?.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </Select>
                   </Field>
                 </div>
                 {unit?.needs_note && (
-                  <Field label={`Which ${unit.name.toLowerCase()}?`} htmlFor={`l${i}-unote`} hint="Vehicle or size, e.g. tipper 200 cft">
+                  <Field label={t('slip.vehicle', { unit: unit.name.toLowerCase() })} htmlFor={`l${i}-unote`} hint={t('slip.vehicle.hint')}>
                     <Input id={`l${i}-unote`} {...register(`lines.${i}.unit_note`)} />
                   </Field>
                 )}
                 {/* With one project there is nothing to choose; it is filled in on save. */}
                 {workable.length !== 1 && (
-                  <Field label="Project" htmlFor={`l${i}-project`}>
+                  <Field label={t('slip.project')} htmlFor={`l${i}-project`}>
                     <Select id={`l${i}-project`} value={watch(`lines.${i}.project_id`)} onChange={(e) => setValue(`lines.${i}.project_id`, e.target.value)}>
-                      <option value="">Choose project</option>
+                      <option value="">{t('common.project.choose')}</option>
                       {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
                     </Select>
                   </Field>
                 )}
               </div>
               <MoreDetails open={!!(watch(`lines.${i}.spec`) || watch(`lines.${i}.est_rate`) || watch(`lines.${i}.note`))}
-                summary="Specification, expected rate, note">
+                summary={t('slip.more')}>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Specification" htmlFor={`l${i}-spec`} hint="Grade, size, brand, e.g. OPC 43, 12 mm">
+                  <Field label={t('slip.spec')} htmlFor={`l${i}-spec`} hint={t('slip.spec.hint')}>
                     <Input id={`l${i}-spec`} {...register(`lines.${i}.spec`)} />
                   </Field>
                   {auth.canSeeFinance && (
-                    <Field label="Expected rate per unit" htmlFor={`l${i}-rate`}>
+                    <Field label={t('slip.rate')} htmlFor={`l${i}-rate`}>
                       <Controller control={control} name={`lines.${i}.est_rate`} render={({ field }) => (
                         <MoneyInput id={`l${i}-rate`} value={field.value} onChange={field.onChange} />
                       )} />
                     </Field>
                   )}
-                  <Field label="Note" htmlFor={`l${i}-note`}><Input id={`l${i}-note`} {...register(`lines.${i}.note`)} /></Field>
+                  <Field label={t('common.note')} htmlFor={`l${i}-note`}><Input id={`l${i}-note`} {...register(`lines.${i}.note`)} /></Field>
                 </div>
               </MoreDetails>
             </Card>
@@ -290,21 +281,21 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
         <div>
           <Button type="button" variant="secondary"
             onClick={() => lines.append(emptyLine(form.getValues('lines').at(-1)?.project_id))}>
-            Add another material
+            {t('slip.addLine')}
           </Button>
         </div>
 
-        <Card title="Delivery">
-          <More label="Site contact and instructions">
+        <Card title={t('slip.delivery')}>
+          <More label={t('slip.delivery.more')}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Site contact" htmlFor="slip-contact" hint="Who the driver should call">
+              <Field label={t('slip.contact')} htmlFor="slip-contact" hint={t('slip.contact.hint')}>
                 <Input id="slip-contact" inputMode="tel" data-default={watch('site_contact') === (auth.profile?.phone ?? '')} {...register('site_contact')} />
               </Field>
-              <Field label="Delivery instructions" htmlFor="slip-instr" hint="Optional, e.g. unload at the back gate before 10 am">
+              <Field label={t('slip.instructions')} htmlFor="slip-instr" hint={t('slip.instructions.hint')}>
                 <Input id="slip-instr" {...register('delivery_instructions')} />
               </Field>
               {/* Older slips may have a separate note; new ones use the instructions only. */}
-              {initial?.notes && <Field label="Notes" htmlFor="slip-notes"><Input id="slip-notes" {...register('notes')} /></Field>}
+              {initial?.notes && <Field label={t('slip.notes')} htmlFor="slip-notes"><Input id="slip-notes" {...register('notes')} /></Field>}
             </div>
           </More>
         </Card>
@@ -312,29 +303,14 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
           <Button type="submit" busy={save.isPending && save.variables?.submit}>
-            {auth.company.slip_approval_required ? 'Submit for approval' : 'Submit'}
+            {auth.company.slip_approval_required ? t('slip.submit.approval') : t('slip.submit')}
           </Button>
           <Button type="button" variant="secondary" busy={save.isPending && !save.variables?.submit} onClick={() => run(false)}>
-            Save draft
+            {t('common.saveDraft')}
           </Button>
-          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>{t('common.cancel')}</Button>
         </FormActions>
       </form>
     </>
   )
-}
-
-/** Materials this user ordered most recently, newest first. */
-function useRecentMaterials(userId: string) {
-  return useQuery({
-    queryKey: ['recent-materials', userId],
-    staleTime: 10 * 60_000,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('order_slip_lines').select('material_id').eq('created_by', userId).not('material_id', 'is', null)
-        .order('created_at', { ascending: false }).limit(100)
-      if (error) throw error
-      return [...new Set(data.map((d) => d.material_id!))]
-    },
-  })
 }

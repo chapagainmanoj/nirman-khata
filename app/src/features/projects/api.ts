@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
+import { t } from '../../lib/i18n'
 import { supabase } from '../../lib/supabase'
 
 export function useProjects(companyId: string) {
@@ -46,7 +47,7 @@ export type Member = NonNullable<ReturnType<typeof useMembers>['data']>[number]
 
 export function memberName(members: Member[] | undefined, userId: string | null | undefined): string {
   if (!userId) return ''
-  return members?.find((m) => m.user_id === userId)?.profiles?.full_name ?? 'Former staff'
+  return members?.find((m) => m.user_id === userId)?.profiles?.full_name ?? t('common.formerStaff')
 }
 
 export function useAmountsAsOf(projectId: string, asOf: string, enabled: boolean) {

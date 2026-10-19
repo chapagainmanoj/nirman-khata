@@ -4,6 +4,7 @@
 // the dashboard) opens on "All projects", so the project cannot hide the item it points to.
 import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
+import { t } from '../../lib/i18n'
 import { useCurrentProject } from '../projects/current'
 
 const option = (on: boolean) =>
@@ -23,12 +24,12 @@ export function useProjectFilter() {
   const projectId = p && !all ? p.id : null
 
   const chip = p && (
-    <div role="group" aria-label="Projects shown" className="mb-3 inline-flex max-w-full gap-1 rounded-lg bg-track p-1">
+    <div role="group" aria-label={t('filter.projectsShown')} className="mb-3 inline-flex max-w-full gap-1 rounded-lg bg-track p-1">
       <button type="button" aria-pressed={!all} onClick={() => setAllFor(null)} className={`${option(!all)} truncate`}>
         {p.code} · {p.name}
       </button>
       <button type="button" aria-pressed={all} onClick={() => setAllFor(p.id)} className={`${option(all)} shrink-0`}>
-        All projects
+        {t('nav.project.all')}
       </button>
     </div>
   )
@@ -36,8 +37,8 @@ export function useProjectFilter() {
   /** Empty-list text that says what is filtered, with the way out. */
   const empty = (what: string, otherwise: ReactNode) => (projectId && p ? (
     <p className="text-sm text-subtle">
-      No {what} on {p.code} yet.{' '}
-      <button type="button" onClick={() => setAllFor(p.id)} className="font-medium text-slate underline underline-offset-4">Show all projects</button>
+      {t('filter.noneOnProject', { what, code: p.code })}{' '}
+      <button type="button" onClick={() => setAllFor(p.id)} className="inline-flex min-h-11 items-center font-medium text-slate underline underline-offset-4 [@media(pointer:fine)]:min-h-0">{t('filter.showAll')}</button>
     </p>
   ) : otherwise)
 

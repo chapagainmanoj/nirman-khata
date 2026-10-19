@@ -5,7 +5,7 @@ import { useId, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
 import { Badge, Button, Card, Checkbox, ErrorBanner, Field, Input, PageHeader, Select, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
 import { supabase, type Tables } from '../../lib/supabase'
 import { useHeadings } from '../projects/api'
 import { useMaterials, useUnits } from './api'
@@ -13,7 +13,7 @@ import { ChevronRightIcon } from '../../components/icons'
 
 type Tab = 'headings' | 'materials' | 'units'
 
-const TABS: Array<[Tab, string]> = [['headings', 'Cost headings'], ['materials', 'Materials'], ['units', 'Units']]
+const TABS: Array<[Tab, MessageKey]> = [['headings', 'catalog.tab.headings'], ['materials', 'catalog.tab.materials'], ['units', 'catalog.tab.units']]
 
 export function CatalogPage() {
   const [tab, setTab] = useState<Tab>('headings')
@@ -34,12 +34,12 @@ export function CatalogPage() {
   return (
     <>
       <PageHeader title={t('catalog.title')} />
-      <div className="mb-4 flex gap-1 rounded-lg bg-track p-1" role="tablist" aria-label="Catalog sections" onKeyDown={onKeyDown}>
+      <div className="mb-4 flex gap-1 rounded-lg bg-track p-1" role="tablist" aria-label={t('catalog.catalogSections')} onKeyDown={onKeyDown}>
         {TABS.map(([key, label]) => (
           <button key={key} id={tabId(key)} type="button" role="tab" aria-selected={tab === key} aria-controls={`${ids}-panel`}
             tabIndex={tab === key ? 0 : -1} onClick={() => setTab(key)}
             className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${tab === key ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
-            {label}
+            {t(label)}
           </button>
         ))}
       </div>
@@ -107,19 +107,19 @@ function HeadingsTab() {
       {editing?.id === h.id ? (
         <form className="flex flex-wrap items-center gap-2 py-2"
           onSubmit={(e) => { e.preventDefault(); write.mutate({ id: h.id, values: { name: editing.name.trim() } }, { onSuccess: () => setEditing(null) }) }}>
-          <Input aria-label={`New name for ${h.name}`} value={editing.name} onChange={(e) => setEditing({ id: h.id, name: e.target.value })} autoFocus className="min-w-0 basis-full sm:basis-48 sm:flex-1" />
+          <Input aria-label={t('catalog.newNameForName', { name: h.name })} value={editing.name} onChange={(e) => setEditing({ id: h.id, name: e.target.value })} autoFocus className="min-w-0 basis-full sm:basis-48 sm:flex-1" />
           <Button type="submit" disabled={!editing.name.trim()} busy={write.isPending}>{t('common.save')}</Button>
           <Button type="button" variant="secondary" onClick={() => setEditing(null)}>{t('common.cancel')}</Button>
           <Button type="button" variant="ghost" disabled={write.isPending}
             onClick={() => write.mutate({ id: h.id, values: { active: !h.active } }, { onSuccess: () => setEditing(null) })}>
-            {h.active ? 'Deactivate' : 'Activate'}
+            {h.active ? t('catalog.deactivate') : t('catalog.activate')}
           </Button>
         </form>
       ) : auth.isAdmin ? (
-        <button type="button" onClick={() => setEditing({ id: h.id, name: h.name })} aria-label={`Edit ${h.name}`}
+        <button type="button" onClick={() => setEditing({ id: h.id, name: h.name })} aria-label={t('catalog.editName', { name: h.name })}
           className="flex min-h-11 w-full items-center justify-between gap-2 py-2 text-left text-sm text-ink hover:bg-muted">
           <span className={`min-w-0 break-words ${h.active ? '' : 'text-subtle line-through'}`}>{h.name}</span>
-          {!h.active && <Badge>Inactive</Badge>}
+          {!h.active && <Badge>{t('catalog.inactive')}</Badge>}
         </button>
       ) : (
         <div className={`py-2 text-sm ${h.active ? 'text-ink' : 'text-subtle line-through'}`}>{h.name}</div>
@@ -132,7 +132,7 @@ function HeadingsTab() {
       <ErrorBanner>{write.error && friendlyError(write.error)}</ErrorBanner>
       {headings.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void headings.refetch()}>{headings.error && friendlyError(headings.error)}</ErrorBanner>
-      {headings.data?.length === 0 && <p className="text-sm text-subtle">No cost headings yet.</p>}
+      {headings.data?.length === 0 && <p className="text-sm text-subtle">{t('catalog.noCostHeadingsYet')}</p>}
       {top.map((h) => {
         const kids = children(h.id)
         return (
@@ -147,22 +147,22 @@ function HeadingsTab() {
                 <span className="shrink-0 text-sm text-subtle">({kids.length})</span>
               </button>
               {auth.isAdmin && editing?.id !== h.id && (
-                <Button variant="ghost" className="shrink-0" aria-label={`Edit ${h.name}`}
-                  onClick={() => setEditing({ id: h.id, name: h.name })}>Edit</Button>
+                <Button variant="ghost" className="shrink-0" aria-label={t('catalog.editName', { name: h.name })}
+                  onClick={() => setEditing({ id: h.id, name: h.name })}>{t('common.edit')}</Button>
               )}
             </div>
             <div id={`${ids}-${h.id}`} hidden={collapsed.has(h.id)}>
               {editing?.id === h.id && <ul>{row(h)}</ul>}
               <ul className="border-t border-line">{kids.map(row)}</ul>
-              {auth.isAdmin && (addForm(h.id, `New heading under ${h.name}`) ?? (
-                <Button variant="ghost" className="my-1" onClick={() => setAdding({ parentId: h.id, name: '' })}>+ Add under {h.name}</Button>
+              {auth.isAdmin && (addForm(h.id, t('catalog.newHeadingUnderName', { name: h.name })) ?? (
+                <Button variant="ghost" className="my-1" onClick={() => setAdding({ parentId: h.id, name: '' })}>{t('catalog.addUnderName', { name: h.name })}</Button>
               ))}
             </div>
           </section>
         )
       })}
-      {auth.isAdmin && (addForm(null, 'New top-level heading') ?? (
-        <div><Button variant="secondary" onClick={() => setAdding({ parentId: null, name: '' })}>+ Add heading group</Button></div>
+      {auth.isAdmin && (addForm(null, t('catalog.newTopLevelHeading')) ?? (
+        <div><Button variant="secondary" onClick={() => setAdding({ parentId: null, name: '' })}>{t('catalog.addHeadingGroup')}</Button></div>
       ))}
     </div>
   )
@@ -202,22 +202,22 @@ function MaterialsTab() {
 
   return (
     <div className="grid gap-4">
-      {auth.isAdmin && !formOpen && <div><Button variant="secondary" onClick={() => setFormOpen(true)}>+ Add material</Button></div>}
+      {auth.isAdmin && !formOpen && <div><Button variant="secondary" onClick={() => setFormOpen(true)}>{t('catalog.addMaterial')}</Button></div>}
       {auth.isAdmin && formOpen && (
-        <Card title={editId ? 'Edit material' : 'Add a material'}>
+        <Card title={editId ? t('catalog.editMaterial') : t('catalog.addAMaterial')}>
           <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-            <Field label="Name" htmlFor="m-name"><Input id="m-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
-            <Field label="Local name" htmlFor="m-local"><Input id="m-local" value={form.local_name} onChange={(e) => setForm({ ...form, local_name: e.target.value })} placeholder="e.g. Chhad" /></Field>
-            <Field label="Specification" htmlFor="m-spec"><Input id="m-spec" value={form.spec} onChange={(e) => setForm({ ...form, spec: e.target.value })} placeholder="e.g. 12mm Fe500, OPC 43" /></Field>
-            <Field label="Default unit" htmlFor="m-unit">
+            <Field label={t('catalog.name')} htmlFor="m-name"><Input id="m-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></Field>
+            <Field label={t('catalog.localName')} htmlFor="m-local"><Input id="m-local" value={form.local_name} onChange={(e) => setForm({ ...form, local_name: e.target.value })} placeholder={t('catalog.eg.chhad')} /></Field>
+            <Field label={t('catalog.specification')} htmlFor="m-spec"><Input id="m-spec" value={form.spec} onChange={(e) => setForm({ ...form, spec: e.target.value })} placeholder={t('catalog.eg.12mmFe500Opc')} /></Field>
+            <Field label={t('catalog.defaultUnit')} htmlFor="m-unit">
               <Select id="m-unit" value={form.default_unit_id} onChange={(e) => setForm({ ...form, default_unit_id: e.target.value })}>
-                <option value="">Choose a unit</option>
+                <option value="">{t('catalog.chooseAUnit')}</option>
                 {units.data?.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
               </Select>
             </Field>
-            <Field label="Default cost heading" htmlFor="m-heading">
+            <Field label={t('catalog.defaultCostHeading')} htmlFor="m-heading">
               <Select id="m-heading" value={form.default_heading_id} onChange={(e) => setForm({ ...form, default_heading_id: e.target.value })}>
-                <option value="">None</option>
+                <option value="">{t('catalog.none')}</option>
                 {headings.data?.filter((h) => h.active && h.parent_id).map((h) => (
                   // Always the full path: "Electrical" exists under both Materials and Subcontract.
                   <option key={h.id} value={h.id}>{headings.data?.find((p) => p.id === h.parent_id)?.name} › {h.name}</option>
@@ -230,7 +230,7 @@ function MaterialsTab() {
               {editing && (
                 <Button type="button" variant="ghost" disabled={write.isPending}
                   onClick={() => write.mutate({ id: editing.id, values: { active: !editing.active } }, { onSuccess: close })}>
-                  {editing.active ? 'Deactivate' : 'Activate'}
+                  {editing.active ? t('catalog.deactivate') : t('catalog.activate')}
                 </Button>
               )}
             </div>
@@ -243,7 +243,7 @@ function MaterialsTab() {
         <ErrorBanner onRetry={() => { void materials.refetch(); void units.refetch() }}>
           {(materials.error || units.error) && friendlyError(materials.error || units.error)}
         </ErrorBanner>
-        {materials.data?.length === 0 && <p className="text-sm text-subtle">No materials yet.</p>}
+        {materials.data?.length === 0 && <p className="text-sm text-subtle">{t('catalog.noMaterialsYet')}</p>}
         <ul>
           {materials.data?.map((m) => (
             <li key={m.id} className="border-b border-line last:border-0">
@@ -252,13 +252,13 @@ function MaterialsTab() {
                   <div className={`min-w-0 break-words ${m.active ? '' : 'opacity-60'}`}>
                     <div className="text-sm font-medium text-ink">
                       {m.name}{m.local_name && m.local_name !== m.name && <span className="text-subtle"> ({m.local_name})</span>}
-                      {!m.active && <> <Badge>Inactive</Badge></>}
+                      {!m.active && <> <Badge>{t('catalog.inactive')}</Badge></>}
                     </div>
                     <div className="text-xs text-subtle">{[m.spec, unitName(m.default_unit_id), headingName(m.default_heading_id)].filter(Boolean).join(' · ')}</div>
                   </div>
                 )
                 return auth.isAdmin ? (
-                  <button type="button" aria-label={`Edit ${m.name}`} className="block min-h-11 w-full py-2 text-left hover:bg-muted"
+                  <button type="button" aria-label={t('catalog.editName', { name: m.name })} className="block min-h-11 w-full py-2 text-left hover:bg-muted"
                     onClick={() => {
                       setEditId(m.id)
                       setFormOpen(true)
@@ -294,13 +294,13 @@ function UnitsTab() {
 
   return (
     <div className="grid gap-4">
-      {auth.isAdmin && !formOpen && <div><Button variant="secondary" onClick={() => setFormOpen(true)}>+ Add unit</Button></div>}
+      {auth.isAdmin && !formOpen && <div><Button variant="secondary" onClick={() => setFormOpen(true)}>{t('catalog.addUnit')}</Button></div>}
       {auth.isAdmin && formOpen && (
-        <Card title="Add a unit">
+        <Card title={t('catalog.addAUnit')}>
           <form onSubmit={add} className="grid gap-3 sm:grid-cols-2">
-            <Field label="Name" htmlFor="u-name"><Input id="u-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Drum" /></Field>
-            <Field label="Short code" htmlFor="u-code"><Input id="u-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. drum" /></Field>
-            <Checkbox label="Needs a description" hint="Like trip or load, where size depends on the vehicle (tipper, tractor)."
+            <Field label={t('catalog.name')} htmlFor="u-name"><Input id="u-name" value={name} onChange={(e) => setName(e.target.value)} placeholder={t('catalog.eg.unitName')} /></Field>
+            <Field label={t('catalog.shortCode')} htmlFor="u-code"><Input id="u-code" value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('catalog.eg.unitCode')} /></Field>
+            <Checkbox label={t('catalog.needsADescription')} hint={t('catalog.likeTripOrLoad')}
               checked={needsNote} onChange={(e) => setNeedsNote(e.target.checked)} />
             <div className="flex items-end gap-2">
               <Button type="submit" disabled={!code.trim() || !name.trim()} busy={write.isPending}>{t('common.add')}</Button>
@@ -313,18 +313,18 @@ function UnitsTab() {
       <Card>
         {units.isPending && <Spinner />}
         <ErrorBanner onRetry={() => void units.refetch()}>{units.error && friendlyError(units.error)}</ErrorBanner>
-        {units.data?.length === 0 && <p className="text-sm text-subtle">No units yet.</p>}
+        {units.data?.length === 0 && <p className="text-sm text-subtle">{t('catalog.noUnitsYet')}</p>}
         <ul>
           {units.data?.map((u) => (
             <li key={u.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0">
               <div className={`min-w-0 break-words ${u.active ? '' : 'opacity-60'}`}>
                 <span className="text-sm font-medium text-ink">{u.name}</span>
                 <span className="ml-2 text-xs text-subtle">{u.code}</span>
-                {u.needs_note && <> <Badge>needs description</Badge></>}
+                {u.needs_note && <> <Badge>{t('catalog.needsDescription')}</Badge></>}
               </div>
               {auth.isAdmin && (
-                <Button variant="ghost" aria-label={`${u.active ? 'Deactivate' : 'Activate'} ${u.name}`} disabled={write.isPending}
-                  onClick={() => write.mutate({ id: u.id, values: { active: !u.active } })}>{u.active ? 'Deactivate' : 'Activate'}</Button>
+                <Button variant="ghost" aria-label={`${u.active ? t('catalog.deactivate') : t('catalog.activate')} ${u.name}`} disabled={write.isPending}
+                  onClick={() => write.mutate({ id: u.id, values: { active: !u.active } })}>{u.active ? t('catalog.deactivate') : t('catalog.activate')}</Button>
               )}
             </li>
           ))}

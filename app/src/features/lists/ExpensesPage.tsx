@@ -42,7 +42,7 @@ export function ExpensesPage() {
             <Card>
               {tab === 'company'
                 ? <EmptyState title={t('expenses.empty.company')}>{t('expenses.for.companyHint')}</EmptyState>
-                : empty('other expenses', <EmptyState title={t('expenses.empty')}>{t('expenses.empty.how')}</EmptyState>)}
+                : empty(t('expenses.what'), <EmptyState title={t('expenses.empty')}>{t('expenses.empty.how')}</EmptyState>)}
             </Card>
           )}
           {shown.data && shown.data.length > 0 && (

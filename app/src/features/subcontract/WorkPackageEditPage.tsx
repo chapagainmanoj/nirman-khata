@@ -18,6 +18,7 @@ import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc } from '../supply/api'
 import { PARTY } from '../parties/kinds'
 import { useSubcontractors, useWorkPackage } from './api'
+import { t } from '../../lib/i18n'
 
 type Pkg = NonNullable<ReturnType<typeof useWorkPackage>['data']>
 
@@ -25,7 +26,7 @@ export function WorkPackageEditPage() {
   const { packageId = '' } = useParams()
   const pkg = useWorkPackage(packageId)
   if (packageId && pkg.isPending) return <Spinner />
-  if (packageId && (pkg.error || !pkg.data)) return <ErrorBanner>{pkg.error ? friendlyError(pkg.error) : 'Work package not found.'}</ErrorBanner>
+  if (packageId && (pkg.error || !pkg.data)) return <ErrorBanner>{pkg.error ? friendlyError(pkg.error) : t('workPackageEdit.workPackageNotFound')}</ErrorBanner>
   return <PackageForm initial={pkg.data ?? null} />
 }
 
@@ -39,7 +40,7 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
   const headings = useHeadings(auth.companyId)
   const units = useUnits(auth.companyId)
   const [error, setError] = useState('')
-  const t = initial?.terms
+  const terms = initial?.terms
   const [v, setV] = useState({
     id: initial?.id ?? newId(),
     project_id: initial?.project_id ?? params.get('project') ?? '',
@@ -48,9 +49,9 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
     scope: initial?.scope ?? '',
     rate_basis: initial?.rate_basis ?? 'lump_sum',
     unit_id: initial?.unit_id ?? '',
-    rate: paisaToInput(t?.rate_paisa),
-    quantity: t?.quantity != null ? String(t.quantity) : '',
-    agreed: paisaToInput(t?.agreed_value_paisa),
+    rate: paisaToInput(terms?.rate_paisa),
+    quantity: terms?.quantity != null ? String(terms.quantity) : '',
+    agreed: paisaToInput(terms?.agreed_value_paisa),
     planned_start: initial?.planned_start ?? '',
     planned_end: initial?.planned_end ?? '',
     status: initial?.status ?? 'active',
@@ -91,17 +92,17 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
     e.preventDefault()
     const progress = Number(v.progress)
     const problem =
-      !v.project_id ? 'Choose the project.'
-      : !v.subcontractor_id ? 'Choose the subcontractor.'
-      : !v.scope.trim() ? 'Describe the work, e.g. Plaster, ground floor.'
-      : v.rate_basis === 'rate' && !v.unit_id ? 'Choose the unit the rate is per, e.g. sq.ft.'
+      !v.project_id ? t('workPackageEdit.chooseTheProject')
+      : !v.subcontractor_id ? t('workPackageEdit.chooseTheSubcontractor')
+      : !v.scope.trim() ? t('workPackageEdit.describeTheWorkE')
+      : v.rate_basis === 'rate' && !v.unit_id ? t('workPackageEdit.chooseTheUnitThe')
       // A rate and quantity that cannot be multiplied would save no agreed value, removing the old one.
-      : auth.canSeeFinance && v.rate_basis === 'rate' && v.rate.trim() && rate === null ? 'The rate is not a valid amount.'
+      : auth.canSeeFinance && v.rate_basis === 'rate' && v.rate.trim() && rate === null ? t('workPackageEdit.theRateIsNot')
       : auth.canSeeFinance && v.rate_basis === 'rate' && v.quantity.trim() && lineAmount(0, v.quantity) === null
-        ? 'Expected quantity: a number with at most 3 decimals, e.g. 120.5.'
-      : byRate && agreedPaisa === null ? 'Rate times quantity is too large.'
-      : Number.isNaN(progress) || progress < 0 || progress > 100 ? 'Progress is a number from 0 to 100.'
-      : v.planned_start && v.planned_end && v.planned_end < v.planned_start ? 'The planned end is before the start.'
+        ? t('workPackageEdit.expectedQuantityANumber')
+      : byRate && agreedPaisa === null ? t('workPackageEdit.rateTimesQuantityIs')
+      : Number.isNaN(progress) || progress < 0 || progress > 100 ? t('workPackageEdit.progressIsANumber')
+      : v.planned_start && v.planned_end && v.planned_end < v.planned_start ? t('workPackageEdit.thePlannedEndIs')
       : ''
     setError(problem)
     if (!problem) save.mutate()
@@ -110,99 +111,99 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
   // Where it was started from: the package itself, a subcontractor, a project, or Parties.
   const fromSub = params.get('subcontractor')
   const fromProject = params.get('project')
-  const subsCrumbs: Crumb[] = [{ to: '/parties', label: 'Parties' }, { to: PARTY.subcontractor.path, label: PARTY.subcontractor.many }]
+  const subsCrumbs: Crumb[] = [{ to: '/parties', label: t('workPackageEdit.parties') }, { to: PARTY.subcontractor.path, label: PARTY.subcontractor.many }]
   const crumbs: Crumb[] = initial
     ? [...subsCrumbs, { to: `/work/${initial.id}`, label: initial.scope }]
     : fromSub
       ? [...subsCrumbs, { to: `${PARTY.subcontractor.path}/${fromSub}`, label: subs.data?.find((s) => s.id === fromSub)?.name ?? PARTY.subcontractor.one }]
       : fromProject
-        ? [{ to: '/projects', label: 'Projects' }, { to: `/projects/${fromProject}`, label: projects.data?.find((p) => p.id === fromProject)?.name ?? 'Project' }]
+        ? [{ to: '/projects', label: t('workPackageEdit.projects') }, { to: `/projects/${fromProject}`, label: projects.data?.find((p) => p.id === fromProject)?.name ?? t('workPackageEdit.project') }]
         : subsCrumbs
 
   return (
     <>
-      <PageHeader title={initial ? 'Edit work package' : 'New work package'} crumbs={crumbs} subtitle="Work given to a subcontractor on one project." />
+      <PageHeader title={initial ? t('workPackageEdit.editWorkPackage') : t('workPackageEdit.newWorkPackage')} crumbs={crumbs} subtitle={t('workPackageEdit.workGivenToA')} />
       <form onSubmit={submit} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Project" htmlFor="wp-project">
+            <Field label={t('workPackageEdit.project')} htmlFor="wp-project">
               <Select id="wp-project" value={v.project_id} onChange={set('project_id')} disabled={!!initial}>
-                <option value="">Choose project</option>
+                <option value="">{t('common.project.choose')}</option>
                 {projectChoices(projects.data, 'site', [initial?.project_id]).map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
-            <Field label="Subcontractor" htmlFor="wp-sub">
+            <Field label={t('workPackageEdit.subcontractor')} htmlFor="wp-sub">
               <Select id="wp-sub" value={v.subcontractor_id} onChange={set('subcontractor_id')} disabled={!!initial}>
-                <option value="">Choose subcontractor</option>
+                <option value="">{t('workPackageEdit.chooseSubcontractor')}</option>
                 {subs.data?.filter((s) => s.active || s.id === v.subcontractor_id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </Select>
             </Field>
-            <Field label="Work" htmlFor="wp-scope" hint="e.g. Plaster, ground floor inside walls">
+            <Field label={t('workPackageEdit.work')} htmlFor="wp-scope" hint={t('workPackageEdit.eg.plasterGroundFloor')}>
               <Input id="wp-scope" value={v.scope} onChange={set('scope')} />
             </Field>
-            <Field label="Cost heading" htmlFor="wp-heading">
+            <Field label={t('workPackageEdit.costHeading')} htmlFor="wp-heading">
               <Select id="wp-heading" value={v.heading_id} onChange={set('heading_id')}>
-                <option value="">Subcontract Work</option>
+                <option value="">{t('workPackageEdit.subcontractWork')}</option>
                 {subHeadings.filter((h) => h.parent_id).map((h) => <option key={h.id} value={h.id}>{h.name}</option>)}
               </Select>
             </Field>
-            <Field label="Planned start" htmlFor="wp-start">
+            <Field label={t('workPackageEdit.plannedStart')} htmlFor="wp-start">
               <DateInput id="wp-start" value={v.planned_start} onChange={(d) => setV({ ...v, planned_start: d })} display={auth.dateDisplay} allowEmpty />
             </Field>
-            <Field label="Planned end" htmlFor="wp-end">
+            <Field label={t('workPackageEdit.plannedEnd')} htmlFor="wp-end">
               <DateInput id="wp-end" value={v.planned_end} onChange={(d) => setV({ ...v, planned_end: d })} display={auth.dateDisplay} allowEmpty />
             </Field>
             {initial && (
               <>
-                <Field label="Status" htmlFor="wp-status">
+                <Field label={t('workPackageEdit.status')} htmlFor="wp-status">
                   <Select id="wp-status" value={v.status} onChange={set('status')}>
                     {Object.entries(PACKAGE_STATUS).map(([k, [label]]) => <option key={k} value={k}>{label}</option>)}
                   </Select>
                 </Field>
-                <Field label="Progress (%)" htmlFor="wp-progress">
+                <Field label={t('workPackageEdit.progress')} htmlFor="wp-progress">
                   <Input id="wp-progress" inputMode="decimal" value={v.progress} onChange={set('progress')} />
                 </Field>
               </>
             )}
-            <Field label="Notes" htmlFor="wp-notes"><Input id="wp-notes" value={v.notes} onChange={set('notes')} /></Field>
+            <Field label={t('workPackageEdit.notes')} htmlFor="wp-notes"><Input id="wp-notes" value={v.notes} onChange={set('notes')} /></Field>
           </div>
         </Card>
 
-        <Card title="Agreed value">
+        <Card title={t('workPackageEdit.agreedValue')}>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="How it is priced" htmlFor="wp-basis">
+            <Field label={t('workPackageEdit.howItIsPriced')} htmlFor="wp-basis">
               <Select id="wp-basis" value={v.rate_basis} onChange={set('rate_basis')}>
-                <option value="lump_sum">Lump sum (thekka)</option>
-                <option value="rate">Rate x quantity</option>
+                <option value="lump_sum">{t('workPackageEdit.lumpSumThekka')}</option>
+                <option value="rate">{t('workPackageEdit.rateXQuantity')}</option>
               </Select>
             </Field>
             {v.rate_basis === 'rate' && (
-              <Field label="Rate per" htmlFor="wp-unit">
+              <Field label={t('workPackageEdit.ratePer')} htmlFor="wp-unit">
                 <Select id="wp-unit" value={v.unit_id} onChange={set('unit_id')}>
-                  <option value="">Choose unit</option>
+                  <option value="">{t('workPackageEdit.chooseUnit')}</option>
                   {units.data?.filter((u) => u.active || u.id === v.unit_id).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                 </Select>
               </Field>
             )}
             {auth.canSeeFinance && v.rate_basis === 'rate' && (
               <>
-                <Field label="Rate" htmlFor="wp-rate"><MoneyInput id="wp-rate" value={v.rate} onChange={set('rate')} /></Field>
-                <Field label="Expected quantity" htmlFor="wp-qty"><Input id="wp-qty" inputMode="decimal" value={v.quantity} onChange={set('quantity')} /></Field>
+                <Field label={t('workPackageEdit.rate')} htmlFor="wp-rate"><MoneyInput id="wp-rate" value={v.rate} onChange={set('rate')} /></Field>
+                <Field label={t('workPackageEdit.expectedQuantity')} htmlFor="wp-qty"><Input id="wp-qty" inputMode="decimal" value={v.quantity} onChange={set('quantity')} /></Field>
               </>
             )}
             {auth.canSeeFinance && v.rate_basis === 'lump_sum' && (
-              <Field label="Agreed amount" htmlFor="wp-agreed"><MoneyInput id="wp-agreed" value={v.agreed} onChange={set('agreed')} /></Field>
+              <Field label={t('workPackageEdit.agreedAmount')} htmlFor="wp-agreed"><MoneyInput id="wp-agreed" value={v.agreed} onChange={set('agreed')} /></Field>
             )}
           </div>
           {auth.canSeeFinance
-            ? <p className="mt-2 text-sm text-subtle">{agreedPaisa !== null ? `Agreed value ${formatNPR(agreedPaisa)}.` : 'Optional. Leave empty if not agreed yet.'} It is not cost; cost comes from approved claims.</p>
-            : <p className="mt-2 text-sm text-subtle">Amounts are entered by staff with finance access.</p>}
+            ? <p className="mt-2 text-sm text-subtle">{agreedPaisa !== null ? t('workPackageEdit.agreedValueAgreedpaisa', { agreedPaisa: formatNPR(agreedPaisa) }) : t('workPackageEdit.optionalLeaveEmptyIf')} {t('workPackageEdit.itIsNotCost')}</p>
+            : <p className="mt-2 text-sm text-subtle">{t('workPackageEdit.amountsAreEnteredBy')}</p>}
         </Card>
 
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
-          <Button type="submit" busy={save.isPending}>Save</Button>
-          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button type="submit" busy={save.isPending}>{t('common.save')}</Button>
+          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>{t('common.cancel')}</Button>
         </FormActions>
       </form>
     </>

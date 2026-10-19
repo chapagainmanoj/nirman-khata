@@ -7,6 +7,7 @@ import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { useCurrentProject } from '../projects/current'
 import { useWorkerMonth } from './api'
+import { t } from '../../lib/i18n'
 
 export function WorkerCrews({ workerId }: { workerId: string }) {
   const today = todayKathmandu()
@@ -17,13 +18,13 @@ export function WorkerCrews({ workerId }: { workerId: string }) {
   const crews = card.data.worker.crews
   const project = (pid: string | null) => {
     const p = pid && current.choices.find((x) => x.id === pid)
-    return p ? `${p.code} · ${p.name}` : pid ? 'Another project' : 'Any project'
+    return p ? `${p.code} · ${p.name}` : pid ? t('workerCrews.anotherProject') : t('workerCrews.anyProject')
   }
   return (
-    <Card title="Attendance" className="mb-4">
+    <Card title={t('workerCrews.attendance')} className="mb-4">
       {crews.length ? (
         <>
-          <p className="text-sm text-subtle">Days are marked on the crew's page.</p>
+          <p className="text-sm text-subtle">{t('workerCrews.daysAreMarkedOn')}</p>
           <ul className="mt-2">
             {crews.map((c) => (
               <li key={c.crew_id} className="border-b border-line last:border-0">
@@ -32,14 +33,14 @@ export function WorkerCrews({ workerId }: { workerId: string }) {
                     <span className="block text-sm font-medium text-ink">{c.crew_name}</span>
                     <span className="block text-xs text-subtle">{project(c.project_id)}</span>
                   </span>
-                  <span className="shrink-0 text-sm font-medium text-slate">Open calendar</span>
+                  <span className="shrink-0 text-sm font-medium text-slate">{t('workerCrews.openCalendar')}</span>
                 </Link>
               </li>
             ))}
           </ul>
         </>
       ) : (
-        <p className="text-sm text-subtle">Not on a crew yet. Open a project's crew and use Add worker to mark their days.</p>
+        <p className="text-sm text-subtle">{t('workerCrews.notOnACrew')}</p>
       )}
     </Card>
   )

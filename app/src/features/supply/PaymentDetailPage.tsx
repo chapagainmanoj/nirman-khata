@@ -15,6 +15,7 @@ import { formatNPR, parseNPR } from '../../lib/money'
 import { memberName, useMembers, useProjects } from '../projects/api'
 import { rpc, usePayment, usePosting, useRefreshMoney } from './api'
 import { canPost, canRecordPayments } from './permissions'
+import { t } from '../../lib/i18n'
 
 export function PaymentDetailPage() {
   const { paymentId = '' } = useParams()
@@ -42,7 +43,7 @@ export function PaymentDetailPage() {
   if (payment.error) return <ErrorBanner onRetry={() => void payment.refetch()}>{friendlyError(payment.error)}</ErrorBanner>
   const { payment: p, allocations, settlements } = payment.data
   if (!p) {
-    return <EmptyState title="Payment not found">It does not exist, or part of it is for projects you cannot see.</EmptyState>
+    return <EmptyState title={t('paymentDetail.paymentNotFound')}>{t('paymentDetail.itDoesNotExist')}</EmptyState>
   }
 
   const project = (id: string) => projects.data?.find((x) => x.id === id)
@@ -53,9 +54,9 @@ export function PaymentDetailPage() {
     const docId = s.doc_id!
     const k = `${docId}:${s.project_id}`
     const [label, to] = s.bill_id ? [billTitle(s.supplier_bills?.bill_no), `/bills/${s.bill_id}`]
-      : s.charge_id ? [`Work charge ${s.subcontract_charges?.claim_no ?? ''}`.trim(), `/work/${s.subcontract_charges?.work_package_id}`]
-      : s.labour_cost_id ? [`Labour ${s.labour_costs?.work_type ?? ''}`.trim(), `/projects/${s.project_id}`]
-      : [`Expense: ${s.expenses?.description ?? ''}`, `/projects/${s.project_id}`]
+      : s.charge_id ? [t('paymentDetail.workChargeValue', { value: s.subcontract_charges?.claim_no ?? '' }).trim(), `/work/${s.subcontract_charges?.work_package_id}`]
+      : s.labour_cost_id ? [t('paymentDetail.labourValue', { value: s.labour_costs?.work_type ?? '' }).trim(), `/projects/${s.project_id}`]
+      : [t('paymentDetail.expenseValue', { value: s.expenses?.description ?? '' }), `/projects/${s.project_id}`]
     acc[k] ??= { doc_id: docId, label, to, project_id: s.project_id, amount: 0 }
     acc[k].amount += s.amount_paisa
     return acc
@@ -68,43 +69,43 @@ export function PaymentDetailPage() {
   return (
     <>
       <PageHeader
-        title={`Payment ${p.number}`}
-        crumbs={[{ to: '/payments', label: 'Payments' }]}
+        title={t('paymentDetail.paymentNumber', { number: p.number })}
+        crumbs={[{ to: '/payments', label: t('paymentDetail.payments') }]}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
             <Link className="text-slate" to={partyPath}>{party?.name}</Link>
-            {p.status === 'reversed' && <Badge tone="bad">Reversed</Badge>}
+            {p.status === 'reversed' && <Badge tone="bad">{t('paymentDetail.reversed')}</Badge>}
           </span>
         }
       />
       {photoFailed > 0 && (
-        <div className="mb-4"><Notice>The payment is saved, but {photoFailed === 1 ? 'a photo' : `${photoFailed} photos`} did not upload. {photoFailed === 1 ? 'It is' : 'They are'} kept on this phone; upload {photoFailed === 1 ? 'it' : 'them'} again below.</Notice></div>
+        <div className="mb-4"><Notice>{t('paymentDetail.thePaymentIsSaved')}{' '}{photoFailed === 1 ? 'a photo' : t('paymentDetail.photofailedPhotos', { photoFailed })} {t('paymentDetail.didNotUpload')}{' '}{photoFailed === 1 ? t('paymentDetail.itIs') : t('paymentDetail.theyAre')} {t('paymentDetail.keptOnThisPhone')}{' '}{photoFailed === 1 ? 'it' : 'them'} {t('paymentDetail.againBelow')}</Notice></div>
       )}
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Card title="Payment">
+        <Card title={t('paymentDetail.payment')}>
           <div className="mb-2 text-lg font-semibold text-ink tabular-nums">{formatNPR(p.amount_paisa)}</div>
-          <Detail label="Paid on"><DateText value={p.payment_date} display={auth.dateDisplay} dual /></Detail>
-          <Detail label="How">{PAYMENT_METHODS[p.method]}</Detail>
-          {p.work_packages && <Detail label="Work package"><Link className="text-slate" to={`/work/${p.work_package_id}`}>{p.work_packages.scope}</Link></Detail>}
-          <Detail label="Reference">{p.reference}</Detail>
-          <Detail label="Recorded by">{memberName(members.data, p.created_by)}</Detail>
-          <Detail label="Notes">{p.notes}</Detail>
+          <Detail label={t('paymentDetail.paidOn')}><DateText value={p.payment_date} display={auth.dateDisplay} dual /></Detail>
+          <Detail label={t('paymentDetail.how')}>{PAYMENT_METHODS[p.method]}</Detail>
+          {p.work_packages && <Detail label={t('paymentDetail.workPackage')}><Link className="text-slate" to={`/work/${p.work_package_id}`}>{p.work_packages.scope}</Link></Detail>}
+          <Detail label={t('paymentDetail.reference')}>{p.reference}</Detail>
+          <Detail label={t('paymentDetail.recordedBy')}>{memberName(members.data, p.created_by)}</Detail>
+          <Detail label={t('paymentDetail.notes')}>{p.notes}</Detail>
         </Card>
 
-        <Card title="Split by project">
+        <Card title={t('paymentDetail.splitByProject')}>
           {byProject.map((r) => (
-            <Detail key={r.id} label={`${project(r.id)?.code ?? ''} · ${project(r.id)?.name ?? 'Project'}`}>{formatNPR(r.amount)}</Detail>
+            <Detail key={r.id} label={`${project(r.id)?.code ?? ''} · ${project(r.id)?.name ?? t('paymentDetail.project')}`}>{formatNPR(r.amount)}</Detail>
           ))}
           {p.amount_paisa - p.allocated_paisa !== 0 && (
-            <Detail label="Not assigned to a project">{formatNPR(p.amount_paisa - p.allocated_paisa)}</Detail>
+            <Detail label={t('paymentDetail.notAssignedToA')}>{formatNPR(p.amount_paisa - p.allocated_paisa)}</Detail>
           )}
           {posted && canPost(auth) && !p.work_package_id && (
             <AllocationForm paymentId={p.id} split={byProject} {...formProps('split')} />
           )}
         </Card>
 
-        <Card title="What it paid">
-          {matched.length === 0 && <p className="text-sm text-subtle">Not matched to bills or charges yet. {p.is_peski ? 'It is peski until it is.' : 'It counts as overpaid until it is.'}</p>}
+        <Card title={t('paymentDetail.whatItPaid')}>
+          {matched.length === 0 && <p className="text-sm text-subtle">{t('paymentDetail.notMatchedToBills')}{' '}{p.is_peski ? t('paymentDetail.itIsPeskiUntil') : t('paymentDetail.itCountsAsOverpaid')}</p>}
           <ul>
             {matched.map((m) => (
               <li key={`${m.doc_id}:${m.project_id}`} className="border-b border-line py-2 text-sm last:border-0">
@@ -116,34 +117,32 @@ export function PaymentDetailPage() {
                 </div>
                 {posted && canRecordPayments(auth) && (
                   <div className="mt-1">
-                    <ReasonButton variant="ghost" {...formProps(`unmatch:${m.doc_id}:${m.project_id}`)} title="Unmatch from this bill" hint="The money stays with the project, ready to match to another bill."
-                      confirmLabel="Unmatch" busy={unsettle.isPending} error={unsettle.error && friendlyError(unsettle.error)}
+                    <ReasonButton variant="ghost" {...formProps(`unmatch:${m.doc_id}:${m.project_id}`)} title={t('paymentDetail.unmatchFromThisBill')} hint={t('paymentDetail.theMoneyStaysWith')}
+                      confirmLabel={t('paymentDetail.unmatch')} busy={unsettle.isPending} error={unsettle.error && friendlyError(unsettle.error)}
                       onConfirm={(reason) => unsettle.mutate({ bill: m.doc_id, project: m.project_id, amount: m.amount, reason })}>
-                      Unmatch
-                    </ReasonButton>
+                      {t('paymentDetail.unmatch')}</ReasonButton>
                   </div>
                 )}
               </li>
             ))}
           </ul>
           {posted && canRecordPayments(auth) && (
-            <p className="mt-2 text-xs text-subtle">To match it to more, use "Match payments to bills" on the {p.supplier_id ? 'supplier' : 'party'} page.</p>
+            <p className="mt-2 text-xs text-subtle">{t('paymentDetail.toMatchItTo')}{' '}{p.supplier_id ? 'supplier' : 'party'} {t('paymentDetail.page')}</p>
           )}
         </Card>
 
-        <Card title="Proof">
-          <Attachments owner={{ payment_id: p.id }} canAdd={posted && canRecordPayments(auth)} label="Add receipt or cheque photo" />
+        <Card title={t('paymentDetail.proof')}>
+          <Attachments owner={{ payment_id: p.id }} canAdd={posted && canRecordPayments(auth)} label={t('paymentDetail.addReceiptOrCheque')} />
         </Card>
       </div>
 
       {posted && canPost(auth) && (
         <div className="mt-6">
-          <ReasonButton variant="danger" {...formProps('reverse')} title="Reverse this payment" hint="e.g. Cheque bounced. Bills it paid become unpaid again."
-            confirmLabel="Reverse payment" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
-            withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
+          <ReasonButton variant="danger" {...formProps('reverse')} title={t('paymentDetail.reverseThisPayment')} hint={t('paymentDetail.eg.chequeBouncedBills')}
+            confirmLabel={t('paymentDetail.reversePayment')} busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
+            withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: t('paymentDetail.reversalDate') }}
             onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
-            Reverse payment
-          </ReasonButton>
+            {t('paymentDetail.reversePayment')}</ReasonButton>
         </div>
       )}
     </>
@@ -181,7 +180,7 @@ function AllocationForm({ paymentId, split, open, onOpenChange }: {
   const ready = !!to && from !== to && paisa > 0 && !!reason.trim()
   const name = (id: string) => {
     const p = projects.data?.find((x) => x.id === id)
-    return p ? `${p.code} · ${p.name}` : 'Project'
+    return p ? `${p.code} · ${p.name}` : t('paymentDetail.project')
   }
 
   function submit(e: FormEvent) {
@@ -189,31 +188,31 @@ function AllocationForm({ paymentId, split, open, onOpenChange }: {
     if (ready) allocate.mutate()
   }
 
-  if (!open) return <Button variant="ghost" className="mt-2" onClick={() => onOpenChange(true)}>Change split</Button>
+  if (!open) return <Button variant="ghost" className="mt-2" onClick={() => onOpenChange(true)}>{t('paymentDetail.changeSplit')}</Button>
   return (
     <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
-      <div className="font-semibold text-ink">Move money</div>
+      <div className="font-semibold text-ink">{t('paymentDetail.moveMoney')}</div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="From" htmlFor="al-from">
+        <Field label={t('paymentDetail.from')} htmlFor="al-from">
           <Select id="al-from" value={from} onChange={(e) => setFrom(e.target.value)}>
-            <option value={UNASSIGNED}>Not assigned</option>
+            <option value={UNASSIGNED}>{t('paymentDetail.notAssigned')}</option>
             {split.map((r) => <option key={r.id} value={r.id}>{name(r.id)} ({formatNPR(r.amount)})</option>)}
           </Select>
         </Field>
-        <Field label="To" htmlFor="al-to">
+        <Field label={t('paymentDetail.to')} htmlFor="al-to">
           <Select id="al-to" value={to} onChange={(e) => setTo(e.target.value)}>
-            <option value="">Choose</option>
-            {from !== UNASSIGNED && <option value={UNASSIGNED}>Not assigned</option>}
+            <option value="">{t('paymentDetail.choose')}</option>
+            {from !== UNASSIGNED && <option value={UNASSIGNED}>{t('paymentDetail.notAssigned')}</option>}
             {projects.data?.filter((p) => p.id !== from).map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
           </Select>
         </Field>
-        <Field label="Amount" htmlFor="al-amount"><MoneyInput id="al-amount" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
-        <Field label="Reason" htmlFor="al-reason"><Input id="al-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
+        <Field label={t('paymentDetail.amount')} htmlFor="al-amount"><MoneyInput id="al-amount" value={amount} onChange={(e) => setAmount(e.target.value)} /></Field>
+        <Field label={t('paymentDetail.reason')} htmlFor="al-reason"><Input id="al-reason" value={reason} onChange={(e) => setReason(e.target.value)} /></Field>
       </div>
       <ErrorBanner>{allocate.error && friendlyError(allocate.error)}</ErrorBanner>
       <div className="flex gap-2">
-        <Button type="submit" busy={allocate.isPending} disabled={!ready}>Move</Button>
-        <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
+        <Button type="submit" busy={allocate.isPending} disabled={!ready}>{t('paymentDetail.move')}</Button>
+        <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>{t('common.cancel')}</Button>
       </div>
     </form>
   )

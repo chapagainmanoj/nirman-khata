@@ -6,7 +6,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
 import { Badge, ButtonLink, Card, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
 import { PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { containsAny } from '../../lib/search'
@@ -41,11 +41,11 @@ function paymentQuery<Q extends Filterable<Q>>(q: Q, f: PaymentFilter): Q {
 }
 
 /** Who a payment went to, by kind: crews and workers together as labour (GLOSSARY: Worker). */
-const PAID_TO: Array<[key: string, label: string, columns: string[]]> = [
-  ['supplier', 'Suppliers', ['supplier_id']],
-  ['subcontractor', 'Subcontractors', ['subcontractor_id']],
-  ['labour', 'Labour (crews and workers)', ['crew_id', 'worker_id']],
-  ['payee', 'Other services', ['payee_id']],
+const PAID_TO: Array<[key: string, label: MessageKey, columns: string[]]> = [
+  ['supplier', 'payments.to.supplier', ['supplier_id']],
+  ['subcontractor', 'payments.to.subcontractor', ['subcontractor_id']],
+  ['labour', 'payments.to.labour', ['crew_id', 'worker_id']],
+  ['payee', 'payments.to.payee', ['payee_id']],
 ]
 
 /**
@@ -96,8 +96,8 @@ export function PaymentsPage() {
   const auth = useCompany()
   const { projectId, chip, empty, recordProject, showProject } = useProjectFilter()
   const search = useListFilters({
-    placeholder: 'Search number, who was paid or what for',
-    choice: { param: 'to', label: 'Paid to', any: 'Paid to anyone', options: PAID_TO.map(([k, label]) => [k, label]) },
+    placeholder: t('payments.searchNumberWhoWas'),
+    choice: { param: 'to', label: t('payments.paidTo'), any: t('payments.paidToAnyone'), options: PAID_TO.map(([k, label]) => [k, t(label)]) },
   })
   const partyMatch = usePartyMatch(auth.companyId, search.filter.search, search.filter.supplierMatch)
   const { supplierMatch: _, ...dates } = search.filter
@@ -109,38 +109,38 @@ export function PaymentsPage() {
   const th = 'py-2 pr-3 font-medium'
   return (
     <>
-      <PageHeader title="Payments" subtitle="Money paid to suppliers, subcontractors, crews and other services."
-        actions={canRecordPayments(auth) && <ButtonLink variant="tonal" to={recordProject ? `/payments/new?project=${recordProject}` : '/payments/new'}>Record payment</ButtonLink>} />
+      <PageHeader title={t('payments.payments')} subtitle={t('payments.moneyPaidToSuppliers')}
+        actions={canRecordPayments(auth) && <ButtonLink variant="tonal" to={recordProject ? `/payments/new?project=${recordProject}` : '/payments/new'}>{t('payments.recordPayment')}</ButtonLink>} />
       {chip}
       {search.bar}
       {payments.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void payments.refetch()}>{payments.error && friendlyError(payments.error)}</ErrorBanner>
-      {payments.data?.length === 0 && (search.active ? search.noMatch('payments') : <Card>{empty('payments', <EmptyState title="No payments yet" />)}</Card>)}
+      {payments.data?.length === 0 && (search.active ? search.noMatch(t('payments.what')) : <Card>{empty(t('payments.what'), <EmptyState title={t('payments.noPaymentsYet')} />)}</Card>)}
       {payments.data && payments.data.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line text-left text-xs text-subtle">
-                <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
-                <th scope="col" className={`hidden md:table-cell ${th}`}>Number</th>
-                <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>Paid to</th>
-                <th scope="col" className={`hidden lg:table-cell ${th}`}>For</th>
-                <th scope="col" className={`hidden md:table-cell ${th}`}>Method</th>
-                {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>Project</th>}
-                <th scope="col" className="py-2 pr-4 text-right font-medium">Amount</th>
+                <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>{t('payments.date')}</th>
+                <th scope="col" className={`hidden md:table-cell ${th}`}>{t('payments.number')}</th>
+                <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>{t('payments.paidTo')}</th>
+                <th scope="col" className={`hidden lg:table-cell ${th}`}>{t('payments.for2')}</th>
+                <th scope="col" className={`hidden md:table-cell ${th}`}>{t('payments.method')}</th>
+                {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>{t('payments.project')}</th>}
+                <th scope="col" className="py-2 pr-4 text-right font-medium">{t('payments.amount')}</th>
               </tr>
             </thead>
             <tbody>
               {payments.data.map((p) => {
                 const to = `/payments/${p.id}`
-                const badge = p.status === 'reversed' ? <Badge tone="bad">Reversed</Badge>
-                  : p.status === 'posted' && p.allocated_paisa < p.amount_paisa ? <Badge tone="warn">Part unassigned</Badge> : null
+                const badge = p.status === 'reversed' ? <Badge tone="bad">{t('payments.reversed')}</Badge>
+                  : p.status === 'posted' && p.allocated_paisa < p.amount_paisa ? <Badge tone="warn">{t('payments.partUnassigned')}</Badge> : null
                 return (
                   <tr key={p.id} className={`border-b border-line align-middle last:border-0 hover:bg-muted ${p.status === 'reversed' ? 'text-subtle' : ''}`}>
                     <td className="hidden py-2 pr-3 pl-4 whitespace-nowrap text-subtle sm:table-cell"><DateText value={p.payment_date} display={auth.dateDisplay} /></td>
                     <td className="hidden py-2 pr-3 whitespace-nowrap md:table-cell"><Link to={to} className="text-slate hover:underline">{p.number}</Link></td>
                     <td className="py-2 pr-3 pl-4 sm:pl-0">
-                      <Link to={to} className="inline-flex min-h-8 items-center font-medium break-words text-ink hover:underline">{p.party || p.number}</Link>
+                      <Link to={to} className="inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 items-center font-medium break-words text-ink hover:underline">{p.party || p.number}</Link>
                       {/* Smaller screens: what the hidden columns say. */}
                       {p.paid_for && <div className="text-xs break-words text-ink lg:hidden">{t('payments.for', { what: p.paid_for })}</div>}
                       <div className="text-xs text-subtle md:hidden">

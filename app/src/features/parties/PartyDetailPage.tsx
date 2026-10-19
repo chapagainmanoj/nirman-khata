@@ -25,6 +25,7 @@ import { WorkerForm } from '../labour/WorkerForm'
 import { formatNPR } from '../../lib/money'
 import { BalanceCard, ContactRow, Khata, MatchCard, OpeningBalance, PaymentList, Tabs } from './PartyParts'
 import { RefundCard } from '../refunds/RefundCard'
+import { t } from '../../lib/i18n'
 
 type Tab = 'khata' | 'payments'
 
@@ -47,7 +48,7 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
   const r = rows.data.find((x) => x.id === partyId)
   if (!r) {
-    return <EmptyState title={`${PARTY[kind].one} not found`}><Link className="text-slate" to={PARTY[kind].path}>Back to {PARTY[kind].many.toLowerCase()}</Link></EmptyState>
+    return <EmptyState title={t('partyDetail.oneNotFound', { one: PARTY[kind].one })}><Link className="text-slate" to={PARTY[kind].path}>{t('partyDetail.backToValue', { value: PARTY[kind].many.toLowerCase() })}</Link></EmptyState>
   }
   const code = (id: string | null | undefined) => projects.data?.find((p) => p.id === id)?.code
   const sub = subtitleOf(kind, r, code)
@@ -57,18 +58,24 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
       <PageHeader
         title={r.name}
         crumbs={partyCrumbs(kind)}
-        subtitle={<span className="flex flex-wrap items-center gap-2">{sub}{!r.active && <Badge>Inactive</Badge>}</span>}
+        subtitle={
+          <span className="flex flex-wrap items-center gap-2">
+            {sub}{!r.active && <Badge>{t('partyDetail.inactive')}</Badge>}
+            {/* No phone to call: Details joins this line rather than sitting alone on its own. */}
+            {!r.phone && <Link className="inline-flex min-h-11 items-center font-medium text-slate underline underline-offset-2 [@media(pointer:fine)]:min-h-0" to={`${PARTY[kind].path}/${r.id}/details`}>{t('partyDetail.details')}</Link>}
+          </span>
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             {kind === 'crew' && canEnter(auth) && !byAttendance && (
-              <ButtonLink variant="secondary" to={labourPath(auth.company, { crew: r.id, project: r.project_id })}>Enter labour</ButtonLink>
+              <ButtonLink variant="secondary" to={labourPath(auth.company, { crew: r.id, project: r.project_id })}>{t('partyDetail.enterLabour')}</ButtonLink>
             )}
-            {canRecordPayments(auth) && crewHasMoney && <ButtonLink to={`/payments/new?${kind}=${r.id}`}>Record payment</ButtonLink>}
+            {canRecordPayments(auth) && crewHasMoney && <ButtonLink to={`/payments/new?${kind}=${r.id}`}>{t('partyDetail.recordPayment')}</ButtonLink>}
           </div>
         }
       />
-      <ContactRow phone={r.phone} links={[[`${PARTY[kind].path}/${r.id}/details`, 'Details']]} />
-      {!!paidFromHeld && <div className="mb-4"><Notice>{formatNPR(paidFromHeld)} taken from money they hold. Nothing paid in cash.</Notice></div>}
+      {r.phone && <ContactRow phone={r.phone} links={[[`${PARTY[kind].path}/${r.id}/details`, t('partyDetail.details')]]} />}
+      {!!paidFromHeld && <div className="mb-4"><Notice>{t('partyDetail.paidfromheldTakenFromMoney', { paidFromHeld: formatNPR(paidFromHeld) })}</Notice></div>}
       {/* A subcontractor is the jobs given to them: what is paid and left on them, then the jobs. */}
       {byJob && auth.canSeeFinance && <ContractCard subcontractorId={r.id} name={r.name} />}
       {byJob && <PackageList subcontractorId={r.id} />}
@@ -76,14 +83,14 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
       {kind === 'worker' && byAttendance && canEnter(auth) && <WorkerCrews workerId={r.id} />}
       {auth.canSeeFinance && crewHasMoney && !byJob && (
         <div className={`grid items-start gap-4 ${board ? 'mt-6' : ''}`}>
-          {board && <h2 className="text-base font-semibold text-ink">Paid to the crew before</h2>}
+          {board && <h2 className="text-base font-semibold text-ink">{t('partyDetail.paidToTheCrew')}</h2>}
           <BalanceCard kind={kind} partyId={r.id} />
           {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
         </div>
       )}
 
       {auth.canSeeFinance && crewHasMoney && (
-        <Tabs tabs={[['khata', 'Khata'], ['payments', 'Payments']]} value={tab} onChange={setTab} label={`${PARTY[kind].one} records`}>
+        <Tabs tabs={[['khata', t('partyDetail.khata')], ['payments', t('partyDetail.payments')]]} value={tab} onChange={setTab} label={t('partyDetail.oneRecords', { one: PARTY[kind].one })}>
           {tab === 'khata' && byJob && (
             <div className="mb-4 grid items-start gap-4">
               {/* The Contract card has the money; the khata below adds up to the balance. Here only
@@ -116,7 +123,7 @@ export function PartyInfoPage({ kind }: { kind: PartyKind }) {
   const empty = kind !== 'worker' && [r.phone, r.notes, 'contact_person' in r && r.contact_person, 'address' in r && r.address, 'pan_vat' in r && r.pan_vat].every((f) => !f)
   return (
     <>
-      <PageHeader title="Details" crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }]} />
+      <PageHeader title={t('partyDetail.details')} crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }]} />
       <PartyDetails kind={kind} party={r} code={code} empty={empty} edit={canManageSuppliers(auth) ? `${PARTY[kind].path}/${r.id}/edit` : undefined} />
     </>
   )
@@ -135,8 +142,8 @@ export function PartyEditPage({ kind }: { kind: PartyKind }) {
   const details = `${PARTY[kind].path}/${r.id}/details`
   return (
     <>
-      <PageHeader title={`Edit ${PARTY[kind].one.toLowerCase()}`}
-        crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }, { to: details, label: 'Details' }]} />
+      <PageHeader title={t('partyDetail.editValue', { value: PARTY[kind].one.toLowerCase() })}
+        crumbs={[...partyCrumbs(kind), { to: `${PARTY[kind].path}/${r.id}`, label: r.name }, { to: details, label: t('partyDetail.details') }]} />
       {kind === 'worker' ? (
         <WorkerForm member={{ ...r, work_type: r.work_type ?? null, rate_kind: r.rate_kind ?? 'daily', rate_paisa: r.rate_paisa ?? 0 }}
           onDone={() => navigate(details, { replace: true })} />
@@ -148,7 +155,7 @@ export function PartyEditPage({ kind }: { kind: PartyKind }) {
 }
 
 function PartyNotFound({ kind }: { kind: PartyKind }) {
-  return <EmptyState title={`${PARTY[kind].one} not found`}><Link className="text-slate" to={PARTY[kind].path}>Back to {PARTY[kind].many.toLowerCase()}</Link></EmptyState>
+  return <EmptyState title={t('partyDetail.oneNotFound', { one: PARTY[kind].one })}><Link className="text-slate" to={PARTY[kind].path}>{t('partyDetail.backToValue', { value: PARTY[kind].many.toLowerCase() })}</Link></EmptyState>
 }
 
 type PartyRow = NonNullable<ReturnType<typeof usePartyRows>['data']>[number]
@@ -158,16 +165,16 @@ function PartyDetails({ kind, party: r, code, empty, edit }: {
   kind: PartyKind; party: PartyRow; code: (id: string | null | undefined) => string | undefined; empty: boolean; edit?: string
 }) {
   return (
-    <Card title={r.name} actions={edit && <ButtonLink variant="ghost" to={edit}>Edit</ButtonLink>}>
-      {kind === 'subcontractor' && <Detail label="Contact">{r.contact_person}</Detail>}
-      <Detail label="Phone">{r.phone && <a className="text-slate" href={`tel:${r.phone}`}>{r.phone}</a>}</Detail>
-      {kind === 'subcontractor' && <Detail label="Address">{r.address}</Detail>}
-      {kind === 'subcontractor' && <Detail label="PAN">{r.pan_vat}</Detail>}
-      {kind === 'crew' && <Detail label="Project">{r.project_id ? code(r.project_id) : 'Any project'}</Detail>}
-      {kind === 'worker' && <Detail label="Work">{r.work_type}</Detail>}
-      {kind === 'worker' && r.rate_paisa != null && <Detail label="Rate">{rateText({ rate_kind: r.rate_kind ?? 'daily', rate_paisa: r.rate_paisa }, formatNPR)}</Detail>}
-      <Detail label="Notes">{r.notes}</Detail>
-      {empty && kind !== 'crew' && <p className="text-sm text-subtle">No contact details yet.</p>}
+    <Card title={r.name} actions={edit && <ButtonLink variant="ghost" to={edit}>{t('common.edit')}</ButtonLink>}>
+      {kind === 'subcontractor' && <Detail label={t('partyDetail.contact')}>{r.contact_person}</Detail>}
+      <Detail label={t('partyDetail.phone')}>{r.phone && <a className="text-slate" href={`tel:${r.phone}`}>{r.phone}</a>}</Detail>
+      {kind === 'subcontractor' && <Detail label={t('partyDetail.address')}>{r.address}</Detail>}
+      {kind === 'subcontractor' && <Detail label={t('partyDetail.pan')}>{r.pan_vat}</Detail>}
+      {kind === 'crew' && <Detail label={t('partyDetail.project')}>{r.project_id ? code(r.project_id) : t('partyDetail.anyProject')}</Detail>}
+      {kind === 'worker' && <Detail label={t('partyDetail.work')}>{r.work_type}</Detail>}
+      {kind === 'worker' && r.rate_paisa != null && <Detail label={t('partyDetail.rate')}>{rateText({ rate_kind: r.rate_kind ?? 'daily', rate_paisa: r.rate_paisa }, formatNPR)}</Detail>}
+      <Detail label={t('partyDetail.notes')}>{r.notes}</Detail>
+      {empty && kind !== 'crew' && <p className="text-sm text-subtle">{t('partyDetail.noContactDetailsYet')}</p>}
       {kind === 'payee' && <PromotePayee payeeId={r.id} supplierId={r.promoted_supplier_id ?? null} />}
     </Card>
   )
@@ -200,7 +207,7 @@ function ContractCard({ subcontractorId, name }: { subcontractorId: string; name
   const askGiveBack = !workGoingOn && (
     <div className="mb-6">
       <RefundCard kind="subcontractor" partyId={subcontractorId}
-        intro={(held) => `${name} still holds ${held}, and no work is going on. Did they give it back?`} />
+        intro={(held) => t('partyDetail.nameStillHoldsHeld', { name, held })} />
     </div>
   )
   if (!packages.data?.length) return askGiveBack || null
@@ -217,28 +224,27 @@ function ContractCard({ subcontractorId, name }: { subcontractorId: string; name
   const outside = balance && balance.company_level ? balance.balance_paisa - due : 0
   return (
     <>
-      <Card title="Contract" className="mb-6">
+      <Card title={t('partyDetail.contract')} className="mb-6">
         <dl className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
-          <dt className="text-subtle">Agreed for the work</dt><dd className="text-right tabular-nums">{formatNPR(agreed)}</dd>
-          <dt className="text-subtle">Paid so far</dt><dd className="text-right tabular-nums">{formatNPR(paid)}</dd>
-          <dt className="font-semibold text-ink">Left to pay on the contract</dt>
+          <dt className="text-subtle">{t('partyDetail.agreedForTheWork')}</dt><dd className="text-right tabular-nums">{formatNPR(agreed)}</dd>
+          <dt className="text-subtle">{t('partyDetail.paidSoFar')}</dt><dd className="text-right tabular-nums">{formatNPR(paid)}</dd>
+          <dt className="font-semibold text-ink">{t('partyDetail.leftToPayOn')}</dt>
           <dd className="text-right font-semibold tabular-nums text-ink">{formatNPR(agreed - paid)}</dd>
         </dl>
-        {noAgreed && <p className="mt-1 text-xs text-subtle">Some work has no agreed amount yet, so the contract total is short.</p>}
+        {noAgreed && <p className="mt-1 text-xs text-subtle">{t('partyDetail.someWorkHasNo')}</p>}
         <dl className="mt-3 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 border-t border-line pt-3 text-sm">
-          <dt className="text-subtle">Work done (approved bills)</dt><dd className="text-right tabular-nums">{formatNPR(approved)}</dd>
-          <dt className="font-semibold text-ink">{due >= 0 ? 'Due now' : 'They hold (peski)'}</dt>
-          <dd className="text-right font-semibold tabular-nums text-ink">{due === 0 ? 'Nothing' : formatNPR(Math.abs(due))}</dd>
+          <dt className="text-subtle">{t('partyDetail.workDoneApprovedBills')}</dt><dd className="text-right tabular-nums">{formatNPR(approved)}</dd>
+          <dt className="font-semibold text-ink">{due >= 0 ? t('partyDetail.dueNow') : t('partyDetail.theyHoldPeski')}</dt>
+          <dd className="text-right font-semibold tabular-nums text-ink">{due === 0 ? t('partyDetail.nothing') : formatNPR(Math.abs(due))}</dd>
         </dl>
         {outside < 0 && (
           <p className="mt-3 text-sm text-subtle">
-            Also with them from before or paid ahead: <span className="font-semibold text-ink">{formatNPR(-outside)}</span>.{workGoingOn && ' It pays their next bill first.'}
+            {t('partyDetail.alsoWithThemFrom')}{' '}<span className="font-semibold text-ink">{formatNPR(-outside)}</span>.{workGoingOn && t('partyDetail.itPaysTheirNext')}
           </p>
         )}
         {outside > 0 && (
           <p className="mt-3 text-sm text-subtle">
-            Also owed from before, outside these jobs: <span className="font-semibold text-ink">{formatNPR(outside)}</span>. See the khata.
-          </p>
+            {t('partyDetail.alsoOwedFromBefore')}{' '}<span className="font-semibold text-ink">{formatNPR(outside)}</span>{t('partyDetail.seeTheKhata')}</p>
         )}
       </Card>
       {askGiveBack}
@@ -257,13 +263,13 @@ function PackageList({ subcontractorId }: { subcontractorId: string }) {
   return (
     <section className="mb-6">
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-base font-semibold text-ink">Work packages</h2>
-        {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/new?subcontractor=${subcontractorId}`}>New work package</ButtonLink>}
+        <h2 className="text-base font-semibold text-ink">{t('partyDetail.workPackages')}</h2>
+        {canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/new?subcontractor=${subcontractorId}`}>{t('partyDetail.newWorkPackage')}</ButtonLink>}
       </div>
       {packages.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void packages.refetch()}>{packages.error && friendlyError(packages.error)}</ErrorBanner>
       {packages.data?.length === 0 && (
-        <p className="text-sm text-subtle">No work packages on your projects. Add one for each job you give them, with the agreed amount.</p>
+        <p className="text-sm text-subtle">{t('partyDetail.noWorkPackagesOn')}</p>
       )}
       {list.length > 0 && (
         <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
@@ -278,7 +284,7 @@ function PackageList({ subcontractorId }: { subcontractorId: string }) {
                     <div className={`font-medium break-words ${w.status === 'active' ? 'text-ink' : ''}`}>{w.scope}</div>
                     <div className="text-xs text-subtle">
                       {w.projects?.code}
-                      {f && <> · {formatNPR(f.approved_paisa)} of {formatNPR(f.agreed_value_paisa)} approved · {f.balance_paisa > 0 ? `${formatNPR(f.balance_paisa)} to pay` : f.balance_paisa < 0 ? `${formatNPR(-f.balance_paisa)} peski` : 'nothing to pay'}</>}
+                      {f && <> {t('partyDetail.approvedOfAgreedvalueApproved', { approved: formatNPR(f.approved_paisa), agreedValue: formatNPR(f.agreed_value_paisa) })}{' '}{f.balance_paisa > 0 ? t('partyDetail.balanceToPay', { balance: formatNPR(f.balance_paisa) }) : f.balance_paisa < 0 ? t('partyDetail.amountPeski', { amount: formatNPR(-f.balance_paisa) }) : t('partyDetail.nothingToPay')}</>}
                     </div>
                   </div>
                   {/* Progress: neutral bar, the number beside it (PRODUCT.md: bars are not colour-coded). */}
@@ -287,7 +293,7 @@ function PackageList({ subcontractorId }: { subcontractorId: string }) {
                       <div className="h-full rounded-full bg-bar" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <span className="w-16 shrink-0 text-right text-sm tabular-nums">{pct}% done</span>
+                  <span className="w-16 shrink-0 text-right text-sm tabular-nums">{t('partyDetail.pctDone', { pct })}</span>
                   <Badge tone={tone}>{label}</Badge>
                 </Link>
               </li>
@@ -313,15 +319,14 @@ function PromotePayee({ payeeId, supplierId }: { payeeId: string; supplierId: st
     },
   })
   if (supplierId) {
-    return <p className="mt-2 text-sm">Now a supplier: <Link className="text-slate" to={`/suppliers/${supplierId}`}>open supplier</Link>. Earlier expenses stay here.</p>
+    return <p className="mt-2 text-sm">{t('partyDetail.nowASupplier')}{' '}<Link className="text-slate" to={`/suppliers/${supplierId}`}>{t('partyDetail.openSupplier')}</Link>{t('partyDetail.earlierExpensesStayHere')}</p>
   }
   if (!canManageSuppliers(auth)) return null
   return (
     <div className="mt-3">
-      <ConfirmButton confirmLabel="Make supplier" onConfirm={() => promote.mutate()} disabled={promote.isPending}>
-        Make this a supplier
-      </ConfirmButton>
-      <p className="mt-1 text-xs text-subtle">Once you order from them with order slips and bills. Earlier expenses stay here.</p>
+      <ConfirmButton confirmLabel={t('partyDetail.makeSupplier')} onConfirm={() => promote.mutate()} disabled={promote.isPending}>
+        {t('partyDetail.makeThisASupplier')}</ConfirmButton>
+      <p className="mt-1 text-xs text-subtle">{t('partyDetail.onceYouOrderFrom')}</p>
       <ErrorBanner>{promote.error && friendlyError(promote.error)}</ErrorBanner>
     </div>
   )

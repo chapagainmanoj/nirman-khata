@@ -1,52 +1,61 @@
 // Turn database and network errors into messages a site engineer can act on.
+import { type MessageKey, t } from './i18n'
+
 type ErrorLike = { message?: string; code?: string; details?: string } | null | undefined
 
 // Unique constraints with a more specific message than "This already exists".
-const BY_CONSTRAINT: Record<string, string> = {
-  projects_company_id_code_key: 'This project code is already used.',
-  suppliers_unique_name: 'A supplier with this name already exists.',
-  subcontractors_unique_name: 'A subcontractor with this name already exists.',
-  payees_unique_name: 'One of your other services already has this name.',
-  expense_project_or_company: 'An expense is either on a project with who is owed it, or a company expense with how it was paid.',
-  crews_unique_name: 'A crew with this name already exists for this project.',
-  registration_allowlist_login_email_key: 'This mobile number or email is already on the list.',
+const BY_CONSTRAINT: Record<string, MessageKey> = {
+  projects_company_id_code_key: 'error.unique.projects_company_id_code_key',
+  suppliers_unique_name: 'error.unique.suppliers_unique_name',
+  subcontractors_unique_name: 'error.unique.subcontractors_unique_name',
+  payees_unique_name: 'error.unique.payees_unique_name',
+  expense_project_or_company: 'error.unique.expense_project_or_company',
+  crews_unique_name: 'error.unique.crews_unique_name',
+  registration_allowlist_login_email_key: 'error.unique.registration_allowlist_login_email_key',
 }
 
 // Check constraints people can hit from a form.
-const BY_CHECK: Record<string, string> = {
-  attendance_times: 'The out time must be after the in time.',
-  attendance_minutes_fit: 'The hours cannot be more than the time from in to out.',
+const BY_CHECK: Record<string, MessageKey> = {
+  attendance_times: 'error.check.attendance_times',
+  attendance_minutes_fit: 'error.check.attendance_minutes_fit',
   // Not reachable from a form (the server picks the source); kept readable if it ever shows.
-  settlement_one_source: 'A payment match needs exactly one payment or opening balance.',
-  allocation_one_source: 'A project split needs exactly one payment or opening balance.',
+  settlement_one_source: 'error.check.settlement_one_source',
+  allocation_one_source: 'error.check.allocation_one_source',
 }
 
 // Our own error codes: the readable part follows the colon.
 const PREFIXED = ['attendance_off', 'day_closed', 'day_verified', 'day_too_old', 'attendance_overlap', 'already_paid']
 
-const BY_CODE: Record<string, string> = {
-  '23505': 'This already exists. Use a different value.',
-  '23503': 'This refers to something that does not exist in your company.',
-  '42501': 'You do not have permission to do this.',
+const BY_CODE: Record<string, MessageKey> = {
+  '23505': 'error.code.23505',
+  '23503': 'error.code.23503',
+  '42501': 'error.code.42501',
+}
+
+/** A request lib/supabase stopped waiting for: retrying it at once only makes the wait longer. */
+export function isTimeout(error: unknown): boolean {
+  return !!(error as ErrorLike)?.message?.includes('request_timeout')
 }
 
 export function friendlyError(error: unknown): string {
   const e = error as ErrorLike
-  if (!e) return 'Something went wrong.'
-  if (e.message?.includes('Failed to fetch')) return 'No connection. Check your network and try again.'
+  if (!e) return t('error.generic')
+  if (e.message?.includes('Failed to fetch')) return t('error.offline')
+  // lib/supabase: no answer within the time limit (a weak signal that never times out by itself).
+  if (isTimeout(e)) return t('error.timeout')
   // A save whose reply was lost, then resubmitted with changes (design §5.1).
   if (e.message?.startsWith('op_key_reused')) {
-    return 'This may already be saved. Check the supplier\'s bills and payments before entering it again.'
+    return t('error.opKeyReused')
   }
   // A refund is capped at the Overpayment held with the party; peski returned at the Peski.
   if (e.message?.startsWith('refund_exceeds_overpayment')) {
-    return e.message.replace(/^refund_exceeds_overpayment: t/, 'T') + '. A refund cannot be more than what was overpaid.'
+    return t('error.refundTooBig', { what: e.message.replace(/^refund_exceeds_overpayment: t/, 'T') })
   }
   if (e.message?.startsWith('peski_returned_exceeds_peski')) {
-    return e.message.replace(/^peski_returned_exceeds_peski: t/, 'T') + '. Peski returned cannot be more than the peski not yet used.'
+    return t('error.peskiReturnedTooBig', { what: e.message.replace(/^peski_returned_exceeds_peski: t/, 'T') })
   }
   if (e.message?.startsWith('peski_with_unpaid')) {
-    return 'This party has unpaid bills, so the payment pays them. Peski is only for money given before any bill.'
+    return t('error.peskiWithUnpaid')
   }
   const prefixed = PREFIXED.find((p) => e.message?.startsWith(`${p}:`))
   if (prefixed) {
@@ -55,15 +64,15 @@ export function friendlyError(error: unknown): string {
   }
   if (e.code === '23514') {
     const check = Object.keys(BY_CHECK).find((name) => e.message?.includes(name))
-    if (check) return BY_CHECK[check]
+    if (check) return t(BY_CHECK[check])
   }
   // Our own RPC errors (P0001, 22023, ...) already carry a readable message.
   if (e.code && BY_CODE[e.code]) {
     if (e.code === '23505') {
       const constraint = Object.keys(BY_CONSTRAINT).find((name) => e.message?.includes(name))
-      if (constraint) return BY_CONSTRAINT[constraint]
+      if (constraint) return t(BY_CONSTRAINT[constraint])
     }
-    return BY_CODE[e.code]
+    return t(BY_CODE[e.code])
   }
-  return e.message || 'Something went wrong.'
+  return e.message || t('error.generic')
 }

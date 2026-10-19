@@ -38,6 +38,7 @@ import { useWorkerAdvance } from '../labour/api'
 import { rpc, useRefreshMoney } from './api'
 import { canPost } from './permissions'
 import { TrashIcon } from '../../components/icons'
+import { t } from '../../lib/i18n'
 
 type Values = {
   id: string
@@ -107,7 +108,7 @@ export function PaymentNewPage() {
   // Peski only while nothing at all is unpaid to the party (any package or project).
   const anyUnpaid = openItems.data?.some((i) => OWED.has(i.kind)) ?? true
   const owed = openDocs.reduce((s, d) => s + d.amount_paisa, 0)
-  const docLabel = (d: (typeof openDocs)[number]) => (d.kind === 'bill' ? `Bill ${d.label}` : `${DOC_WORD[d.kind]}: ${d.label}`)
+  const docLabel = (d: (typeof openDocs)[number]) => (d.kind === 'bill' ? t('paymentNew.billLabel', { label: d.label }) : `${DOC_WORD[d.kind]}: ${d.label}`)
   const docKey = (d: (typeof openDocs)[number]) => `${d.doc_id}:${d.project_id}`
   const party = parties.data?.find((p) => p.id === v.party_id)
   const kindLabel = PARTY[v.party_kind].one
@@ -290,19 +291,19 @@ export function PaymentNewPage() {
   function submit() {
     const vals = getValues()
     if (isWorker) {
-      const problem = !vals.party_id ? 'Choose the worker.'
-        : amountPaisa === null || amountPaisa <= 0 ? 'Enter the amount paid.'
-        : !accounts && workerExtra > 0 && !workerExtraProject ? 'Choose the project the extra money is for.'
+      const problem = !vals.party_id ? t('paymentNew.chooseTheWorker')
+        : amountPaisa === null || amountPaisa <= 0 ? t('paymentNew.enterTheAmountPaid')
+        : !accounts && workerExtra > 0 && !workerExtraProject ? t('paymentNew.chooseTheProjectThe')
         : ''
       setError(problem)
       if (!problem) payWorker.mutate({ vals, confirm: false })
       return
     }
     if (subMode) {
-      const problem = !tickedDocs.length ? 'Tick the work it pays.'
-        : amountPaisa === null || amountPaisa < 0 ? 'Enter the amount paid.'
-        : amountPaisa === 0 && heldLess === 0 ? 'Enter the amount paid.'
-        : !usable.ready ? 'Wait a moment: checking what they hold.'
+      const problem = !tickedDocs.length ? t('paymentNew.tickTheWorkIt')
+        : amountPaisa === null || amountPaisa < 0 ? t('paymentNew.enterTheAmountPaid')
+        : amountPaisa === 0 && heldLess === 0 ? t('paymentNew.enterTheAmountPaid')
+        : !usable.ready ? t('paymentNew.waitAMomentChecking')
         : ''
       setError(problem)
       if (!problem) paySub.mutate(vals)
@@ -311,13 +312,13 @@ export function PaymentNewPage() {
     const split = splitOf(vals)
     const splitSum = split.reduce((s, a) => s + a.amount_paisa, 0)
     const problem =
-      !vals.party_id ? `Choose the ${kindLabel.toLowerCase()}.`
-      : !amountPaisa || amountPaisa <= 0 ? (billsMode ? 'Tick the bills it pays, or enter the amount.' : 'Enter the amount paid.')
-      : billsMode && extra < 0 ? `The ticked bills add up to ${formatNPR(tickedSum)}, more than the payment. Untick one or lower an amount.`
-      : !billsMode && !vals.package_id && vals.allocations.some((a) => !a.project_id || parseNPR(a.amount) === null) ? 'Each project split needs a project and an amount.'
-      : !billsMode && new Set(vals.allocations.map((a) => a.project_id)).size !== vals.allocations.length ? 'A project is listed twice.'
-      : splitSum > amountPaisa ? 'The project split is more than the payment.'
-      : !accounts && splitSum !== amountPaisa ? (billsMode ? 'Choose the project the extra money is for.' : 'Split the whole payment across your projects.')
+      !vals.party_id ? t('paymentNew.chooseTheValue', { value: kindLabel.toLowerCase() })
+      : !amountPaisa || amountPaisa <= 0 ? (billsMode ? t('paymentNew.tickTheBillsIt') : t('paymentNew.enterTheAmountPaid'))
+      : billsMode && extra < 0 ? t('paymentNew.theTickedBillsAdd', { tickedSum: formatNPR(tickedSum) })
+      : !billsMode && !vals.package_id && vals.allocations.some((a) => !a.project_id || parseNPR(a.amount) === null) ? t('paymentNew.eachProjectSplitNeeds')
+      : !billsMode && new Set(vals.allocations.map((a) => a.project_id)).size !== vals.allocations.length ? t('paymentNew.aProjectIsListed')
+      : splitSum > amountPaisa ? t('paymentNew.theProjectSplitIs')
+      : !accounts && splitSum !== amountPaisa ? (billsMode ? t('paymentNew.chooseTheProjectThe') : t('paymentNew.splitTheWholePayment'))
       : ''
     setError(problem)
     if (!problem) save.mutate(vals)
@@ -331,37 +332,36 @@ export function PaymentNewPage() {
   const billDoc = fromBill ? openItems.data?.find((i) => i.kind === 'bill' && i.doc_id === fromBill) : undefined
   const startParty = parties.data?.find((p) => p.id === start.id)
   const crumbs: Crumb[] = fromBill
-    ? [{ to: '/bills', label: 'Bills' }, { to: `/bills/${fromBill}`, label: billDoc ? billTitle(billDoc.label) : 'Bill' }]
+    ? [{ to: '/bills', label: t('paymentNew.bills') }, { to: `/bills/${fromBill}`, label: billDoc ? billTitle(billDoc.label) : t('paymentNew.bill') }]
     : fromPackage
-      ? [{ to: '/parties', label: 'Parties' }, { to: PARTY.subcontractor.path, label: PARTY.subcontractor.many }, { to: `/work/${fromPackage}`, label: pkg.data?.scope ?? 'Work package' }]
+      ? [{ to: '/parties', label: t('paymentNew.parties') }, { to: PARTY.subcontractor.path, label: PARTY.subcontractor.many }, { to: `/work/${fromPackage}`, label: pkg.data?.scope ?? t('paymentNew.workPackage') }]
       : start.id
-        ? [{ to: '/parties', label: 'Parties' }, { to: PARTY[start.kind].path, label: PARTY[start.kind].many }, { to: `${PARTY[start.kind].path}/${start.id}`, label: startParty?.name ?? PARTY[start.kind].one }]
-        : [{ to: '/payments', label: 'Payments' }]
+        ? [{ to: '/parties', label: t('paymentNew.parties') }, { to: PARTY[start.kind].path, label: PARTY[start.kind].many }, { to: `${PARTY[start.kind].path}/${start.id}`, label: startParty?.name ?? PARTY[start.kind].one }]
+        : [{ to: '/payments', label: t('paymentNew.payments') }]
 
   return (
     <>
-      <PageHeader title="Record payment" crumbs={crumbs} subtitle="Payments reduce what you owe. They are never project cost." />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored a payment you had not saved. Check it was not already recorded.</Notice></div>}
+      <PageHeader title={t('paymentNew.recordPayment')} crumbs={crumbs} subtitle={t('paymentNew.paymentsReduceWhatYou')} />
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('paymentNew.restoredAPaymentYou')}</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>
           {pkg.data && (
             <p className="mb-3 text-sm text-subtle">
-              For work package <span className="font-medium text-ink">{pkg.data.scope}</span> on {pkg.data.projects?.code}.
-              {anyUnpaid ? 'They have unpaid work, so this is a payment, not peski. It is never cost.' : 'Nothing is unpaid, so this is peski, not cost.'}
+              {t('paymentNew.forWorkPackage')}{' '}<span className="font-medium text-ink">{pkg.data.scope}</span> {t('paymentNew.onCode', { code: pkg.data.projects?.code })}{anyUnpaid ? t('paymentNew.theyHaveUnpaidWork') : t('paymentNew.nothingIsUnpaidSo')}
             </p>
           )}
           {v.package_id || fixedParty ? (
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm">
-                <span className="text-subtle">Paid to </span>
+                <span className="text-subtle">{t('paymentNew.paidTo')}{' '}</span>
                 <span className="font-semibold text-ink">{v.package_id ? pkg.data?.subcontractors?.name : party?.name}</span>
                 <span className="text-subtle"> · {kindLabel}</span>
               </p>
-              {!v.package_id && <Button type="button" variant="ghost" onClick={() => setChoosingParty(true)}>Change</Button>}
+              {!v.package_id && <Button type="button" variant="ghost" onClick={() => setChoosingParty(true)}>{t('paymentNew.change')}</Button>}
             </div>
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Paid to" htmlFor="p-kind">
+              <Field label={t('paymentNew.paidTo')} htmlFor="p-kind">
                 <Select id="p-kind" value={v.party_kind}
                   onChange={(e) => { setValue('party_kind', e.target.value as PartyKind); setValue('party_id', ''); setValue('days', null); setSettle({}) }}>
                   {PARTY_KINDS.filter((k) => k !== 'worker' || auth.company.labour_mode === 'attendance' || v.party_kind === 'worker')
@@ -370,7 +370,7 @@ export function PaymentNewPage() {
               </Field>
               <Field label={kindLabel} htmlFor="p-supplier">
                 <Select id="p-supplier" value={v.party_id} onChange={(e) => { setValue('party_id', e.target.value); setValue('days', null); setSettle({}) }}>
-                  <option value="">Choose {kindLabel.toLowerCase()}</option>
+                  <option value="">{t('paymentNew.chooseValue', { value: kindLabel.toLowerCase() })}</option>
                   {parties.data?.filter((s) => s.active || s.id === v.party_id).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                 </Select>
               </Field>
@@ -379,24 +379,24 @@ export function PaymentNewPage() {
           {isWorker && v.party_id && workerReady && (
             <p className="mt-2 text-sm text-subtle">
               {allDays - advance > 0
-                ? <>Owed to {party?.name ?? 'them'}: <span className="font-semibold text-ink">{formatNPR(allDays - advance)}</span></>
-                : allDays - advance < 0 ? <>Advance with {party?.name ?? 'them'}: <span className="font-semibold text-ink">{formatNPR(advance - allDays)}</span></>
-                : 'Nothing to pay.'}
-              {allDays > 0 && advance > 0 && <> · {formatNPR(allDays)} for days, less {formatNPR(advance)} advance</>}
+                ? <>{t('paymentNew.owedTo')}{' '}{party?.name ?? 'them'}: <span className="font-semibold text-ink">{formatNPR(allDays - advance)}</span></>
+                : allDays - advance < 0 ? <>{t('paymentNew.advanceWith')}{' '}{party?.name ?? 'them'}: <span className="font-semibold text-ink">{formatNPR(advance - allDays)}</span></>
+                : t('paymentNew.nothingToPay')}
+              {allDays > 0 && advance > 0 && <> {t('paymentNew.alldaysForDaysLess', { allDays: formatNPR(allDays), advance: formatNPR(advance) })}</>}
             </p>
           )}
           {!isWorker && v.party_id && openItems.data && (
             <p className="mt-2 text-sm text-subtle">
-              {owed > 0 ? <>Unpaid: <span className="font-semibold text-ink">{formatNPR(owed)}</span></> : 'Nothing unpaid.'}
-              {!!held.data?.peski_paisa && <> · Peski not yet used: {formatNPR(held.data.peski_paisa)}</>}
-              {!!held.data?.overpaid_paisa && <> · {v.party_kind === 'worker' ? 'Paid ahead' : 'Overpaid'}: {formatNPR(held.data.overpaid_paisa)}</>}
+              {owed > 0 ? <>{t('paymentNew.unpaid')}{' '}<span className="font-semibold text-ink">{formatNPR(owed)}</span></> : t('paymentNew.nothingUnpaid')}
+              {!!held.data?.peski_paisa && <> {t('paymentNew.peskiNotYetUsed', { peski: formatNPR(held.data.peski_paisa) })}</>}
+              {!!held.data?.overpaid_paisa && <> · {v.party_kind === 'worker' ? t('paymentNew.paidAhead') : t('paymentNew.overpaid')}: {formatNPR(held.data.overpaid_paisa)}</>}
             </p>
           )}
         </Card>
 
         {isWorker && v.party_id && workerReady && (
-          <Card title="Which days does it pay?">
-            {dayRows.length === 0 ? <p className="text-sm text-subtle">No days to pay. Money paid now is an advance; it comes off their next days.</p> : (
+          <Card title={t('paymentNew.whichDaysDoesIt')}>
+            {dayRows.length === 0 ? <p className="text-sm text-subtle">{t('paymentNew.noDaysToPay')}</p> : (
               <ul className="flex flex-col">
                 {dayRows.map((r) => (
                   <li key={r.key} className="flex items-start justify-between gap-3 border-b border-line py-1 last:border-0">
@@ -408,12 +408,12 @@ export function PaymentNewPage() {
                 ))}
                 {less > 0 && (
                   <li className="flex justify-between gap-3 pt-2 text-sm">
-                    <span className="text-subtle">Less advance they already have</span>
+                    <span className="text-subtle">{t('paymentNew.lessAdvanceTheyAlready')}</span>
                     <span className="tabular-nums text-ink">− {formatNPR(less)}</span>
                   </li>
                 )}
                 <li className="flex justify-between gap-3 pt-1 text-sm font-semibold text-ink">
-                  <span>To pay</span><span className="tabular-nums">{formatNPR(due)}</span>
+                  <span>{t('paymentNew.toPay')}</span><span className="tabular-nums">{formatNPR(due)}</span>
                 </li>
               </ul>
             )}
@@ -421,14 +421,14 @@ export function PaymentNewPage() {
         )}
 
         {billsMode && (
-          <Card title={v.package_id ? 'Which approved work does it pay?' : v.party_kind === 'worker' ? 'Which days does it pay?' : 'Which bills does it pay?'}>
+          <Card title={v.package_id ? t('paymentNew.whichApprovedWorkDoes') : v.party_kind === 'worker' ? t('paymentNew.whichDaysDoesIt') : t('paymentNew.whichBillsDoesIt')}>
             <ul className="flex flex-col gap-2">
               {openDocs.map((b) => {
                 const key = docKey(b)
                 const on = key in v.settle
                 return (
                   <li key={key} className="grid gap-2 sm:grid-cols-2 sm:items-end">
-                    <Checkbox label={`${docLabel(b)} · ${code(b.project_id)} · ${formatDate(b.doc_date, auth.dateDisplay)}`} hint={`Owes ${formatNPR(b.amount_paisa)}`} checked={on}
+                    <Checkbox label={`${docLabel(b)} · ${code(b.project_id)} · ${formatDate(b.doc_date, auth.dateDisplay)}`} hint={t('paymentNew.owesAmount', { amount: formatNPR(b.amount_paisa) })} checked={on}
                       onChange={(e) => {
                         const next = { ...getValues('settle') }
                         if (e.target.checked) next[key] = paisaToInput(b.amount_paisa)
@@ -436,7 +436,7 @@ export function PaymentNewPage() {
                         setSettle(next)
                       }} />
                     {on && !subMode && (
-                      <Field label="Paying now" htmlFor={`ps-${key}`}>
+                      <Field label={t('paymentNew.payingNow')} htmlFor={`ps-${key}`}>
                         <MoneyInput id={`ps-${key}`} value={v.settle[key]} onChange={(e) => setSettle({ ...getValues('settle'), [key]: e.target.value })} />
                       </Field>
                     )}
@@ -447,12 +447,12 @@ export function PaymentNewPage() {
                 <>
                   {heldLess > 0 && (
                     <li className="flex justify-between gap-3 border-t border-line pt-2 text-sm">
-                      <span className="text-subtle">Less money they hold (peski, paid ahead, opening balance)</span>
+                      <span className="text-subtle">{t('paymentNew.lessMoneyTheyHold')}</span>
                       <span className="tabular-nums text-ink">− {formatNPR(heldLess)}</span>
                     </li>
                   )}
                   <li className={`flex justify-between gap-3 text-sm font-semibold text-ink ${heldLess > 0 ? '' : 'border-t border-line pt-2'}`}>
-                    <span>To pay in cash</span><span className="tabular-nums">{usable.ready ? formatNPR(cashDue) : '…'}</span>
+                    <span>{t('paymentNew.toPayInCash')}</span><span className="tabular-nums">{usable.ready ? formatNPR(cashDue) : '…'}</span>
                   </li>
                 </>
               )}
@@ -461,45 +461,44 @@ export function PaymentNewPage() {
         )}
 
         {v.party_id && !billsMode && !isWorker && !v.package_id && (
-          <Card title="Which project is it for?">
+          <Card title={t('paymentNew.whichProjectIsIt')}>
             {!anyUnpaid && (
               <div className="mb-2">
                 <Controller control={control} name="is_peski" render={({ field }) => (
-                  <Checkbox label="This is peski" checked={field.value} onChange={(e) => field.onChange(e.target.checked)}
+                  <Checkbox label={t('paymentNew.thisIsPeski')} checked={field.value} onChange={(e) => field.onChange(e.target.checked)}
                     hint={field.value
-                      ? 'Agreed upfront before any bill. It is deducted from their bills as they come.'
-                      : 'Paid ahead on the khata. It counts as overpaid and is deducted from their next bill.'} />
+                      ? t('paymentNew.agreedUpfrontBeforeAny')
+                      : t('paymentNew.paidAheadOnThe')} />
                 )} />
               </div>
             )}
             <p className="mb-3 text-sm text-subtle">
               {accounts
-                ? 'Splitting by project is optional. Anything not split stays "not assigned" until you assign it.'
-                : 'Split the whole payment across your projects.'}
+                ? t('paymentNew.splittingByProjectIs')
+                : t('paymentNew.splitTheWholePayment')}
             </p>
             {allocations.fields.map((f, i) => (
               <div key={f.id} className="mb-2 grid grid-cols-[1fr_1fr_auto] items-end gap-2">
-                <Field label="Project" htmlFor={`pa${i}-p`}>
+                <Field label={t('paymentNew.project')} htmlFor={`pa${i}-p`}>
                   <Select id={`pa${i}-p`} {...register(`allocations.${i}.project_id`)}>
-                    <option value="">Choose</option>
+                    <option value="">{t('paymentNew.choose')}</option>
                     {visible.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
                   </Select>
                 </Field>
-                <Field label="Amount" htmlFor={`pa${i}-a`}>
+                <Field label={t('paymentNew.amount')} htmlFor={`pa${i}-a`}>
                   <Controller control={control} name={`allocations.${i}.amount`} render={({ field }) => (
                     <MoneyInput id={`pa${i}-a`} value={field.value} onChange={field.onChange} />
                   )} />
                 </Field>
-                <Button type="button" variant="ghost" aria-label="Remove project" onClick={() => allocations.remove(i)}><TrashIcon size={16} />Remove</Button>
+                <Button type="button" variant="ghost" aria-label={t('paymentNew.removeProject')} onClick={() => allocations.remove(i)}><TrashIcon size={16} />{t('common.remove')}</Button>
               </div>
             ))}
             <Button type="button" variant="secondary"
               onClick={() => allocations.append({ project_id: firstFree(), amount: unallocated > 0 ? paisaToInput(unallocated) : '' })}>
-              Add project
-            </Button>
+              {t('paymentNew.addProject')}</Button>
             {amountPaisa !== null && amountPaisa > 0 && (
               <p className={`mt-2 text-sm ${unallocated < 0 ? 'text-danger' : 'text-subtle'}`}>
-                {unallocated === 0 ? 'Fully split to projects.' : unallocated > 0 ? `${formatNPR(unallocated)} not assigned to a project.` : `Split is ${formatNPR(-unallocated)} more than the payment.`}
+                {unallocated === 0 ? t('paymentNew.fullySplitToProjects') : unallocated > 0 ? t('paymentNew.unallocatedNotAssignedTo', { unallocated: formatNPR(unallocated) }) : t('paymentNew.splitIsAmountMore', { amount: formatNPR(-unallocated) })}
               </p>
             )}
           </Card>
@@ -507,21 +506,21 @@ export function PaymentNewPage() {
 
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Amount paid" htmlFor="p-amount" hint={isWorker
-                ? 'Set from the ticked days. Less pays the oldest days first; more is an advance that comes off their next days.'
-                : subMode ? 'What is left after the money they hold. Less pays the oldest work first; more stays with them for their next bill.'
-                : billsMode ? 'Set from the ticked bills. Anything extra is overpaid and deducted from their next bill.' : undefined}>
+            <Field label={t('paymentNew.amountPaid')} htmlFor="p-amount" hint={isWorker
+                ? t('paymentNew.setFromTheTicked')
+                : subMode ? t('paymentNew.whatIsLeftAfter')
+                : billsMode ? t('paymentNew.setFromTheTicked2') : undefined}>
               <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="p-amount" value={field.value} onChange={field.onChange} />} />
             </Field>
-            <Field label="Paid on" htmlFor="p-date">
+            <Field label={t('paymentNew.paidOn')} htmlFor="p-date">
               <Controller control={control} name="payment_date" render={({ field }) => (
                 <DateInput id="p-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
               )} />
             </Field>
             {isWorker && workerExtra > 0 && (
-              <Field label={`Advance of ${formatNPR(workerExtra)} is on`} htmlFor="p-wextra">
+              <Field label={t('paymentNew.advanceOfWorkerextraIs', { workerExtra: formatNPR(workerExtra) })} htmlFor="p-wextra">
                 <Select id="p-wextra" value={workerExtraProject} onChange={(e) => setValue('extra_project', e.target.value)}>
-                  <option value="">{accounts ? 'Not assigned yet' : 'Choose project'}</option>
+                  <option value="">{accounts ? t('paymentNew.notAssignedYet') : t('common.project.choose')}</option>
                   {visible.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
                 </Select>
               </Field>
@@ -529,44 +528,43 @@ export function PaymentNewPage() {
             {extra > 0 && untickedOpen.length > 0 && (
               <div className="sm:col-span-2">
                 <Notice>
-                  {formatNPR(extra)} is more than the ticked bills, and {untickedOpen.length === 1 ? `${docLabel(untickedOpen[0])} (${code(untickedOpen[0].project_id)}) is` : `${untickedOpen.length} other bills are`} still unpaid.{' '}
-                  <button type="button" className="min-h-11 font-semibold text-slate underline" onClick={extraToBills}>
-                    {untickedOpen.length === 1 ? `Pay ${docLabel(untickedOpen[0])} with it` : 'Pay the oldest bills with it'}
+                  {t('paymentNew.extraIsMoreThan', { extra: formatNPR(extra) })}{' '}{untickedOpen.length === 1 ? t('paymentNew.valueProjectidIs', { value: docLabel(untickedOpen[0]), projectId: code(untickedOpen[0].project_id) }) : t('paymentNew.lengthOtherBillsAre', { length: untickedOpen.length })} {t('paymentNew.stillUnpaidValue', { value: ' ' })}<button type="button" className="min-h-11 font-semibold text-slate underline" onClick={extraToBills}>
+                    {untickedOpen.length === 1 ? t('paymentNew.payValueWithIt', { value: docLabel(untickedOpen[0]) }) : t('paymentNew.payTheOldestBills')}
                   </button>
                 </Notice>
               </div>
             )}
             {billsMode && !subMode && !v.package_id && extra > 0 && (
-              <Field label={`Extra ${formatNPR(extra)} is ${v.party_kind === 'worker' ? 'paid ahead' : 'overpaid'} on`} htmlFor="p-extra">
+              <Field label={t(v.party_kind === 'worker' ? 'paymentNew.extraPaidAheadOn' : 'paymentNew.extraOverpaidOn', { amount: formatNPR(extra) })} htmlFor="p-extra">
                 <Select id="p-extra" value={extraProject} onChange={(e) => setValue('extra_project', e.target.value)}>
-                  <option value="">{accounts ? 'Not assigned yet' : 'Choose project'}</option>
+                  <option value="">{accounts ? t('paymentNew.notAssignedYet') : t('common.project.choose')}</option>
                   {visible.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
                 </Select>
               </Field>
             )}
-            <Field label="How" htmlFor="p-method">
+            <Field label={t('paymentNew.how')} htmlFor="p-method">
               <Select id="p-method" {...register('method')}>
                 {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </Select>
             </Field>
             {WITH_REFERENCE.has(v.method) && (
-              <Field label="Reference" htmlFor="p-ref" hint="Cheque number, transaction id"><Input id="p-ref" {...register('reference')} /></Field>
+              <Field label={t('paymentNew.reference')} htmlFor="p-ref" hint={t('paymentNew.chequeNumberTransactionId')}><Input id="p-ref" {...register('reference')} /></Field>
             )}
-            <Field label="Notes" htmlFor="p-notes" hint="Optional"><Input id="p-notes" {...register('notes')} /></Field>
+            <Field label={t('paymentNew.notes')} htmlFor="p-notes" hint={t('common.optional')}><Input id="p-notes" {...register('notes')} /></Field>
           </div>
           <div className="mt-3">
             <Controller control={control} name="photos" render={({ field }) => (
-              <PhotoPicker value={field.value} onChange={field.onChange} label="Add receipt or cheque photo" what="Receipt photo" />
+              <PhotoPicker value={field.value} onChange={field.onChange} label={t('paymentNew.addReceiptOrCheque')} what={t('paymentNew.receiptPhoto')} />
             )} />
           </div>
         </Card>
 
         {confirmDup && (
           <Notice>
-            <span className="block">{friendlyError(payWorker.error)} Is this a second entry for the same day?</span>
+            <span className="block">{t('paymentNew.errorIsThisA', { error: friendlyError(payWorker.error) })}</span>
             <span className="mt-2 flex flex-wrap gap-2">
-              <Button type="button" busy={payWorker.isPending} onClick={() => { setConfirmDup(false); payWorker.mutate({ vals: getValues(), confirm: true }) }}>Yes, add the days</Button>
-              <Button type="button" variant="secondary" onClick={() => setConfirmDup(false)}>No, check first</Button>
+              <Button type="button" busy={payWorker.isPending} onClick={() => { setConfirmDup(false); payWorker.mutate({ vals: getValues(), confirm: true }) }}>{t('paymentNew.yesAddTheDays')}</Button>
+              <Button type="button" variant="secondary" onClick={() => setConfirmDup(false)}>{t('paymentNew.noCheckFirst')}</Button>
             </span>
           </Notice>
         )}
@@ -574,12 +572,12 @@ export function PaymentNewPage() {
           || (paySub.error && friendlyError(paySub.error))}</ErrorBanner>
         <FormActions>
           <Button type="submit" busy={save.isPending || payWorker.isPending || paySub.isPending}>
-            {subMode && !amountPaisa && heldLess > 0 ? 'Pay from money they hold'
-              : `Record payment${amountPaisa ? ` of ${formatNPR(amountPaisa)}` : ''}`}
+            {subMode && !amountPaisa && heldLess > 0 ? t('paymentNew.payFromMoneyThey')
+              : amountPaisa ? t('paymentNew.recordPaymentOf', { amount: formatNPR(amountPaisa) }) : t('paymentNew.recordPayment')}
           </Button>
-          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>{t('common.cancel')}</Button>
           {v.party_id && !v.package_id && (
-            <Link className="text-sm text-subtle underline underline-offset-4" to={`${PARTY[v.party_kind].path}/${v.party_id}`}>Open khata</Link>
+            <Link className="text-sm text-subtle underline underline-offset-4" to={`${PARTY[v.party_kind].path}/${v.party_id}`}>{t('paymentNew.openKhata')}</Link>
           )}
         </FormActions>
       </form>

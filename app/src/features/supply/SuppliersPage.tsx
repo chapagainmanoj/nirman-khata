@@ -28,28 +28,28 @@ export function SuppliersPage() {
   return (
     <>
       <PageHeader
-        title="Suppliers"
-        subtitle={auth.canSeeFinance && balances.data ? <>Total: <BalanceText paisa={total} /></> : undefined}
-        actions={canManageSuppliers(auth) && !adding && <Button variant="tonal" onClick={() => setAdding(true)}>Add supplier</Button>}
+        title={t('suppliers.suppliers')}
+        subtitle={auth.canSeeFinance && balances.data ? <>{t('suppliers.total')}{' '}<BalanceText paisa={total} /></> : undefined}
+        actions={canManageSuppliers(auth) && !adding && <Button variant="tonal" onClick={() => setAdding(true)}>{t('suppliers.addSupplier')}</Button>}
       />
       {adding && <SupplierForm onDone={() => setAdding(false)} />}
       {auth.canSeeFinance && !companyLevel && balances.data && (
-        <p className="mb-3 text-xs text-subtle">Balances include only the projects you are assigned to.</p>
+        <p className="mb-3 text-xs text-subtle">{t('suppliers.balancesIncludeOnlyThe')}</p>
       )}
       {(suppliers.data?.length ?? 0) > 8 && (
         <div className="mb-3">
-          <Input aria-label="Search suppliers" placeholder="Search by name or material" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <Input aria-label={t('suppliers.searchSuppliers')} placeholder={t('suppliers.searchByNameOr')} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
       )}
       {suppliers.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void suppliers.refetch()}>{suppliers.error && friendlyError(suppliers.error)}</ErrorBanner>
       {/* Missing balances must never look like "nothing owed". */}
       <ErrorBanner onRetry={() => void balances.refetch()}>
-        {balances.error && `Balances could not be loaded, so amounts owed are not shown. ${friendlyError(balances.error)}`}
+        {balances.error && t('suppliers.balancesCouldNotBe', { error: friendlyError(balances.error) })}
       </ErrorBanner>
-      {q && list?.length === 0 && <p className="text-sm text-subtle">No suppliers match “{search.trim()}”.</p>}
+      {q && list?.length === 0 && <p className="text-sm text-subtle">{t('suppliers.noSuppliersMatchValue', { value: search.trim() })}</p>}
       {suppliers.data?.length === 0 && (
-        <EmptyState title="No suppliers yet">Add the shops and dealers you buy cement, rod, sand and other materials from.</EmptyState>
+        <EmptyState title={t('suppliers.noSuppliersYet')}>{t('suppliers.addTheShopsAnd')}</EmptyState>
       )}
       <ul className="grid gap-3 sm:grid-cols-2">
         {list?.map((s) => {
@@ -59,7 +59,7 @@ export function SuppliersPage() {
               <Link to={`/suppliers/${s.id}`} className="block rounded-xl border border-line bg-surface p-4 hover:border-slate">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 font-semibold break-words text-ink">{s.name}</div>
-                  {!s.active && <Badge>Inactive</Badge>}
+                  {!s.active && <Badge>{t('suppliers.inactive')}</Badge>}
                 </div>
                 {s.categories.length > 0 && <div className="mt-1 text-sm text-subtle">{s.categories.join(' · ')}</div>}
                 {b && auth.canSeeFinance && <div className="mt-2 text-sm"><BalanceText paisa={b.balance_paisa} /></div>}
@@ -125,25 +125,25 @@ export function SupplierForm({ supplier, onDone }: {
 
   // Editing has its own page, whose heading names it.
   return (
-    <Card title={supplier ? undefined : 'New supplier'} className="mb-4">
+    <Card title={supplier ? undefined : t('suppliers.newSupplier')} className="mb-4">
       <form onSubmit={submit} className="flex flex-col gap-3">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Business name" htmlFor="sup-name"><Input id="sup-name" value={v.name} onChange={set('name')} required /></Field>
-          <Field label="Materials supplied" htmlFor="sup-cat" hint="Comma separated, e.g. Cement, Rod">
+          <Field label={t('suppliers.businessName')} htmlFor="sup-name"><Input id="sup-name" value={v.name} onChange={set('name')} required /></Field>
+          <Field label={t('suppliers.materialsSupplied')} htmlFor="sup-cat" hint={t('suppliers.commaSeparatedEG')}>
             <Input id="sup-cat" value={v.categories} onChange={set('categories')} />
           </Field>
-          <Field label="Contact person" htmlFor="sup-contact"><Input id="sup-contact" value={v.contact_person} onChange={set('contact_person')} /></Field>
-          <Field label="Phone" htmlFor="sup-phone"><Input id="sup-phone" inputMode="tel" value={v.phone} onChange={set('phone')} /></Field>
-          <Field label="Address" htmlFor="sup-address"><Input id="sup-address" value={v.address} onChange={set('address')} /></Field>
-          <Field label="PAN / VAT number" htmlFor="sup-pan"><Input id="sup-pan" inputMode="numeric" value={v.pan_vat} onChange={set('pan_vat')} /></Field>
-          <Field label="Payment terms" htmlFor="sup-terms" hint="Optional, e.g. 30 days credit">
+          <Field label={t('suppliers.contactPerson')} htmlFor="sup-contact"><Input id="sup-contact" value={v.contact_person} onChange={set('contact_person')} /></Field>
+          <Field label={t('suppliers.phone')} htmlFor="sup-phone"><Input id="sup-phone" inputMode="tel" value={v.phone} onChange={set('phone')} /></Field>
+          <Field label={t('suppliers.address')} htmlFor="sup-address"><Input id="sup-address" value={v.address} onChange={set('address')} /></Field>
+          <Field label={t('suppliers.panVatNumber')} htmlFor="sup-pan"><Input id="sup-pan" inputMode="numeric" value={v.pan_vat} onChange={set('pan_vat')} /></Field>
+          <Field label={t('suppliers.paymentTerms')} htmlFor="sup-terms" hint={t('suppliers.optionalEG30')}>
             <Input id="sup-terms" value={v.payment_terms} onChange={set('payment_terms')} />
           </Field>
         </div>
         <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
         <div className="flex gap-2">
-          <Button type="submit" busy={save.isPending} disabled={!v.name.trim()}>Save</Button>
-          <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
+          <Button type="submit" busy={save.isPending} disabled={!v.name.trim()}>{t('common.save')}</Button>
+          <Button type="button" variant="secondary" onClick={onDone}>{t('common.cancel')}</Button>
         </div>
       </form>
     </Card>

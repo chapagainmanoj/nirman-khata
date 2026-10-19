@@ -8,6 +8,7 @@ import type { DateDisplay } from '../../lib/dates'
 import { PICK_STATUSES, ROLE_LABELS, STATUS_LABELS } from '../../lib/labels'
 import type { Member } from './api'
 import type { DetailsValues } from './projectDetails'
+import { t } from '../../lib/i18n'
 
 export function ProjectDetailsFields<T extends DetailsValues>({
   form, members, display, showActualDates,
@@ -24,11 +25,11 @@ export function ProjectDetailsFields<T extends DetailsValues>({
   const status = f.watch('status')
   const fixed = status === 'closed' || status === 'cancelled'
   const statusField = fixed ? (
-    <Field label="Status" hint={status === 'closed' ? 'Use “Reopen books” on the project page to change it.' : 'Use “Restore project” on the project page to change it.'}>
+    <Field label={t('projectDetailsFields.status')} hint={status === 'closed' ? t('projectDetailsFields.useReopenBooksOn') : t('projectDetailsFields.useRestoreProjectOn')}>
       <p className="py-2 text-sm font-medium text-ink">{STATUS_LABELS[status]}</p>
     </Field>
   ) : (
-    <Field label="Status" htmlFor="status">
+    <Field label={t('projectDetailsFields.status')} htmlFor="status">
       <Select id="status" {...register('status')}>
         {PICK_STATUSES.map((value) => (
           <option key={value} value={value}>{STATUS_LABELS[value]}</option>
@@ -39,37 +40,37 @@ export function ProjectDetailsFields<T extends DetailsValues>({
 
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="Project code" htmlFor="code" error={errors.code?.message} hint="Short and unique, e.g. P-01">
+      <Field label={t('projectDetailsFields.projectCode')} htmlFor="code" error={errors.code?.message} hint={t('projectDetailsFields.shortAndUniqueE')}>
         <Input id="code" {...register('code')} autoCapitalize="characters" />
       </Field>
-      <Field label="Project name" htmlFor="name" error={errors.name?.message}>
+      <Field label={t('projectDetailsFields.projectName')} htmlFor="name" error={errors.name?.message}>
         <Input id="name" {...register('name')} />
       </Field>
-      <Field label="Client name" htmlFor="client_name">
+      <Field label={t('projectDetailsFields.clientName')} htmlFor="client_name">
         <Input id="client_name" {...register('client_name')} />
       </Field>
       {simple && statusField}
       {/* Simple forms fold the rest; the edit links (?edit=planned_end) open the fold first. */}
-      <More className="sm:col-span-2" label="Client phone, location, manager, dates">
+      <More className="sm:col-span-2" label={t('projectDetailsFields.clientPhoneLocationManager')}>
         <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2">
-          <Field label="Client phone" htmlFor="client_phone">
+          <Field label={t('projectDetailsFields.clientPhone')} htmlFor="client_phone">
             <Input id="client_phone" {...register('client_phone')} inputMode="tel" />
           </Field>
-          <Field label="District" htmlFor="district">
+          <Field label={t('projectDetailsFields.district')} htmlFor="district">
             <Input id="district" {...register('district')} />
           </Field>
-          <Field label="Municipality" htmlFor="municipality">
+          <Field label={t('projectDetailsFields.municipality')} htmlFor="municipality">
             <Input id="municipality" {...register('municipality')} />
           </Field>
-          <Field label="Ward" htmlFor="ward">
+          <Field label={t('projectDetailsFields.ward')} htmlFor="ward">
             <Input id="ward" {...register('ward')} inputMode="numeric" />
           </Field>
-          <Field label="Location details" htmlFor="location_note">
+          <Field label={t('projectDetailsFields.locationDetails')} htmlFor="location_note">
             <Input id="location_note" {...register('location_note')} />
           </Field>
-          <Field label="Project manager" htmlFor="manager_id">
+          <Field label={t('projectDetailsFields.projectManager')} htmlFor="manager_id">
             <Select id="manager_id" {...register('manager_id')}>
-              <option value="">Not set</option>
+              <option value="">{t('projectDetailsFields.notSet')}</option>
               {managers.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
                   {m.profiles?.full_name} ({m.roles.map((r) => ROLE_LABELS[r]).join(', ')})
@@ -78,24 +79,24 @@ export function ProjectDetailsFields<T extends DetailsValues>({
             </Select>
           </Field>
           {!simple && statusField}
-          <Field label="Planned start" htmlFor="planned_start">
+          <Field label={t('projectDetailsFields.plannedStart')} htmlFor="planned_start">
             <Controller control={control} name="planned_start" render={({ field }) => (
               <DateInput id="planned_start" value={field.value} onChange={field.onChange} display={display} allowEmpty />
             )} />
           </Field>
-          <Field label="Planned completion" htmlFor="planned_end">
+          <Field label={t('projectDetailsFields.plannedCompletion')} htmlFor="planned_end">
             <Controller control={control} name="planned_end" render={({ field }) => (
               <DateInput id="planned_end" value={field.value} onChange={field.onChange} display={display} allowEmpty />
             )} />
           </Field>
           {showActualDates && (
             <>
-              <Field label="Actual start" htmlFor="actual_start">
+              <Field label={t('projectDetailsFields.actualStart')} htmlFor="actual_start">
                 <Controller control={control} name="actual_start" render={({ field }) => (
                   <DateInput id="actual_start" value={field.value} onChange={field.onChange} display={display} allowEmpty />
                 )} />
               </Field>
-              <Field label="Actual completion" htmlFor="actual_end">
+              <Field label={t('projectDetailsFields.actualCompletion')} htmlFor="actual_end">
                 <Controller control={control} name="actual_end" render={({ field }) => (
                   <DateInput id="actual_end" value={field.value} onChange={field.onChange} display={display} allowEmpty />
                 )} />

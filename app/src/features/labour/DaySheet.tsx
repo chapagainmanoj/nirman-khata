@@ -4,6 +4,7 @@
 // day back to not marked.
 import { useState, type ReactNode } from 'react'
 import { Button, Field, Input } from '../../components/ui'
+import { t } from '../../lib/i18n'
 import { ABSENT, clock, fullDayOf, halfDayOf, hhmm, type Mark, minutesBetween, toMin } from './api'
 
 export type { Mark } from './api'
@@ -43,26 +44,26 @@ export function DaySheet({ id, label, row, company, busy, onMark, half = halfDay
   return (
     <div className="flex flex-col gap-3" role="group" aria-label={label}>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <Button variant={worked?.minutes === std ? 'tonal' : 'secondary'} disabled={busy} onClick={() => pick(fullDayOf(company))}>Full day</Button>
-        <Button variant={worked?.minutes === std / 2 ? 'tonal' : 'secondary'} disabled={busy} onClick={() => pick(half)}>Half day</Button>
-        <Button variant={row?.absent ? 'tonal' : 'secondary'} aria-pressed={!!row?.absent} disabled={busy} onClick={() => pick(ABSENT)}>Absent</Button>
-        <Button variant="secondary" disabled={busy} onClick={plusHour}>+1 hour</Button>
+        <Button variant={worked?.minutes === std ? 'tonal' : 'secondary'} disabled={busy} onClick={() => pick(fullDayOf(company))}>{t('day.full')}</Button>
+        <Button variant={worked?.minutes === std / 2 ? 'tonal' : 'secondary'} disabled={busy} onClick={() => pick(half)}>{t('day.half')}</Button>
+        <Button variant={row?.absent ? 'tonal' : 'secondary'} aria-pressed={!!row?.absent} disabled={busy} onClick={() => pick(ABSENT)}>{t('crew.absent')}</Button>
+        <Button variant="secondary" disabled={busy} onClick={plusHour}>{t('day.plusHour')}</Button>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        <Field label="In" htmlFor={`ds-in-${id}`}>
+        <Field label={t('day.in')} htmlFor={`ds-in-${id}`}>
           <Input id={`ds-in-${id}`} type="time" value={tIn} disabled={busy} onChange={(e) => setIn(e.target.value)} onBlur={saveTimes} />
         </Field>
-        <Field label="Out" htmlFor={`ds-out-${id}`}>
+        <Field label={t('day.out')} htmlFor={`ds-out-${id}`}>
           <Input id={`ds-out-${id}`} type="time" value={tOut} disabled={busy} onChange={(e) => setOut(e.target.value)} onBlur={saveTimes} />
         </Field>
-        <Field label="Hours" htmlFor={`ds-h-${id}`}>
+        <Field label={t('crew.summary.hours')} htmlFor={`ds-h-${id}`}>
           <Input id={`ds-h-${id}`} inputMode="decimal" value={hours} disabled={busy} onChange={(e) => setHours(e.target.value)} onBlur={saveHours} />
         </Field>
       </div>
       {(footer || row) && (
         <div className="flex flex-wrap items-center justify-between gap-x-3">
           <span className="min-w-0">{footer}</span>
-          {row && <Button variant="ghost" disabled={busy} onClick={() => pick(null)}>Clear: not marked</Button>}
+          {row && <Button variant="ghost" disabled={busy} onClick={() => pick(null)}>{t('day.clear')}</Button>}
         </div>
       )}
     </div>

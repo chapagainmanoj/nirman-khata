@@ -53,4 +53,5 @@ export const webPlatform: Platform = {
     keys: async (prefix) => (await keys(store)).map(String).filter((k) => k.startsWith(prefix)),
   },
   requestPersistentStorage: async () => (await navigator.storage?.persist?.()) ?? false,
+  reload: () => window.location.reload(),
 }

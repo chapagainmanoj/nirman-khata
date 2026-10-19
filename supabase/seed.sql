@@ -118,7 +118,7 @@ select public.save_slip_draft(jsonb_build_object(
   'id', '30000000-0000-0000-0000-000000000002', 'supplier_id', '20000000-0000-0000-0000-000000000002',
   'request_date', '2026-10-08', 'required_date', '2026-10-12',
   'lines', jsonb_build_array(jsonb_build_object('project_id', (select id from public.projects where code = 'P-1'),
-    'material_id', (select id from public.materials where name = 'Sand'), 'qty', 2,
+    'material_id', (select id from public.materials where name = 'Sand (masino)'), 'qty', 2,
     'unit_id', (select id from public.units where code = 'trip'), 'unit_note', 'Tipper, 200 cft'))));
 select public.submit_slip('30000000-0000-0000-0000-000000000002');
 

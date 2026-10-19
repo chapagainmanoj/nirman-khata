@@ -4,6 +4,7 @@
 // Company-wide counts open their lists on "All projects" (?all=1): the sidebar's "Working on"
 // project must not hide the very item the count is about.
 import { relativeDay } from '../../lib/dates'
+import { type MessageKey, t } from '../../lib/i18n'
 import { formatNPR } from '../../lib/money'
 import { PARTY, type PartyKind } from '../parties/kinds'
 import type { ProjectFigures } from './parts'
@@ -21,8 +22,8 @@ export type AttentionData = {
 /** What this person may do; the action word only for someone who may, and the database checks again. */
 export type AttentionPerms = { enter: boolean; approve: boolean; post: boolean; pay: boolean }
 
-/** "1 slip", "2 slips". */
-export const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+/** "1 order slip …", "2 order slips …": one key per form, so each language words its own plural. */
+const count = (n: number, one: MessageKey, many: MessageKey) => t(n === 1 ? one : many, { n })
 
 export function attentionRows(d: AttentionData, can: AttentionPerms, today: string): AttentionRow[] {
   const over = d.projects.filter((p) => p.budget_paisa && Number(p.cost_paisa) > p.budget_paisa)
@@ -30,20 +31,23 @@ export function attentionRows(d: AttentionData, can: AttentionPerms, today: stri
 
   const decide: AttentionRow[] = [
     ...(d.counts.slips_to_approve ? [{
-      key: 'approve', kind: 'decide' as const, text: `${count(d.counts.slips_to_approve, 'order slip', 'order slips')} waiting for approval`,
-      action: can.approve ? 'Approve' : 'See order slips', to: '/slips?all=1',
+      key: 'approve', kind: 'decide' as const, text: count(d.counts.slips_to_approve, 'attention.approve.one', 'attention.approve.many'),
+      action: can.approve ? t('attention.approve') : t('attention.seeSlips'), to: '/slips?all=1',
     }] : []),
     ...over.map((p) => ({
       key: `over:${p.id}`, kind: 'decide' as const,
-      text: `${p.code} · ${p.name} is over budget by ${formatNPR(Number(p.cost_paisa) - p.budget_paisa!)} (spent ${formatNPR(Number(p.cost_paisa))} of ${formatNPR(p.budget_paisa!)})`,
-      action: 'See project', to: `/projects/${p.id}`,
+      text: t('attention.overBudget', {
+        project: `${p.code} · ${p.name}`, over: formatNPR(Number(p.cost_paisa) - p.budget_paisa!),
+        spent: formatNPR(Number(p.cost_paisa)), budget: formatNPR(p.budget_paisa!),
+      }),
+      action: t('attention.seeProject'), to: `/projects/${p.id}`,
     })),
     ...headingOver.map((p) => {
       const names = p.by_heading!.filter((h) => h.over).map((h) => h.name)
       return {
         key: `heading:${p.id}`, kind: 'decide' as const,
-        text: `${p.code} · ${p.name}: ${names.join(', ')} ${names.length === 1 ? 'is' : 'are'} over the heading budget`,
-        action: 'See report', to: '/reports/budget-vs-cost',
+        text: t(names.length === 1 ? 'attention.headingOver.one' : 'attention.headingOver.many', { project: `${p.code} · ${p.name}`, names: names.join(', ') }),
+        action: t('attention.seeReport'), to: '/reports/budget-vs-cost',
       }
     }),
   ]
@@ -52,35 +56,37 @@ export function attentionRows(d: AttentionData, can: AttentionPerms, today: stri
   const unbilled: AttentionRow[] = d.unbilled_by_supplier
     ? d.unbilled_by_supplier.map((u) => ({
       key: `unbilled:${u.supplier_id}`, kind: 'record' as const,
-      text: `${u.first_item}${u.lines > 1 ? ` and ${u.lines - 1} more` : ''} from ${u.name}, came ${relativeDay(u.oldest_date, today)}; no bill yet, so cost is incomplete`,
-      action: can.enter ? 'Enter bill' : 'See supplier',
+      text: t(u.lines > 1 ? 'attention.unbilledMore' : 'attention.unbilled', {
+        item: u.first_item, more: u.lines - 1, name: u.name, when: relativeDay(u.oldest_date, today),
+      }),
+      action: can.enter ? t('attention.enterBill') : t('attention.seeSupplier'),
       to: can.enter ? `/bills/new?supplier=${u.supplier_id}` : `/suppliers/${u.supplier_id}`,
     }))
     // A dashboard from before the supplier list came with only the count.
     : d.counts.unbilled_lines ? [{
-      key: 'unbilled', kind: 'record', text: `${count(d.counts.unbilled_lines, 'received item', 'received items')} not billed yet, so cost is incomplete`,
-      action: 'See list', to: '/reports/pending',
+      key: 'unbilled', kind: 'record', text: count(d.counts.unbilled_lines, 'attention.unbilledCount.one', 'attention.unbilledCount.many'),
+      action: t('attention.seeList'), to: '/reports/pending',
     }] : []
 
   const record: AttentionRow[] = [
     ...unbilled,
     ...(d.counts.bills_to_post ? [{
-      key: 'post', kind: 'record' as const, text: `${count(d.counts.bills_to_post, 'bill', 'bills')} sent to Accounts to post`,
-      action: can.post ? 'Post' : 'See bills', to: '/bills?all=1',
+      key: 'post', kind: 'record' as const, text: count(d.counts.bills_to_post, 'attention.toPost.one', 'attention.toPost.many'),
+      action: can.post ? t('attention.post') : t('attention.seeBills'), to: '/bills?all=1',
     }] : []),
     ...((d.unallocated_paisa ?? 0) > 0 ? [{
-      key: 'unallocated', kind: 'record' as const, text: `${formatNPR(d.unallocated_paisa!)} paid, project not chosen yet`,
-      action: can.pay ? 'Assign' : 'See payments', to: '/payments?all=1',
+      key: 'unallocated', kind: 'record' as const, text: t('attention.unallocated', { amount: formatNPR(d.unallocated_paisa!) }),
+      action: can.pay ? t('attention.assign') : t('attention.seePayments'), to: '/payments?all=1',
     }] : []),
     ...(d.overpaid_parties ?? []).map((p) => ({
       key: `overpaid:${p.party_id}`, kind: 'record' as const,
-      text: `${p.name} has ${formatNPR(p.overpaid_paisa)} extra from you; it comes off their next bills`,
-      action: `See ${PARTY[p.kind].one.toLowerCase()}`, to: `${PARTY[p.kind].path}/${p.party_id}`,
+      text: t('attention.overpaid', { name: p.name, amount: formatNPR(p.overpaid_paisa) }),
+      action: t('attention.seeParty', { party: PARTY[p.kind].one.toLowerCase() }), to: `${PARTY[p.kind].path}/${p.party_id}`,
     })),
     ...(d.counts.slips_waiting ? [{
       key: 'waiting', kind: 'record' as const,
-      text: `${count(d.counts.slips_waiting, 'approved order slip', 'approved order slips')} still to be delivered`,
-      action: 'See list', to: '/reports/pending',
+      text: count(d.counts.slips_waiting, 'attention.waiting.one', 'attention.waiting.many'),
+      action: t('attention.seeList'), to: '/reports/pending',
     }] : []),
   ]
   return [...decide, ...record]

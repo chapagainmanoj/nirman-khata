@@ -19,6 +19,7 @@ import { PARTY, type PartyKind } from '../parties/kinds'
 import { useProjects } from '../projects/api'
 import { rpc, usePosting, useRefreshMoney } from '../supply/api'
 import { canPost, canRecordPayments } from '../supply/permissions'
+import { t } from '../../lib/i18n'
 
 type PaymentMethod = Database['public']['Enums']['payment_method']
 type Room = { project_id: string | null; available_paisa: number; peski_paisa: number }
@@ -50,30 +51,28 @@ export function RefundCard({ kind, partyId, embedded, intro }: {
   if (!usable.length) return null
   const overpaid = Math.max(...usable.map((r) => r.available_paisa))
   const peski = Math.max(...usable.map((r) => r.peski_paisa))
-  const held = [peski > 0 && `${formatNPR(peski)} peski not yet used`, overpaid > 0 && `${formatNPR(overpaid)} overpaid`]
+  const held = [peski > 0 && t('refundCard.peskiPeskiNotYet', { peski: formatNPR(peski) }), overpaid > 0 && t('refundCard.overpaidOverpaid', { overpaid: formatNPR(overpaid) })]
     .filter(Boolean).join(' and ')
   const body = (
     <>
       <p className="text-sm text-subtle">
         {intro ? intro(held) : <>
-          This {PARTY[kind].one.toLowerCase()} holds up to <span className="font-semibold text-ink tabular-nums">{held}</span>.
-          Record money they give back here; it is not a cost.
-        </>}
+          {t('refundCard.thisValueHoldsUp', { value: PARTY[kind].one.toLowerCase() })}{' '}<span className="font-semibold text-ink tabular-nums">{held}</span>{t('refundCard.recordMoneyTheyGive')}</>}
       </p>
       {open
         ? <RefundForm kind={kind} partyId={partyId} rooms={usable} onDone={() => setOpen(false)} />
-        : <Button variant="secondary" className="mt-3" onClick={() => setOpen(true)}>Record money given back</Button>}
+        : <Button variant="secondary" className="mt-3" onClick={() => setOpen(true)}>{t('refundCard.recordMoneyGivenBack')}</Button>}
     </>
   )
   if (embedded) {
     return (
-      <section className="mt-4 border-t border-line pt-3" aria-label="Money given back">
-        <h3 className="mb-1 text-sm font-semibold text-ink">Money given back</h3>
+      <section className="mt-4 border-t border-line pt-3" aria-label={t('refundCard.moneyGivenBack')}>
+        <h3 className="mb-1 text-sm font-semibold text-ink">{t('refundCard.moneyGivenBack')}</h3>
         {body}
       </section>
     )
   }
-  return <Card title="Money given back">{body}</Card>
+  return <Card title={t('refundCard.moneyGivenBack')}>{body}</Card>
 }
 
 function RefundForm({ kind, partyId, rooms: all, onDone }: {
@@ -109,9 +108,9 @@ function RefundForm({ kind, partyId, rooms: all, onDone }: {
     { onSuccess: async () => { await refresh(); onDone(); navigate(`/refunds/${id}`) } },
   )
   const name = (projectId: string | null) => {
-    if (!projectId) return 'Not for a project'
+    if (!projectId) return t('refundCard.notForAProject')
     const p = projects.data?.find((x) => x.id === projectId)
-    return p ? `${p.code} · ${p.name}` : 'Project'
+    return p ? `${p.code} · ${p.name}` : t('refundCard.project')
   }
   const tooMuch = paisa > room
 
@@ -123,44 +122,44 @@ function RefundForm({ kind, partyId, rooms: all, onDone }: {
   return (
     <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="What is it" htmlFor="rf-kind">
+        <Field label={t('refundCard.whatIsIt')} htmlFor="rf-kind">
           <Select id="rf-kind" value={giveBack} onChange={(e) => {
             const k = e.target.value as GiveBack
             const first = all.find((x) => roomOf(x, k) > 0)
             setGiveBack(k)
             if (first) { setBucket(first.project_id ?? NONE); setAmount(paisaToInput(roomOf(first, k))) }
           }}>
-            {all.some((r) => r.available_paisa > 0) && <option value="refund">Refund of overpayment</option>}
-            {all.some((r) => r.peski_paisa > 0) && <option value="peski_returned">Peski returned</option>}
+            {all.some((r) => r.available_paisa > 0) && <option value="refund">{t('refundCard.refundOfOverpayment')}</option>}
+            {all.some((r) => r.peski_paisa > 0) && <option value="peski_returned">{t('refundCard.peskiReturned')}</option>}
           </Select>
         </Field>
-        <Field label="From the money on" htmlFor="rf-bucket">
+        <Field label={t('refundCard.fromTheMoneyOn')} htmlFor="rf-bucket">
           <Select id="rf-bucket" value={bucket} onChange={(e) => {
             setBucket(e.target.value)
             const r = rooms.find((x) => (x.project_id ?? NONE) === e.target.value)
             if (r) setAmount(paisaToInput(roomOf(r, giveBack)))
           }}>
-            {rooms.map((r) => <option key={r.project_id ?? NONE} value={r.project_id ?? NONE}>{name(r.project_id)} (up to {formatNPR(roomOf(r, giveBack))})</option>)}
+            {rooms.map((r) => <option key={r.project_id ?? NONE} value={r.project_id ?? NONE}>{t('refundCard.projectidUpToAmount', { projectId: name(r.project_id), amount: formatNPR(roomOf(r, giveBack)) })}</option>)}
           </Select>
         </Field>
-        <Field label="Amount received" htmlFor="rf-amount" error={tooMuch ? `No more than ${formatNPR(room)} here` : undefined}>
+        <Field label={t('refundCard.amountReceived')} htmlFor="rf-amount" error={tooMuch ? t('refundCard.noMoreThanRoom', { room: formatNPR(room) }) : undefined}>
           <MoneyInput id="rf-amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
-        <Field label="Received on" htmlFor="rf-date">
+        <Field label={t('refundCard.receivedOn')} htmlFor="rf-date">
           <DateInput id="rf-date" value={date} onChange={setDate} display={auth.dateDisplay} quick="past" />
         </Field>
-        <Field label="How" htmlFor="rf-method">
+        <Field label={t('refundCard.how')} htmlFor="rf-method">
           <Select id="rf-method" value={method} onChange={(e) => setMethod(e.target.value as PaymentMethod)}>
             {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
           </Select>
         </Field>
-        <Field label="Reference" htmlFor="rf-ref" hint="Cheque or transaction number"><Input id="rf-ref" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
-        <Field label="Note" htmlFor="rf-notes"><Input id="rf-notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+        <Field label={t('refundCard.reference')} htmlFor="rf-ref" hint={t('refundCard.chequeOrTransactionNumber')}><Input id="rf-ref" value={reference} onChange={(e) => setReference(e.target.value)} /></Field>
+        <Field label={t('common.note')} htmlFor="rf-notes"><Input id="rf-notes" value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
       </div>
       <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
       <div className="flex gap-2">
-        <Button type="submit" busy={save.isPending} disabled={paisa <= 0 || tooMuch}>{giveBack === 'refund' ? 'Save refund' : 'Save peski returned'}</Button>
-        <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
+        <Button type="submit" busy={save.isPending} disabled={paisa <= 0 || tooMuch}>{giveBack === 'refund' ? t('refundCard.saveRefund') : t('refundCard.savePeskiReturned')}</Button>
+        <Button type="button" variant="secondary" onClick={onDone}>{t('common.cancel')}</Button>
       </div>
     </form>
   )

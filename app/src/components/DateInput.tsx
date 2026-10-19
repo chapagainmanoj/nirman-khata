@@ -6,6 +6,7 @@ import {
   addDays, BS_LAST_YEAR, BS_MONTHS, BS_RANGE, formatAd, formatBs, formatDate, formatDual, inBsRange, todayKathmandu,
   type DateDisplay,
 } from '../lib/dates'
+import { t, type MessageKey } from '../lib/i18n'
 import { AD_MONTHS, monthInRange, monthOf, type MonthRef } from '../lib/months'
 import { CalendarIcon } from './icons'
 import { MonthGrid } from './MonthGrid'
@@ -23,9 +24,9 @@ type Props = {
   allowFuture?: boolean
 }
 
-const QUICK: Record<'past' | 'future', Array<[string, number]>> = {
-  past: [['Today', 0], ['Yesterday', -1]],
-  future: [['Tomorrow', 1], ['In 3 days', 3]],
+const QUICK: Record<'past' | 'future', Array<[MessageKey, number]>> = {
+  past: [['common.today', 0], ['common.yesterday', -1]],
+  future: [['date.tomorrow', 1], ['date.in3Days', 3]],
 }
 
 // From 2075 BS (opening balances, older bills) to the last year the BS library knows.
@@ -96,30 +97,30 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
               {other && <span className="truncate text-sm text-subtle">{other}</span>}
             </>
           ) : (
-            <span className="text-subtle">Choose date</span>
+            <span className="text-subtle">{t('date.choose')}</span>
           )}
         </span>
         <CalendarIcon className="shrink-0 text-slate" />
       </FieldButton>
 
       {picking && (
-        <div ref={popup} role="dialog" aria-label="Choose date"
+        <div ref={popup} role="dialog" aria-label={t('date.choose')}
           className="absolute top-full left-0 z-30 mt-1 w-full max-w-[calc(100vw-2rem)] rounded-xl sm:w-[22rem] border border-line bg-surface p-2 shadow-lg">
           <div className="mb-2 grid grid-cols-[auto_1fr_5.5rem] items-center gap-1">
-            <div role="group" aria-label="Calendar" className="flex shrink-0 rounded-lg border border-field p-0.5 text-xs font-semibold">
+            <div role="group" aria-label={t('date.calendar')} className="flex shrink-0 rounded-lg border border-field p-0.5 text-xs font-semibold">
               {(['bs', 'ad'] as const).map((d) => (
                 <button key={d} type="button" aria-pressed={month.display === d}
                   onClick={() => setMonth(monthOf(iso && inBsRange(iso) ? iso : today, d))}
-                  className={`min-h-11 [@media(pointer:fine)]:min-h-9 rounded-md px-2.5 ${month.display === d ? 'bg-brand text-white' : 'text-slate hover:bg-muted'}`}>
+                  className={`min-h-11 min-w-11 [@media(pointer:fine)]:min-h-9 rounded-md px-2.5 ${month.display === d ? 'bg-brand text-white' : 'text-slate hover:bg-muted'}`}>
                   {d.toUpperCase()}
                 </button>
               ))}
             </div>
-            <Select compact aria-label="Month" className="[@media(pointer:fine)]:min-h-10" value={month.month}
+            <Select compact aria-label={t('date.month')} className="[@media(pointer:fine)]:min-h-10" value={month.month}
               onChange={(e) => jump({ ...month, month: Number(e.target.value) })}>
               {monthNames.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
             </Select>
-            <Select compact aria-label="Year" className="[@media(pointer:fine)]:min-h-10" value={month.year}
+            <Select compact aria-label={t('date.year')} className="[@media(pointer:fine)]:min-h-10" value={month.year}
               onChange={(e) => jump({ ...month, year: Number(e.target.value) })}>
               {years.map((y) => <option key={y} value={y}>{y}</option>)}
             </Select>
@@ -130,9 +131,9 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
           </div>
           <div className="mt-2 flex items-center justify-between gap-2 text-sm">
             {allowEmpty && iso
-              ? <button type="button" onClick={() => choose('')} className="min-h-11 [@media(pointer:fine)]:min-h-10 rounded-lg px-3 font-medium text-subtle hover:bg-muted">Clear</button>
+              ? <button type="button" onClick={() => choose('')} className="min-h-11 [@media(pointer:fine)]:min-h-10 rounded-lg px-3 font-medium text-subtle hover:bg-muted">{t('date.clear')}</button>
               : <span />}
-            <button type="button" onClick={() => choose(today)} className="min-h-11 [@media(pointer:fine)]:min-h-10 rounded-lg px-3 font-medium text-brand hover:bg-muted">Today</button>
+            <button type="button" onClick={() => choose(today)} className="min-h-11 [@media(pointer:fine)]:min-h-10 rounded-lg px-3 font-medium text-brand hover:bg-muted">{t('common.today')}</button>
           </div>
         </div>
       )}
@@ -144,7 +145,7 @@ export function DateInput({ value, onChange, display, id, allowEmpty, quick = al
             return (
               <button key={label} type="button" aria-pressed={iso === target} onClick={() => onChange(target)}
                 className={`min-h-11 [@media(pointer:fine)]:min-h-9 rounded-full border px-3 font-medium ${iso === target ? 'border-brand bg-brand-soft text-brand-dark' : 'border-line text-ink hover:bg-muted'}`}>
-                {label}
+                {t(label)}
               </button>
             )
           })}

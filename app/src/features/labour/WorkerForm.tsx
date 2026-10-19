@@ -9,6 +9,7 @@ import { WORK_TYPES } from '../../lib/labels'
 import { newId } from '../../lib/ids'
 import { paisaToInput, parseNPR } from '../../lib/money'
 import { useAddCrewWorker, useSaveWorker } from './api'
+import { t } from '../../lib/i18n'
 
 type Editable = { id: string; name: string; work_type: string | null; rate_kind: string; rate_paisa: number; phone: string | null; notes?: string | null; active?: boolean }
 
@@ -22,7 +23,7 @@ export function WorkerForm({ crewId, member, onDone, onAdded }: {
   // One id per new worker, kept across retries.
   const [newWorkerId] = useState(newId)
   const [name, setName] = useState(member?.name ?? '')
-  const [workType, setWorkType] = useState(member?.work_type ?? 'Jyami')
+  const [workType, setWorkType] = useState(member?.work_type ?? t('workerForm.jyami'))
   const [kind, setKind] = useState<'daily' | 'hourly'>((member?.rate_kind as 'daily' | 'hourly') ?? 'daily')
   const [rate, setRate] = useState(member ? paisaToInput(member.rate_paisa) : '')
   const [phone, setPhone] = useState(member?.phone ?? '')
@@ -33,7 +34,7 @@ export function WorkerForm({ crewId, member, onDone, onAdded }: {
 
   function submit() {
     const paisa = parseNPR(rate)
-    const p = !name.trim() ? 'Enter the worker\'s name.' : !paisa || paisa <= 0 ? 'Enter the rate.' : ''
+    const p = !name.trim() ? t('workerForm.enterTheWorkerS') : !paisa || paisa <= 0 ? t('workerForm.enterTheRate') : ''
     setProblem(p)
     if (p) return
     const values = { name: name.trim(), work_type: workType || null, rate_kind: kind, rate_paisa: paisa!, phone: phone.trim() || null }
@@ -51,17 +52,17 @@ export function WorkerForm({ crewId, member, onDone, onAdded }: {
   return (
     <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); submit() }}>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Name" htmlFor={`mf-name-${id}`}><Input id={`mf-name-${id}`} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" /></Field>
-        <Field label="Work" htmlFor={`mf-type-${id}`}>
+        <Field label={t('workerForm.name')} htmlFor={`mf-name-${id}`}><Input id={`mf-name-${id}`} value={name} onChange={(e) => setName(e.target.value)} autoComplete="off" /></Field>
+        <Field label={t('workerForm.work')} htmlFor={`mf-type-${id}`}>
           <Select id={`mf-type-${id}`} value={workType} onChange={(e) => setWorkType(e.target.value)}>
-            {[...WORK_TYPES.filter((w) => w !== 'Mixed'), 'Helper'].map((w) => <option key={w} value={w}>{w}</option>)}
+            {[...WORK_TYPES.filter((w) => w !== 'Mixed'), t('workerForm.helper')].map((w) => <option key={w} value={w}>{w}</option>)}
           </Select>
         </Field>
       </div>
       <div className="flex flex-col gap-2">
-        <span className="text-sm font-medium text-ink">Paid by the</span>
-        <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="Paid by the">
-          {([['daily', 'Day'], ['hourly', 'Hour']] as const).map(([k, label]) => (
+        <span className="text-sm font-medium text-ink">{t('workerForm.paidByThe')}</span>
+        <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label={t('workerForm.paidByThe')}>
+          {([['daily', t('workerForm.day')], ['hourly', t('workerForm.hour')]] as const).map(([k, label]) => (
             <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}
               className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${kind === k ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
               {label}
@@ -70,27 +71,27 @@ export function WorkerForm({ crewId, member, onDone, onAdded }: {
         </div>
       </div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={kind === 'daily' ? 'Rate for a full day' : 'Rate for an hour'} htmlFor={`mf-rate-${id}`}
-          hint={member ? 'A new rate applies to days verified from now on.' : undefined}>
+        <Field label={kind === 'daily' ? t('workerForm.rateForAFull') : t('workerForm.rateForAnHour')} htmlFor={`mf-rate-${id}`}
+          hint={member ? t('workerForm.aNewRateApplies') : undefined}>
           <MoneyInput id={`mf-rate-${id}`} value={rate} onChange={(e) => setRate(e.target.value)} />
         </Field>
-        <Field label="Phone" htmlFor={`mf-phone-${id}`} hint="Optional"><Input id={`mf-phone-${id}`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
+        <Field label={t('workerForm.phone')} htmlFor={`mf-phone-${id}`} hint={t('common.optional')}><Input id={`mf-phone-${id}`} type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} /></Field>
       </div>
       {member && (
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Notes" htmlFor={`mf-notes-${id}`}><Input id={`mf-notes-${id}`} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
-          <Field label="Status" htmlFor={`mf-active-${id}`}>
+          <Field label={t('workerForm.notes')} htmlFor={`mf-notes-${id}`}><Input id={`mf-notes-${id}`} value={notes} onChange={(e) => setNotes(e.target.value)} /></Field>
+          <Field label={t('workerForm.status')} htmlFor={`mf-active-${id}`}>
             <Select id={`mf-active-${id}`} value={active ? 'yes' : 'no'} onChange={(e) => setActive(e.target.value === 'yes')}>
-              <option value="yes">Working</option>
-              <option value="no">Left (kept in history)</option>
+              <option value="yes">{t('workerForm.working')}</option>
+              <option value="no">{t('workerForm.leftKeptInHistory')}</option>
             </Select>
           </Field>
         </div>
       )}
       <ErrorBanner>{problem || (save.error && friendlyError(save.error))}</ErrorBanner>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" busy={save.isPending}>{member ? 'Save worker' : 'Add worker'}</Button>
-        <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
+        <Button type="submit" busy={save.isPending}>{member ? t('workerForm.saveWorker') : t('workerForm.addWorker')}</Button>
+        <Button type="button" variant="secondary" onClick={onDone}>{t('common.cancel')}</Button>
       </div>
     </form>
   )

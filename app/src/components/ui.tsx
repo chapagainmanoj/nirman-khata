@@ -2,6 +2,8 @@
 import type { ButtonHTMLAttributes, ComponentProps, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react'
 import { createContext, forwardRef, useContext, useEffect, useId, useRef, useState } from 'react'
 import { Link, type LinkProps } from 'react-router'
+import { t } from '../lib/i18n'
+import { useOnline } from '../lib/online'
 import { AlertIcon, ChevronLeftIcon, ChevronRightIcon, InfoIcon } from './icons'
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
@@ -16,7 +18,8 @@ type Variant = 'primary' | 'tonal' | 'secondary' | 'danger' | 'ghost'
 function buttonClass(variant: Variant, className?: string) {
   return cx(
     'inline-flex min-h-11 items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors disabled:pointer-events-none',
-    variant === 'ghost' ? 'px-2' : 'px-4',
+    // min-w-11: a short ghost label ("Edit") would otherwise be a narrower target than 44px.
+    variant === 'ghost' ? 'min-w-11 px-2' : 'px-4',
     // Filled buttons go grey when disabled; a faded oxblood reads as pink, not as unavailable.
     variant === 'primary' && 'bg-brand text-white hover:bg-brand-dark active:bg-brand-dark disabled:bg-line disabled:text-subtle',
     variant === 'secondary' && 'border border-field bg-surface text-ink hover:bg-muted active:bg-line disabled:opacity-50',
@@ -88,7 +91,7 @@ export function ConfirmButton({
       <Button variant="danger" autoFocus onClick={() => { wasAsking.current = false; setAsking(false); onConfirm() }}>
         {confirmLabel}
       </Button>
-      <Button variant="secondary" onClick={() => setAsking(false)}>Keep</Button>
+      <Button variant="secondary" onClick={() => setAsking(false)}>{t('ui.keep')}</Button>
     </span>
   )
 }
@@ -137,8 +140,10 @@ export function Field({
   )
 }
 
+// Focus: border and a 1px ring in the accent read as one 2px edge (6:1 on white). A pale halo
+// alone (slate-soft, 1.1:1) left keyboard users unsure which field they were in.
 const inputClass =
-  'min-h-11 w-full rounded-lg border border-field bg-surface px-3 text-base text-ink placeholder:text-subtle focus:border-slate focus:outline-none focus:ring-3 focus:ring-slate-soft disabled:border-line disabled:bg-muted aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger'
+  'min-h-11 w-full rounded-lg border border-field bg-surface px-3 text-base text-ink placeholder:text-subtle focus:border-slate focus:outline-none focus:ring-1 focus:ring-slate disabled:border-line disabled:bg-muted aria-[invalid=true]:border-danger aria-[invalid=true]:ring-danger'
 
 export const Input = forwardRef<HTMLInputElement, InputHTMLAttributes<HTMLInputElement>>(function Input(
   { className, ...rest }, ref,
@@ -204,9 +209,10 @@ export function Breadcrumbs({ trail }: { trail: Crumb[] }) {
   if (!trail.length) return null
   const parent = trail[trail.length - 1]
   return (
-    <nav aria-label="Breadcrumb" className="mb-1 text-sm">
-      <Link to={parent.to} className="-ml-1 inline-flex min-h-11 items-center gap-0.5 rounded-lg px-1 text-subtle hover:text-ink sm:hidden">
-        <ChevronLeftIcon size={16} />{parent.label}
+    <nav aria-label={t('ui.breadcrumb')} className="mb-1 text-sm">
+      {/* One line on a phone: a long project name would wrap round the chevron. */}
+      <Link to={parent.to} className="-ml-1 inline-flex min-h-11 max-w-full items-center gap-0.5 rounded-lg px-1 text-subtle hover:text-ink sm:hidden">
+        <ChevronLeftIcon size={16} className="shrink-0" /><span className="truncate">{parent.label}</span>
       </Link>
       <ol className="hidden flex-wrap items-center gap-1 text-subtle sm:flex">
         {trail.map((c, i) => (
@@ -276,7 +282,7 @@ export function ErrorBanner({ children, onRetry }: { children: ReactNode; onRetr
       <span className="flex min-w-0 items-start gap-2 break-words"><AlertIcon size={18} className="mt-px shrink-0" />{children}</span>
       {onRetry && (
         <button type="button" onClick={onRetry} className="min-h-11 shrink-0 font-semibold underline underline-offset-2">
-          Try again
+          {t('ui.tryAgain')}
         </button>
       )}
     </div>
@@ -297,7 +303,7 @@ export function Status({ children, className }: { children: ReactNode; className
   return <div role="status" className={cx('empty:hidden', className)}>{children}</div>
 }
 
-export function Spinner({ label = 'Loading…' }: { label?: string }) {
+export function Spinner({ label = t('ui.loading') }: { label?: string }) {
   return (
     <div role="status" className="flex items-center gap-2 py-8 text-sm text-subtle">
       <span aria-hidden className="size-5 animate-spin rounded-full border-2 border-slate border-t-transparent" />
@@ -321,9 +327,12 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
  * is always one tap away on long forms; on wider screens it sits at the end of the form.
  */
 export function FormActions({ children }: { children: ReactNode }) {
+  const online = useOnline()
   return (
     <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-[5] -mx-4 flex flex-wrap items-center gap-2 border-t border-line bg-page/95 px-4 py-2 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
       {children}
+      {/* Next to the button that would otherwise only spin: the page notice may be scrolled away. */}
+      {!online && <p role="status" className="basis-full text-xs text-warn-ink">{t('offline.save')}</p>}
     </div>
   )
 }
@@ -334,7 +343,7 @@ export function MoreDetails({ summary, open, children }: { summary: string; open
     <details className="group mt-3" open={open || undefined}>
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-medium text-ink [&::-webkit-details-marker]:hidden">
         <ChevronRightIcon size={16} className="shrink-0 text-subtle transition-transform group-open:rotate-90" />
-        <span>More details <span className="font-normal text-subtle">({summary.toLowerCase()})</span></span>
+        <span>{t('ui.moreDetails')} <span className="font-normal text-subtle">({summary.toLowerCase()})</span></span>
       </summary>
       <div className="mt-2">{children}</div>
     </details>

@@ -10,20 +10,29 @@ import { useCompany } from '../auth/AuthProvider'
 import { PhotosWaitingNotice } from '../features/photos/WaitingPhotosPage'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
+import { useOnline } from '../lib/online'
 import {
   BellIcon, BillIcon, CalendarIcon, CatalogIcon, CrewIcon, DashboardIcon, DeliveryIcon, ExpenseIcon, MoreIcon, PartiesIcon, PayeeIcon, PaymentIcon, ProjectsIcon,
   ReportIcon, SettingsIcon, SlipIcon, StaffIcon, SubcontractorIcon, SupplierIcon,
 } from './icons'
 import { CompanyMark } from './CompanyMark'
+import { PageBoundary } from './PageBoundary'
 import { AccountMenu, ProjectSwitcher, RecordMenu, RecordSheetButton, SetupMenu } from './menus'
 import { activeSection, isPartySection, navHighlight, navItem, phoneBarFor, recordActionsFor, sectionsFor, type NavKey } from './nav'
 import { useNavCounts, useUnreadCount } from './navCounts'
-import { Spinner } from './ui'
+import { Notice, Spinner } from './ui'
 import { useNavRole } from './useNavRole'
 
 const ICONS: Record<NavKey, ComponentType> = {
   dashboard: DashboardIcon, projects: ProjectsIcon, calendar: CalendarIcon, reports: ReportIcon, slips: SlipIcon, deliveries: DeliveryIcon, bills: BillIcon, payments: PaymentIcon, expenses: ExpenseIcon,
   parties: PartiesIcon, suppliers: SupplierIcon, subcontractors: SubcontractorIcon, crews: CrewIcon, payees: PayeeIcon, staff: StaffIcon, catalog: CatalogIcon, settings: SettingsIcon,
+}
+
+/** No connection: saves wait and go through when it is back, so a spinning button is not a freeze. */
+function OfflineNotice() {
+  const online = useOnline()
+  if (online) return null
+  return <div className="mb-4" role="status"><Notice>{t('offline.notice')}</Notice></div>
 }
 
 /** Work waiting, in the accent: something to act on. */
@@ -36,7 +45,7 @@ function Count({ n, label }: { n?: number; label: string }) {
   )
 }
 
-const countLabel = (key: NavKey, n: number) => (key === 'bills' ? `${n} to post` : key === 'slips' ? `${n} to approve` : `${n}`)
+const countLabel = (key: NavKey, n: number) => (key === 'bills' ? t('layout.nToPost', { n }) : key === 'slips' ? t('layout.nToApprove', { n }) : `${n}`)
 
 export function Layout() {
   return (
@@ -105,7 +114,7 @@ function Frame() {
         <RecordMenu role={role} />
         <ProjectSwitcher />
         <div className="scroll-shadows -mx-3 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3">
-          <nav aria-label="Main" className="flex flex-col gap-3">
+          <nav aria-label={t('layout.main')} className="flex flex-col gap-3">
             {work.map((g) => (
               <div key={g.key}>
                 {g.label && <div className="px-3 pb-0.5 text-xs font-semibold tracking-wide text-subtle uppercase">{t(g.label)}</div>}
@@ -127,7 +136,7 @@ function Frame() {
             <Brand name={auth.company.name} logoPath={auth.company.logo_path} className="min-w-0 flex-1 md:hidden" />
             <Brand name={auth.company.name} logoPath={auth.company.logo_path} markOnly className="hidden md:inline-flex" />
             {/* Nine sections can be wider than a tablet: the links scroll, the buttons on the right stay. */}
-            <nav ref={strip} aria-label="Main" className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] md:flex">
+            <nav ref={strip} aria-label={t('layout.main')} className="hidden min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none] md:flex">
               {stripItems.map((i) => (
                 <Link key={i.key} to={i.to} aria-current={stripActive === i.key ? 'page' : undefined}
                   className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium ${stripActive === i.key ? 'bg-brand-soft text-brand-dark' : 'text-subtle hover:bg-muted hover:text-ink'}`}>
@@ -143,13 +152,14 @@ function Frame() {
         </header>
 
         <main className="mx-auto max-w-5xl px-4 py-5 lg:px-8">
+          <OfflineNotice />
           <PhotosWaitingNotice />
-          <Suspense fallback={<Spinner />}><Outlet /></Suspense>
+          <PageBoundary key={pathname}><Suspense fallback={<Spinner />}><Outlet /></Suspense></PageBoundary>
         </main>
       </div>
 
       {/* Phone bottom bar */}
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface md:hidden print:hidden"
+      <nav aria-label={t('layout.main')} className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-line bg-surface md:hidden print:hidden"
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
         {bar.slice(0, 2).map((key) => <BarLink key={key} navKey={key} active={active === key} count={counts[key]} />)}
         {hasRecord ? <RecordSheetButton role={role} /> : <span aria-hidden />}

@@ -14,6 +14,7 @@ import { memberName, useMembers, useProjects } from '../projects/api'
 import { useCurrentProject } from '../projects/current'
 import { type CalendarEvent, useCalendarEvents } from '../site/api'
 import { eventHref, MONEY_TONE } from './events'
+import { t } from '../../lib/i18n'
 
 type Kind = 'all' | 'site' | 'money'
 const SITE_KINDS = new Set(['report', 'progress', 'delivery', 'slip', 'slip_sent'])
@@ -60,30 +61,30 @@ export function CalendarPage() {
 
   return (
     <>
-      <PageHeader title="Calendar" subtitle="What happened each day: site work, deliveries, costs and payments." />
+      <PageHeader title={t('calendar.calendar')} subtitle={t('calendar.whatHappenedEachDay')} />
       <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Field label="Project" htmlFor="cal-project">
+        <Field label={t('calendar.project')} htmlFor="cal-project">
           <Select id="cal-project" value={projectId ?? ''} onChange={(e) => setParams({ project: e.target.value }, { replace: true })}>
-            <option value="">All projects</option>
+            <option value="">{t('calendar.allProjects')}</option>
             {projects.data?.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
           </Select>
         </Field>
-        <Field label="Show" htmlFor="cal-kind">
+        <Field label={t('calendar.show')} htmlFor="cal-kind">
           <Select id="cal-kind" value={kind} onChange={(e) => setKind(e.target.value as Kind)}>
-            <option value="all">Everything</option>
-            <option value="site">Site work, deliveries, order slips</option>
-            <option value="money">Costs and payments</option>
+            <option value="all">{t('calendar.everything')}</option>
+            <option value="site">{t('calendar.siteWorkDeliveriesOrder')}</option>
+            <option value="money">{t('calendar.costsAndPayments')}</option>
           </Select>
         </Field>
-        <Field label="Party" htmlFor="cal-party">
+        <Field label={t('calendar.party')} htmlFor="cal-party">
           <Select id="cal-party" value={party} onChange={(e) => setParty(e.target.value)}>
-            <option value="">Any</option>
+            <option value="">{t('calendar.any')}</option>
             {parties.map((p) => <option key={p} value={p!}>{p}</option>)}
           </Select>
         </Field>
-        <Field label="Entered by" htmlFor="cal-staff">
+        <Field label={t('calendar.enteredBy')} htmlFor="cal-staff">
           <Select id="cal-staff" value={staff} onChange={(e) => setStaff(e.target.value)}>
-            <option value="">Anyone</option>
+            <option value="">{t('calendar.anyone')}</option>
             {people.map((u) => <option key={u} value={u!}>{memberName(members.data, u)}</option>)}
           </Select>
         </Field>
@@ -92,11 +93,11 @@ export function CalendarPage() {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>
           <div className="mb-2 flex justify-end">
-            <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="Calendar">
+            <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label={t('calendar.calendar')}>
               {(['bs', 'ad'] as const).map((d) => (
                 <button key={d} type="button" role="radio" aria-checked={month.display === d}
                   onClick={() => setMonth(monthOf(selected, d))}
-                  className={`min-h-11 [@media(pointer:fine)]:min-h-9 rounded-md px-3 text-xs font-semibold ${month.display === d ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
+                  className={`min-h-11 min-w-11 [@media(pointer:fine)]:min-h-9 rounded-md px-3 text-xs font-semibold ${month.display === d ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
                   {d.toUpperCase()}
                 </button>
               ))}
@@ -126,8 +127,7 @@ export function CalendarPage() {
             }} />
           {showMoney && events.data && (
             <p className="mt-3 text-sm text-subtle">
-              This month: cost <span className="font-semibold text-ink tabular-nums">{formatNPR(sum(shown, 'cost_paisa'))}</span>,
-              paid <span className="font-semibold text-ink tabular-nums">{formatNPR(sum(shown, 'cash_paisa'))}</span>
+              {t('calendar.thisMonthCost')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(sum(shown, 'cost_paisa'))}</span>{t('calendar.paid')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(sum(shown, 'cash_paisa'))}</span>
             </p>
           )}
         </Card>
@@ -137,14 +137,14 @@ export function CalendarPage() {
           <ErrorBanner onRetry={() => void events.refetch()}>{events.error && friendlyError(events.error)}</ErrorBanner>
           {showMoney && dayEvents.some((e) => e.cost_paisa || e.cash_paisa || e.received_paisa) && (
             <p className="mb-2 text-sm">
-              Cost <span className="font-semibold tabular-nums">{formatNPR(sum(dayEvents, 'cost_paisa'))}</span>
-              {' · '}Paid <span className="font-semibold tabular-nums">{formatNPR(sum(dayEvents, 'cash_paisa'))}</span>
+              {t('calendar.cost')}{' '}<span className="font-semibold tabular-nums">{formatNPR(sum(dayEvents, 'cost_paisa'))}</span>
+              {t('calendar.valuePaid', { value: ' · ' })}{' '}<span className="font-semibold tabular-nums">{formatNPR(sum(dayEvents, 'cash_paisa'))}</span>
               {dayEvents.some((e) => e.received_paisa) && (
-                <>{' · '}Received <span className="font-semibold tabular-nums">{formatNPR(sum(dayEvents, 'received_paisa'))}</span></>
+                <>{t('calendar.valueReceived', { value: ' · ' })}{' '}<span className="font-semibold tabular-nums">{formatNPR(sum(dayEvents, 'received_paisa'))}</span></>
               )}
             </p>
           )}
-          {events.data && dayEvents.length === 0 && <p className="text-sm text-subtle">Nothing recorded on this day.</p>}
+          {events.data && dayEvents.length === 0 && <p className="text-sm text-subtle">{t('calendar.nothingRecordedOnThis')}</p>}
           <ul>
             {dayEvents.map((e, i) => {
               const to = eventHref(e)
@@ -160,11 +160,11 @@ export function CalendarPage() {
                   </span>
                   {e.received_paisa ? (
                     <span className="block text-sm tabular-nums">
-                      {e.received_paisa < 0 ? `Reversed ${formatNPR(-e.received_paisa)}` : `Received ${formatNPR(e.received_paisa)}`}
+                      {e.received_paisa < 0 ? t('calendar.reversedAmount', { amount: formatNPR(-e.received_paisa) }) : t('calendar.receivedReceived', { received: formatNPR(e.received_paisa) })}
                     </span>
                   ) : (e.cost_paisa || e.cash_paisa) ? (
                     <span className="block text-sm tabular-nums">
-                      {e.cost_paisa ? `Cost ${formatNPR(e.cost_paisa)}` : ''}{e.cost_paisa && e.cash_paisa ? ' · ' : ''}{e.cash_paisa ? (e.cash_paisa < 0 ? `Received back ${formatNPR(-e.cash_paisa)}` : `Paid ${formatNPR(e.cash_paisa)}`) : ''}
+                      {e.cost_paisa ? t('calendar.costCost', { cost: formatNPR(e.cost_paisa) }) : ''}{e.cost_paisa && e.cash_paisa ? ' · ' : ''}{e.cash_paisa ? (e.cash_paisa < 0 ? t('calendar.receivedBackAmount', { amount: formatNPR(-e.cash_paisa) }) : t('calendar.paidCash', { cash: formatNPR(e.cash_paisa) })) : ''}
                     </span>
                   ) : null}
                 </>

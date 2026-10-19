@@ -9,7 +9,7 @@ import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, Err
 import { addDays, formatDate, relativeDay, todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { focusFirstError } from '../../lib/forms'
-import { t } from '../../lib/i18n'
+import { t, type MessageKey } from '../../lib/i18n'
 import { FULFILMENT, ROLE_LABELS, STATUS_LABELS, STATUS_TONE } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { supabase, type Tables } from '../../lib/supabase'
@@ -53,7 +53,7 @@ export function ProjectDetailPage() {
   if (project.isPending) return <Spinner />
   if (project.error) return <ErrorBanner onRetry={() => void project.refetch()}>{friendlyError(project.error)}</ErrorBanner>
   if (!project.data) {
-    return <EmptyState title="Project not found">It does not exist or you are not assigned to it. <Link className="text-slate" to="/projects">Back to projects</Link></EmptyState>
+    return <EmptyState title={t('projectDetail.projectNotFound')}>{t('projectDetail.itDoesNotExist')}{' '}<Link className="text-slate" to="/projects">{t('projectDetail.backToProjects')}</Link></EmptyState>
   }
   return <ProjectBody p={project.data} members={members} />
 }
@@ -74,30 +74,30 @@ function ProjectBody({ p, members }: { p: Tables<'projects'>; members: ReturnTyp
   const showDeliveries = () => setParams({ tab: 'deliveries' }, { replace: true })
   const { todo, isPending: todoPending } = useProjectTodo(p, canEdit, showDeliveries)
   const tabs: Array<[Tab, string]> = [
-    ...(auth.canSeeFinance ? [['overview', 'Overview']] as [Tab, string][] : []),
+    ...(auth.canSeeFinance ? [['overview', t('projectDetail.overview')]] as [Tab, string][] : []),
     // The count keeps the to-dos in sight now that they are not on the first tab.
-    ['activity', todo.length ? `Activity · ${todo.length}` : 'Activity'], ['deliveries', 'Deliveries'], ['subcontract', 'Subcontract'],
-    ['labour', labourOn ? 'Labour & costs' : 'Other costs'],
-    ...(auth.canSeeFinance ? [['client', 'Client']] as [Tab, string][] : []),
-    ['details', 'Project details'],
+    ['activity', todo.length ? t('projectDetail.activityLength', { length: todo.length }) : t('projectDetail.activity')], ['deliveries', t('projectDetail.deliveries')], ['subcontract', t('projectDetail.subcontract')],
+    ['labour', labourOn ? t('projectDetail.labourCosts') : t('projectDetail.otherCosts')],
+    ...(auth.canSeeFinance ? [['client', t('projectDetail.client')]] as [Tab, string][] : []),
+    ['details', t('projectDetail.projectDetails')],
   ]
 
   return (
     <>
       <PageHeader
         title={p.name}
-        crumbs={[{ to: '/projects', label: 'Projects' }]}
+        crumbs={[{ to: '/projects', label: t('projectDetail.projects') }]}
         subtitle={<span className="flex items-center gap-2">{p.code} <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABELS[p.status]}</Badge></span>}
         actions={
           <div className="flex flex-wrap gap-2">
-            {canEnter(auth) && <ButtonLink to={`/slips/new?project=${p.id}`}>New order slip</ButtonLink>}
-            {canEnter(auth) && <ButtonLink variant="secondary" to={`/daily/new?project=${p.id}`}>Daily report</ButtonLink>}
-            <ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>Calendar</ButtonLink>
+            {canEnter(auth) && <ButtonLink to={`/slips/new?project=${p.id}`}>{t('projectDetail.newOrderSlip')}</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant="secondary" to={`/daily/new?project=${p.id}`}>{t('projectDetail.dailyReport')}</ButtonLink>}
+            <ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>{t('projectDetail.calendar')}</ButtonLink>
           </div>
         }
       />
       {auth.canSeeFinance && <SummaryStrip projectId={p.id} />}
-      <Tabs tabs={tabs} value={tab} label="Project sections"
+      <Tabs tabs={tabs} value={tab} label={t('projectDetail.projectSections')} soft
         onChange={(next) => setParams(next === first ? {} : { tab: next }, { replace: true })}>
         {tab === 'overview' && auth.canSeeFinance && (
           <div className="grid items-start gap-4 lg:grid-cols-2">
@@ -109,8 +109,8 @@ function ProjectBody({ p, members }: { p: Tables<'projects'>; members: ReturnTyp
         {tab === 'deliveries' && (
           <section>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-subtle">Record deliveries from the order slip. Use this only for a purchase without one.</p>
-              {canEnter(auth) && <ButtonLink variant="secondary" to={`/deliveries/new?project=${p.id}`}>Delivery without order slip</ButtonLink>}
+              <p className="text-sm text-subtle">{t('projectDetail.recordDeliveriesFromThe')}</p>
+              {canEnter(auth) && <ButtonLink variant="secondary" to={`/deliveries/new?project=${p.id}`}>{t('projectDetail.deliveryWithoutOrderSlip')}</ButtonLink>}
             </div>
             <DeliveryList filter={{ projectId: p.id }} />
           </section>
@@ -150,16 +150,15 @@ function CostBreakdown({ projectId }: { projectId: string }) {
   if (!d || !d.money_visible) return null
   return (
     <div className="flex flex-col gap-4">
-      <Card title="Where the money went">
+      <Card title={t('projectDetail.whereTheMoneyWent')}>
         <SourceList figures={d} />
-        {!!d.peski_paisa && <p className="mt-2 text-sm text-subtle">Peski not yet used: <span className="font-semibold text-ink">{formatNPR(d.peski_paisa)}</span></p>}
-        {!!d.overpaid_paisa && <p className="mt-2 text-sm text-subtle">Overpaid, owed back: <span className="font-semibold text-ink">{formatNPR(d.overpaid_paisa)}</span></p>}
+        {!!d.peski_paisa && <p className="mt-2 text-sm text-subtle">{t('projectDetail.peskiNotYetUsed')}{' '}<span className="font-semibold text-ink">{formatNPR(d.peski_paisa)}</span></p>}
+        {!!d.overpaid_paisa && <p className="mt-2 text-sm text-subtle">{t('projectDetail.overpaidOwedBack')}{' '}<span className="font-semibold text-ink">{formatNPR(d.overpaid_paisa)}</span></p>}
         <p className="mt-2 text-sm text-subtle">
-          Last daily report: {d.last_report_date ? formatDate(d.last_report_date, auth.dateDisplay) : 'none yet'}
+          {t('projectDetail.lastDailyReport')}{' '}{d.last_report_date ? formatDate(d.last_report_date, auth.dateDisplay) : t('projectDetail.noneYet')}
         </p>
         <Link className="mt-1 inline-flex min-h-11 items-center text-sm font-medium text-slate hover:underline" to={`/reports/cost-by-heading?project=${projectId}`}>
-          Cost by heading report
-        </Link>
+          {t('projectDetail.costByHeadingReport')}</Link>
       </Card>
     </div>
   )
@@ -187,26 +186,26 @@ function SummaryStrip({ projectId }: { projectId: string }) {
   const budget = f.budget_paisa || null
   const left = budget === null ? null : budget - spent
   return (
-    <section aria-label="Summary" className="rounded-xl border border-line bg-surface p-4">
+    <section aria-label={t('projectDetail.summary')} className="rounded-xl border border-line bg-surface p-4">
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <div className="text-sm font-medium text-subtle">Spent</div>
+          <div className="text-sm font-medium text-subtle">{t('projectDetail.spent')}</div>
           <div className="text-3xl font-semibold text-ink tabular-nums">{formatNPR(spent)}</div>
           <div className="mt-1 text-sm text-subtle">
-            Paid <span className="font-semibold text-ink tabular-nums">{formatNPR(f.cash_paid_paisa)}</span>
-            {' · '}Due <span className="font-semibold text-ink tabular-nums">{formatNPR(due)}</span>
-            {held > 0 && <>{' · '}They hold <span className="font-semibold text-good-ink tabular-nums">{formatNPR(held)}</span></>}
+            {t('projectDetail.paid')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(f.cash_paid_paisa)}</span>
+            {t('projectDetail.valueDue', { value: ' · ' })}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(due)}</span>
+            {held > 0 && <>{t('projectDetail.valueTheyHold', { value: ' · ' })}{' '}<span className="font-semibold text-good-ink tabular-nums">{formatNPR(held)}</span></>}
           </div>
         </div>
         <div>
           <div className={`text-sm font-medium ${left !== null && left < 0 ? 'text-danger' : 'text-subtle'}`}>
-            {left !== null && left < 0 ? 'Over budget by' : 'Left'}
+            {left !== null && left < 0 ? t('projectDetail.overBudgetBy') : t('projectDetail.left')}
           </div>
           <div className={`text-3xl font-semibold tabular-nums ${left !== null && left < 0 ? 'text-danger' : 'text-ink'}`}>
             {left === null ? t('common.notAvailable') : formatNPR(Math.abs(left))}
           </div>
           <div className="mt-1 text-sm text-subtle">
-            {budget === null ? 'No spending budget set' : <>of <span className="font-semibold text-ink tabular-nums">{formatNPR(budget)}</span> budget</>}
+            {budget === null ? t('projectDetail.noSpendingBudgetSet') : <>{t('projectDetail.of')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(budget)}</span> {t('projectDetail.budget')}</>}
           </div>
         </div>
       </div>
@@ -221,25 +220,28 @@ function SummaryStrip({ projectId }: { projectId: string }) {
 function NotSpentYet({ figures: f, labour }: { figures: ProjectFigures; labour?: { days: number } }) {
   const items: string[] = []
   // Attendance days still drafts: no money until verified (GLOSSARY: Attendance).
-  if (labour?.days) items.push(`${labour.days} attendance ${labour.days === 1 ? 'day' : 'days'} not verified`)
+  if (labour?.days) items.push(t(labour.days === 1 ? 'projectDetail.daysNotVerified.one' : 'projectDetail.daysNotVerified.many', { n: labour.days }))
   if (f.unbilled_lines > 0) {
-    const what = `${f.unbilled_lines} delivered item${f.unbilled_lines === 1 ? '' : 's'} with no bill yet`
+    const what = t(f.unbilled_lines === 1 ? 'projectDetail.noBillYet.one' : 'projectDetail.noBillYet.many', { n: f.unbilled_lines })
     items.push(f.unbilled_estimate_paisa
-      ? `about ${formatNPR(f.unbilled_estimate_paisa)} for ${what}${f.unbilled_without_rate ? ' (some have no rate yet)' : ''}`
+      ? `${t('projectDetail.aboutFor', { amount: formatNPR(f.unbilled_estimate_paisa), what })}${f.unbilled_without_rate ? t('projectDetail.someHaveNoRate') : ''}`
       : what)
   }
   if (f.draft_bills) {
-    items.push(`${f.draft_bills_paisa ? `${formatNPR(f.draft_bills_paisa)} in ` : ''}${f.draft_bills} bill${f.draft_bills === 1 ? '' : 's'} not posted`)
+    items.push(`${f.draft_bills_paisa ? t('projectDetail.draftbillsIn', { draftBills: formatNPR(f.draft_bills_paisa) }) : ''}${t(f.draft_bills === 1 ? 'projectDetail.billsNotPosted.one' : 'projectDetail.billsNotPosted.many', { n: f.draft_bills })}`)
   }
   if (!items.length) return null
-  return <p className="mt-3 border-t border-line pt-2 text-sm text-subtle">Not in spent yet: {items.join(' · ')}</p>
+  return <p className="mt-3 border-t border-line pt-2 text-sm text-subtle">{t('projectDetail.notInSpentYet', { value: items.join(' · ') })}</p>
 }
 
 /** A thing waiting on someone, with where to do it. */
 type ToDo = { key: string; title: string; detail?: string; to?: string; onClick?: () => void }
 
 /** How the Recent list names money: what it did to the project. */
-const RECENT_MONEY: Record<string, string> = { cost: 'Cost', payment: 'Paid', peski: 'Peski', refund: 'Refund', received: 'Received' }
+const RECENT_MONEY: Record<string, MessageKey | undefined> = {
+  cost: 'projectDetail.money.cost', payment: 'projectDetail.money.payment', peski: 'projectDetail.money.peski',
+  refund: 'projectDetail.money.refund', received: 'projectDetail.money.received',
+}
 /** Routine steps that the calendar keeps but Recent leaves out. */
 const RECENT_SKIP = new Set(['slip_sent'])
 
@@ -260,36 +262,36 @@ function useProjectTodo(p: Tables<'projects'>, canEdit: boolean, onShowDeliverie
   const unbilledCount = unbilled.data?.length ?? 0
   const lateDays = open && p.planned_end && p.planned_end < today
     ? Math.round((Date.parse(today) - Date.parse(p.planned_end)) / 86_400_000) : 0
-  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? '' : 's'}`
+  const plural = (n: number, one: MessageKey, many: MessageKey) => t(n === 1 ? one : many, { n })
 
   const todo: ToDo[] = []
   for (const s of waiting.slice(0, ACTIVITY_ROWS)) {
     const what = `${s.number} · ${s.suppliers?.name ?? ''} · ${FULFILMENT[s.fulfilment][0]}`
     todo.push(canEnter(auth)
-      ? { key: `slip-${s.id}`, title: 'Record delivery', detail: what, to: `/deliveries/new?slip=${s.id}&project=${p.id}` }
-      : { key: `slip-${s.id}`, title: 'Waiting for delivery', detail: what, to: `/slips/${s.id}` })
+      ? { key: `slip-${s.id}`, title: t('projectDetail.recordDelivery'), detail: what, to: `/deliveries/new?slip=${s.id}&project=${p.id}` }
+      : { key: `slip-${s.id}`, title: t('projectDetail.waitingForDelivery'), detail: what, to: `/slips/${s.id}` })
   }
   if (waiting.length > ACTIVITY_ROWS) {
-    todo.push({ key: 'more-slips', title: `${plural(waiting.length - ACTIVITY_ROWS, 'more order slip')} waiting`, to: '/slips' })
+    todo.push({ key: 'more-slips', title: plural(waiting.length - ACTIVITY_ROWS, 'projectDetail.moreSlipsWaiting.one', 'projectDetail.moreSlipsWaiting.many'), to: '/slips' })
   }
   if (unbilledCount > 0 && canEnter(auth)) {
-    const estimate = f?.money_visible && f.unbilled_estimate_paisa ? ` · about ${formatNPR(f.unbilled_estimate_paisa)}` : ''
-    todo.push({ key: 'unbilled', title: 'Enter bills', detail: `${plural(unbilledCount, 'delivered item')}${estimate}`, onClick: onShowDeliveries })
+    const estimate = f?.money_visible && f.unbilled_estimate_paisa ? ` · ${t('projectDetail.aboutAmount', { amount: formatNPR(f.unbilled_estimate_paisa) })}` : ''
+    todo.push({ key: 'unbilled', title: t('projectDetail.enterBills'), detail: `${plural(unbilledCount, 'projectDetail.deliveredItems.one', 'projectDetail.deliveredItems.many')}${estimate}`, onClick: onShowDeliveries })
   }
   if (f?.draft_bills && canPost(auth)) {
-    todo.push({ key: 'drafts', title: 'Post bills', detail: `${plural(f.draft_bills, 'bill')} not posted${f.draft_bills_paisa ? ` · ${formatNPR(f.draft_bills_paisa)}` : ''}`, to: '/bills' })
+    todo.push({ key: 'drafts', title: t('projectDetail.postBills'), detail: `${plural(f.draft_bills, 'projectDetail.billsNotPosted.one', 'projectDetail.billsNotPosted.many')}${f.draft_bills_paisa ? ` · ${formatNPR(f.draft_bills_paisa)}` : ''}`, to: '/bills' })
   }
   if (labourDays > 0 && canEnter(auth)) {
-    todo.push({ key: 'labour', title: 'Verify attendance', detail: `${plural(labourDays, 'day')} still drafts`, to: `/labour/crew?project=${p.id}` })
+    todo.push({ key: 'labour', title: t('projectDetail.verifyAttendance'), detail: plural(labourDays, 'projectDetail.daysStillDrafts.one', 'projectDetail.daysStillDrafts.many'), to: `/labour/crew?project=${p.id}` })
   }
   if (canEdit && open && !p.actual_start && (deliveries.data?.length ?? 0) > 0) {
-    todo.push({ key: 'start', title: 'Set actual start date', detail: 'deliveries are arriving', to: '?tab=details&edit=actual_start' })
+    todo.push({ key: 'start', title: t('projectDetail.setActualStartDate'), detail: t('projectDetail.deliveriesArriving'), to: '?tab=details&edit=actual_start' })
   }
   if (canEdit && lateDays > 0) {
-    todo.push({ key: 'late', title: 'Update planned completion', detail: `passed ${plural(lateDays, 'day')} ago`, to: '?tab=details&edit=planned_end' })
+    todo.push({ key: 'late', title: t('projectDetail.updatePlannedCompletion'), detail: plural(lateDays, 'projectDetail.passedDaysAgo.one', 'projectDetail.passedDaysAgo.many'), to: '?tab=details&edit=planned_end' })
   }
   if (canEnter(auth) && p.status === 'active' && f && (f.days_since_report === null || f.days_since_report > 2)) {
-    todo.push({ key: 'report', title: 'Send daily report', detail: f.days_since_report === null ? 'none yet' : `last one ${plural(f.days_since_report, 'day')} ago`, to: `/daily/new?project=${p.id}` })
+    todo.push({ key: 'report', title: t('projectDetail.sendDailyReport'), detail: f.days_since_report === null ? t('projectDetail.noneYet') : plural(f.days_since_report, 'projectDetail.lastOneDaysAgo.one', 'projectDetail.lastOneDaysAgo.many'), to: `/daily/new?project=${p.id}` })
   }
   return { todo, isPending: slips.isPending }
 }
@@ -307,16 +309,16 @@ function Activity({ project: p, todo }: { project: Tables<'projects'>; todo: ToD
     // As many as the to-do list beside it (3 to 5), so neither column leaves a gap; 5 when alone.
     .slice(0, todo.length ? Math.min(Math.max(ACTIVITY_ROWS, todo.length), ACTIVITY_ROWS + 2) : ACTIVITY_ROWS + 2)
   if (!todo.length && !recent.length) {
-    return <p className="text-sm text-subtle">Nothing waiting, and nothing recorded in the last {RECENT_DAYS} days.</p>
+    return <p className="text-sm text-subtle">{t('projectDetail.nothingWaitingAndNothing', { recentDays: RECENT_DAYS })}</p>
   }
   // Touch screens keep 44px rows; with a mouse the rows are tighter.
   const row = 'flex min-h-11 [@media(pointer:fine)]:min-h-9 w-full items-center justify-between gap-3 text-left text-sm hover:bg-muted'
   return (
-    <Card title="Activity" actions={<ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>See all</ButtonLink>}>
+    <Card title={t('projectDetail.activity')} actions={<ButtonLink variant="ghost" to={`/calendar?project=${p.id}`}>{t('projectDetail.seeAll')}</ButtonLink>}>
       <div className={cx('grid grid-cols-1 gap-x-8 gap-y-3', todo.length > 0 && recent.length > 0 && 'lg:grid-cols-2')}>
         {todo.length > 0 && (
           <section className="min-w-0">
-            <h3 className="text-xs font-medium text-subtle">To do · {todo.length}</h3>
+            <h3 className="text-xs font-medium text-subtle">{t('projectDetail.toDoLength', { length: todo.length })}</h3>
             <ul>
               {todo.map((d) => {
                 const body = (
@@ -341,13 +343,14 @@ function Activity({ project: p, todo }: { project: Tables<'projects'>; todo: ToD
         )}
         {recent.length > 0 && (
           <section className="min-w-0">
-            <h3 className="text-xs font-medium text-subtle">Recent</h3>
+            <h3 className="text-xs font-medium text-subtle">{t('projectDetail.recent')}</h3>
             <ul>
               {recent.map((e, i) => {
                 const to = eventHref(e)
                 // Amounts come back only for people who may see money.
                 const amount = e.cost_paisa || e.cash_paisa || e.received_paisa
-                const tag = e.money ? RECENT_MONEY[e.money] : null
+                const tagKey = e.money ? RECENT_MONEY[e.money] : undefined
+                const tag = tagKey ? t(tagKey) : null
                 // Who it was with and the full date go in the hover text, so the row never cuts them off.
                 const more = [e.party_name, e.detail, formatDate(e.event_date, auth.dateDisplay)].filter(Boolean).join(' · ')
                 const body = (
@@ -411,7 +414,7 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
     mutationFn: async (v: DetailsValues) => {
       const { data, error } = await supabase.from('projects').update(detailsToRow(v)).eq('id', p.id).select('id')
       if (error) throw error
-      if (!data?.length) throw new Error('You do not have permission to edit this project.')
+      if (!data?.length) throw new Error(t('projectDetail.youDoNotHave'))
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['project', p.id] })
@@ -440,14 +443,14 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
     && !p.manager_id && !p.planned_start && !p.planned_end && !p.actual_start && !p.actual_end
   return (
     <Card title={t('project.details')} actions={canEdit && <Button variant="ghost" onClick={() => setEditing(true)}>{t('common.edit')}</Button>}>
-      {empty && <p className="text-sm text-subtle">No client, location or dates yet.</p>}
-      <Detail label="Client">{[p.client_name, p.client_phone].filter(Boolean).join(' · ')}</Detail>
-      <Detail label="Location">{[p.location_note, p.ward && `Ward ${p.ward}`, p.municipality, p.district].filter(Boolean).join(', ')}</Detail>
-      <Detail label="Project manager">{memberName(members, p.manager_id)}</Detail>
-      <Detail label="Planned start">{p.planned_start && <DateText value={p.planned_start} display={d} dual />}</Detail>
-      <Detail label="Planned completion">{p.planned_end && <DateText value={p.planned_end} display={d} dual />}</Detail>
-      <Detail label="Actual start">{p.actual_start && <DateText value={p.actual_start} display={d} dual />}</Detail>
-      <Detail label="Actual completion">{p.actual_end && <DateText value={p.actual_end} display={d} dual />}</Detail>
+      {empty && <p className="text-sm text-subtle">{t('projectDetail.noClientLocationOr')}</p>}
+      <Detail label={t('projectDetail.client')}>{[p.client_name, p.client_phone].filter(Boolean).join(' · ')}</Detail>
+      <Detail label={t('projectDetail.location')}>{[p.location_note, p.ward && t('projectDetail.wardWard', { ward: p.ward }), p.municipality, p.district].filter(Boolean).join(', ')}</Detail>
+      <Detail label={t('projectDetail.projectManager')}>{memberName(members, p.manager_id)}</Detail>
+      <Detail label={t('projectDetail.plannedStart')}>{p.planned_start && <DateText value={p.planned_start} display={d} dual />}</Detail>
+      <Detail label={t('projectDetail.plannedCompletion')}>{p.planned_end && <DateText value={p.planned_end} display={d} dual />}</Detail>
+      <Detail label={t('projectDetail.actualStart')}>{p.actual_start && <DateText value={p.actual_start} display={d} dual />}</Detail>
+      <Detail label={t('projectDetail.actualCompletion')}>{p.actual_end && <DateText value={p.actual_end} display={d} dual />}</Detail>
       {canEdit && <StatusActions project={p} />}
     </Card>
   )
@@ -467,7 +470,7 @@ function StatusActions({ project: p }: { project: Tables<'projects'> }) {
     mutationFn: async (status: Tables<'projects'>['status']) => {
       const { data, error } = await supabase.from('projects').update({ status }).eq('id', p.id).select('id')
       if (error) throw error
-      if (!data?.length) throw new Error('You do not have permission to change this project.')
+      if (!data?.length) throw new Error(t('projectDetail.youDoNotHave2'))
     },
     onSuccess: async () => {
       setClosing(false)
@@ -478,9 +481,9 @@ function StatusActions({ project: p }: { project: Tables<'projects'> }) {
   })
   const f = dash.data
   const looseEnds = f ? [
-    f.draft_bills ? `${f.draft_bills} draft bill${f.draft_bills === 1 ? '' : 's'} not posted` : '',
-    f.peski_paisa ? `${formatNPR(f.peski_paisa)} peski not yet used` : '',
-    f.overpaid_paisa ? `${formatNPR(f.overpaid_paisa)} overpaid, owed back` : '',
+    f.draft_bills ? t(f.draft_bills === 1 ? 'projectDetail.draftBillsNotPosted.one' : 'projectDetail.draftBillsNotPosted.many', { n: f.draft_bills }) : '',
+    f.peski_paisa ? t('projectDetail.peskiPeskiNotYet', { peski: formatNPR(f.peski_paisa) }) : '',
+    f.overpaid_paisa ? t('projectDetail.overpaidOverpaidOwedBack', { overpaid: formatNPR(f.overpaid_paisa) }) : '',
   ].filter(Boolean) : []
 
   const note = 'mt-4 border-t border-line pt-3'
@@ -488,23 +491,23 @@ function StatusActions({ project: p }: { project: Tables<'projects'> }) {
   if (p.status === 'completed') {
     return (
       <div className={note}>
-        <p className="text-sm text-subtle">Work is done. Final bills and payments can still be entered until you close the books.</p>
+        <p className="text-sm text-subtle">{t('projectDetail.workIsDoneFinal')}</p>
         {closing ? (
           <Notice>
             {looseEnds.length > 0 && (
               <>
-                <span className="block font-semibold">This project still has:</span>
+                <span className="block font-semibold">{t('projectDetail.thisProjectStillHas')}</span>
                 <ul className="list-disc pl-5">{looseEnds.map((w) => <li key={w}>{w}</li>)}</ul>
               </>
             )}
-            <span className="block">No new bills, costs or payments can be entered until the books are reopened.{looseEnds.length > 0 && ' Overpaid or peski money can still be moved to another project after reopening.'}</span>
+            <span className="block">{t('projectDetail.noNewBillsCosts')}{looseEnds.length > 0 && t('projectDetail.overpaidOrPeskiMoney')}</span>
             <span className="mt-2 flex gap-2">
-              <Button type="button" busy={setStatus.isPending} onClick={() => setStatus.mutate('closed')}>{looseEnds.length ? 'Close anyway' : 'Close books'}</Button>
+              <Button type="button" busy={setStatus.isPending} onClick={() => setStatus.mutate('closed')}>{looseEnds.length ? t('projectDetail.closeAnyway') : t('projectDetail.closeBooks')}</Button>
               <Button type="button" variant="secondary" onClick={() => setClosing(false)}>{t('common.cancel')}</Button>
             </span>
           </Notice>
         ) : (
-          <Button type="button" variant="secondary" className="mt-2" onClick={() => setClosing(true)}>Close books</Button>
+          <Button type="button" variant="secondary" className="mt-2" onClick={() => setClosing(true)}>{t('projectDetail.closeBooks')}</Button>
         )}
         {error}
       </div>
@@ -513,8 +516,8 @@ function StatusActions({ project: p }: { project: Tables<'projects'> }) {
   if (p.status === 'closed') {
     return (
       <div className={note}>
-        <p className="text-sm text-subtle">Books closed: no new bills, costs or payments.</p>
-        <Button type="button" variant="secondary" className="mt-2" busy={setStatus.isPending} onClick={() => setStatus.mutate('completed')}>Reopen books</Button>
+        <p className="text-sm text-subtle">{t('projectDetail.booksClosedNoNew')}</p>
+        <Button type="button" variant="secondary" className="mt-2" busy={setStatus.isPending} onClick={() => setStatus.mutate('completed')}>{t('projectDetail.reopenBooks')}</Button>
         {error}
       </div>
     )
@@ -522,25 +525,24 @@ function StatusActions({ project: p }: { project: Tables<'projects'> }) {
   if (p.status === 'cancelled') {
     return (
       <div className={note}>
-        <p className="text-sm text-subtle">Cancelled: left out of the dashboard and reports. Nothing was deleted.</p>
-        <Button type="button" variant="secondary" className="mt-2" busy={setStatus.isPending} onClick={() => setStatus.mutate('active')}>Restore project</Button>
+        <p className="text-sm text-subtle">{t('projectDetail.cancelledLeftOutOf')}</p>
+        <Button type="button" variant="secondary" className="mt-2" busy={setStatus.isPending} onClick={() => setStatus.mutate('active')}>{t('projectDetail.restoreProject')}</Button>
         {error}
       </div>
     )
   }
   return (
     <div className={note}>
-      <ConfirmButton confirmLabel="Yes, cancel project" disabled={setStatus.isPending} onConfirm={() => setStatus.mutate('cancelled')}>
-        Cancel project
-      </ConfirmButton>
-      <p className="mt-1 text-xs text-subtle">For a project that will not go ahead. It leaves the dashboard and reports; nothing is deleted, and it can be restored.</p>
+      <ConfirmButton confirmLabel={t('projectDetail.yesCancelProject')} disabled={setStatus.isPending} onConfirm={() => setStatus.mutate('cancelled')}>
+        {t('projectDetail.cancelProject')}</ConfirmButton>
+      <p className="mt-1 text-xs text-subtle">{t('projectDetail.forAProjectThat')}</p>
       {error}
     </div>
   )
 }
 
-const OWED: Array<['supplier' | 'subcontractor' | 'crew' | 'payee', string]> = [
-  ['supplier', 'Suppliers'], ['subcontractor', 'Subcontractors'], ['crew', 'Labour crews'], ['payee', 'Other payees'],
+const OWED: Array<['supplier' | 'subcontractor' | 'crew' | 'payee', MessageKey]> = [
+  ['supplier', 'projectDetail.owed.supplier'], ['subcontractor', 'projectDetail.owed.subcontractor'], ['crew', 'projectDetail.owed.crew'], ['payee', 'projectDetail.owed.payee'],
 ]
 
 function AmountsCard({ projectId, status }: { projectId: string; status: Tables<'projects'>['status'] }) {
@@ -563,12 +565,12 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
   return (
     <Card title={t('project.amounts')} actions={
       <Button variant="secondary" aria-expanded={picking} onClick={() => setPicking(!picking)}>
-        As of {asOf === todayKathmandu() ? 'today' : formatDate(asOf, auth.dateDisplay)} <ChevronDownIcon size={16} className="inline" />
+        {t('projectDetail.asOf')}{' '}{asOf === todayKathmandu() ? 'today' : formatDate(asOf, auth.dateDisplay)} <ChevronDownIcon size={16} className="inline" />
       </Button>
     }>
       {picking && (
         <div className="mb-3">
-          <Field label="Show amounts as of" htmlFor="amounts-as-of">
+          <Field label={t('projectDetail.showAmountsAsOf')} htmlFor="amounts-as-of">
             <DateInput id="amounts-as-of" value={asOf} onChange={(v) => v && setAsOf(v)} display={auth.dateDisplay} />
           </Field>
         </div>
@@ -580,43 +582,42 @@ function AmountsCard({ projectId, status }: { projectId: string; status: Tables<
       {amounts.data !== undefined && c && (
         <>
           {/* The agreement first: what the client pays and what you plan to spend of it. */}
-          <Detail label="Contract">{formatNPR(a?.contract_paisa)}</Detail>
-          <Detail label="Spending budget">{budget === null ? t('common.notAvailable') : formatNPR(budget)}</Detail>
-          <Detail label="Planned margin">{formatNPR(a?.planned_margin_paisa)}</Detail>
+          <Detail label={t('projectDetail.contract')}>{formatNPR(a?.contract_paisa)}</Detail>
+          <Detail label={t('projectDetail.spendingBudget')}>{budget === null ? t('common.notAvailable') : formatNPR(budget)}</Detail>
+          <Detail label={t('projectDetail.plannedMargin')}>{formatNPR(a?.planned_margin_paisa)}</Detail>
           {finished && a?.contract_paisa != null && (
-            <Detail label={a.contract_paisa - c.cost_paisa >= 0 ? 'Final profit' : 'Final loss'}>
+            <Detail label={a.contract_paisa - c.cost_paisa >= 0 ? t('projectDetail.finalProfit') : t('projectDetail.finalLoss')}>
               {formatNPR(Math.abs(a.contract_paisa - c.cost_paisa))}
             </Detail>
           )}
           {received.data !== undefined && a?.contract_paisa != null && (
             <>
               <h3 className="mt-4 flex items-baseline justify-between gap-2 text-sm font-medium text-subtle">
-                From the client
-                <Link to="?tab=client" className="-my-3.5 inline-flex min-h-11 items-center text-xs font-medium text-brand underline underline-offset-4">See receipts</Link>
+                {t('projectDetail.fromTheClient')}<Link to="?tab=client" className="-my-3.5 inline-flex min-h-11 items-center text-xs font-medium text-brand underline underline-offset-4">{t('projectDetail.seeReceipts')}</Link>
               </h3>
-              <Detail label="Received">{formatNPR(received.data)}</Detail>
-              <Detail label={a.contract_paisa - received.data < 0 ? 'Received more than contract by' : 'Contract balance'}>
+              <Detail label={t('projectDetail.received')}>{formatNPR(received.data)}</Detail>
+              <Detail label={a.contract_paisa - received.data < 0 ? t('projectDetail.receivedMoreThanContract') : t('projectDetail.contractBalance')}>
                 {formatNPR(Math.abs(a.contract_paisa - received.data))}
               </Detail>
             </>
           )}
-          <h3 className="mt-4 text-sm font-medium text-subtle">Against the budget</h3>
-          <Detail label="Spent">{formatNPR(c.cost_paisa)}</Detail>
-          <Detail label={left !== null && left < 0 ? 'Over budget by' : 'Left'}>
+          <h3 className="mt-4 text-sm font-medium text-subtle">{t('projectDetail.againstTheBudget')}</h3>
+          <Detail label={t('projectDetail.spent')}>{formatNPR(c.cost_paisa)}</Detail>
+          <Detail label={left !== null && left < 0 ? t('projectDetail.overBudgetBy') : t('projectDetail.left')}>
             {left === null ? t('common.notAvailable') : formatNPR(Math.abs(left))}
           </Detail>
-          <Detail label="Paid">{formatNPR(c.cash_paid_paisa)}</Detail>
-          <Detail label="Due">{formatNPR(c.payable_paisa + held)}</Detail>
-          {held > 0 && <Detail label="They hold (peski, overpaid)"><span className="text-good-ink">{formatNPR(held)}</span></Detail>}
+          <Detail label={t('projectDetail.paid')}>{formatNPR(c.cash_paid_paisa)}</Detail>
+          <Detail label={t('projectDetail.due')}>{formatNPR(c.payable_paisa + held)}</Detail>
+          {held > 0 && <Detail label={t('projectDetail.theyHoldPeskiOverpaid')}><span className="text-good-ink">{formatNPR(held)}</span></Detail>}
           {/* Break it down only when more than one kind of party is owed; one kind would just repeat the total. */}
           {OWED.filter(([k]) => c.payable_by_kind[k] !== 0).length > 1 && OWED.map(([k, label]) => c.payable_by_kind[k] !== 0 && (
-            <Detail key={k} label={`· ${label}`}><BalanceText paisa={c.payable_by_kind[k]} /></Detail>
+            <Detail key={k} label={`· ${t(label)}`}><BalanceText paisa={c.payable_by_kind[k]} /></Detail>
           ))}
           <p className="mt-3 text-xs text-subtle">
             {changed
-              ? <>Started at contract {formatNPR(a?.original_contract_paisa)}, budget {formatNPR(a?.original_budget_paisa)}. <Link to="?tab=history" className="font-medium text-brand underline underline-offset-4">See changes</Link></>
-              : 'No changes to the contract or budget since the start.'}
-            {!finished && ' Profit is shown only after the project is completed or closed.'}
+              ? <>{t('projectDetail.startedAtContractOriginalcontract', { originalContract: formatNPR(a?.original_contract_paisa), originalBudget: formatNPR(a?.original_budget_paisa) })}{' '}<Link to="?tab=history" className="font-medium text-brand underline underline-offset-4">{t('projectDetail.seeChanges')}</Link></>
+              : t('projectDetail.noChangesToThe')}
+            {!finished && t('projectDetail.profitIsShownOnly')}
           </p>
         </>
       )}
@@ -656,14 +657,14 @@ function TeamCard({ projectId, members }: { projectId: string; members: Member[]
 
   return (
     <Card title={t('project.team')}>
-      <p className="mb-2 text-xs text-subtle">Admins and Accounts staff can see all projects without being assigned.</p>
+      <p className="mb-2 text-xs text-subtle">{t('projectDetail.adminsAndAccountsStaff')}</p>
       {assignments.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void assignments.refetch()}>{assignments.error && friendlyError(assignments.error)}</ErrorBanner>
-      {assignments.data?.length === 0 && <p className="text-sm text-subtle">Nobody is assigned yet.</p>}
+      {assignments.data?.length === 0 && <p className="text-sm text-subtle">{t('projectDetail.nobodyIsAssignedYet')}</p>}
       <ul>
         {assignments.data?.map((a) => {
           const m = members.find((x) => x.user_id === a.user_id)
-          const name = m?.profiles?.full_name ?? 'Former staff'
+          const name = m?.profiles?.full_name ?? t('projectDetail.formerStaff')
           return (
             <li key={a.id} className="flex items-center justify-between gap-2 border-b border-line py-2 last:border-0">
               <div className="min-w-0 break-words">
@@ -671,10 +672,9 @@ function TeamCard({ projectId, members }: { projectId: string; members: Member[]
                 <div className="text-xs text-subtle">{m?.roles.map((r) => ROLE_LABELS[r]).join(', ')}{m && !m.active && ' · inactive'}</div>
               </div>
               {auth.isAdmin && (
-                <ConfirmButton label={`Remove ${name}`} confirmLabel="Yes, remove" disabled={remove.isPending}
+                <ConfirmButton label={t('projectDetail.removeName', { name })} confirmLabel={t('projectDetail.yesRemove')} disabled={remove.isPending}
                   onConfirm={() => remove.mutate(a.id)}>
-                  Remove
-                </ConfirmButton>
+                  {t('common.remove')}</ConfirmButton>
               )}
             </li>
           )
@@ -682,13 +682,13 @@ function TeamCard({ projectId, members }: { projectId: string; members: Member[]
       </ul>
       {auth.isAdmin && assignable.length > 0 && (
         <div className="mt-3 flex gap-2">
-          <Select aria-label="Staff to assign" value={adding} onChange={(e) => setAdding(e.target.value)}>
-            <option value="">Choose staff to assign</option>
+          <Select aria-label={t('projectDetail.staffToAssign')} value={adding} onChange={(e) => setAdding(e.target.value)}>
+            <option value="">{t('projectDetail.chooseStaffToAssign')}</option>
             {assignable.map((m) => (
               <option key={m.user_id} value={m.user_id}>{m.profiles?.full_name}</option>
             ))}
           </Select>
-          <Button disabled={!adding} busy={add.isPending} onClick={() => add.mutate(adding)}>Assign</Button>
+          <Button disabled={!adding} busy={add.isPending} onClick={() => add.mutate(adding)}>{t('projectDetail.assign')}</Button>
         </div>
       )}
       <ErrorBanner>{(add.error || remove.error) && friendlyError(add.error || remove.error)}</ErrorBanner>

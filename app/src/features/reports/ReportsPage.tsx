@@ -4,15 +4,16 @@ import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { PageHeader } from '../../components/ui'
 import { type ReportDef, visibleReports } from './defs'
+import { t } from '../../lib/i18n'
 
 export function ReportsPage() {
   const auth = useCompany()
   const list = visibleReports(auth)
-  const groups: Array<[ReportDef['group'], string]> = [['money', 'Money'], ['site', 'Site work']]
+  const groups: Array<[ReportDef['group'], string]> = [['money', t('reports.money')], ['site', t('reports.siteWork')]]
 
   return (
     <>
-      <PageHeader title="Reports" subtitle="Filter by date, project or party; export to Excel or print." />
+      <PageHeader title={t('reports.reports')} subtitle={t('reports.filterByDateProject')} />
       {groups.map(([g, title]) => {
         const items = list.filter((r) => r.group === g)
         if (!items.length) return null

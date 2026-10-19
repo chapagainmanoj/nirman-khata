@@ -1,5 +1,6 @@
 // Site work (req §16, §17): stages, progress, daily reports and the calendar.
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { type MessageKey, t } from '../../lib/i18n'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
 import { rpc } from '../supply/api'
@@ -8,6 +9,11 @@ import { rpc } from '../supply/api'
 export const STAGE_LIST = ['Excavation', 'Foundation', 'Structure/Slab', 'Masonry', 'Plaster', 'Electrical', 'Plumbing', 'Finishing']
 
 export const WEATHER = ['Sunny', 'Cloudy', 'Rain', 'Heavy rain', 'Cold']
+// The English word is what is saved; people see it in their language.
+const WEATHER_LABEL: Record<string, MessageKey> = {
+  Sunny: 'weather.sunny', Cloudy: 'weather.cloudy', Rain: 'weather.rain', 'Heavy rain': 'weather.heavyRain', Cold: 'weather.cold',
+}
+export const weatherLabel = (w: string) => (WEATHER_LABEL[w] ? t(WEATHER_LABEL[w]) : w)
 
 export function useStages(projectId: string) {
   return useQuery({

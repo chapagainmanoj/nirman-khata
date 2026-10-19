@@ -20,12 +20,14 @@ import { newId } from '../../lib/ids'
 import { formatNPR, lineAmount, paisaToInput, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
+import { MaterialOptions } from '../catalog/MaterialOptions'
 import { useHeadings, useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnId } from '../projects/current'
 import { billTitle } from '../../lib/labels'
 import { rpc, saveUnlessSent, useBill, useDeliveryLineStatus, useRefreshMoney, useSuppliers } from './api'
 import { canEnter, canPost } from './permissions'
 import { TrashIcon } from '../../components/icons'
+import { t } from '../../lib/i18n'
 
 type Match = { delivery_line_id: string; billed_qty: string }
 type BillLine = {
@@ -77,7 +79,7 @@ export function BillEditPage() {
   if (billId && existing.isPending) return <Spinner />
   if (billId && existing.error) return <ErrorBanner onRetry={() => void existing.refetch()}>{friendlyError(existing.error)}</ErrorBanner>
   const d = billId ? existing.data : null
-  if (billId && (!d?.bill || !['draft', 'under_review'].includes(d.bill.status))) return <ErrorBanner>This bill cannot be edited.</ErrorBanner>
+  if (billId && (!d?.bill || !['draft', 'under_review'].includes(d.bill.status))) return <ErrorBanner>{t('billEdit.thisBillCannotBe')}</ErrorBanner>
 
   const initial: BillValues | undefined = d?.bill ? {
     id: d.bill.id, supplier_id: d.bill.supplier_id,
@@ -198,7 +200,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
     const last = getValues('lines').at(-1)
     return {
       id: newId(), line_type: type, project_id: getValues('project_id') || (last?.project_id ?? ''),
-      heading_id: type === 'charge' ? transportHeading?.id ?? '' : '', material_id: '', description: type === 'charge' ? 'Transport' : '',
+      heading_id: type === 'charge' ? transportHeading?.id ?? '' : '', material_id: '', description: type === 'charge' ? t('billEdit.transport') : '',
       qty: '', unit_id: '', unit_note: '', rate: '', amount: '', amount_edited: false, unmatched_reason: '', rate_variance_reason: '', matches: [],
     }
   }
@@ -213,7 +215,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
   const subtotal = values.lines.reduce((s, l) => s + (parseNPR(l.amount) ?? 0), 0)
   const total = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0) + (parseNPR(values.vat) ?? 0)
-  const chargesSummary = ([['Discount', values.discount], ['Transport', values.transport], ['VAT', values.vat]] as const)
+  const chargesSummary = ([[t('billEdit.discount'), values.discount], [t('billEdit.transport'), values.transport], ['VAT', values.vat]] as const)
     .filter(([, a]) => parseNPR(a)).map(([k, a]) => `${k} ${formatNPR(parseNPR(a))}`).join(', ') || 'none'
   const paper = parseNPR(values.paper_total)
   const [showCostDate, setShowCostDate] = useState(!!initial?.cost_date)
@@ -232,7 +234,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
       else await saveDraft()
       // The bill exists now; photos taken before saving go up before it is sent on.
       const failedPhotos = await uploadPending({ userId: auth.userId, companyId: auth.companyId }, { bill_id: v.id }, v.photos)
-      if (failedPhotos && then === 'submit' && !v.lines.length) throw new Error('The bill photo did not upload. Check the connection and try again.')
+      if (failedPhotos && then === 'submit' && !v.lines.length) throw new Error(t('billEdit.theBillPhotoDid'))
       setValue('photos', [])
       if (!initial) setValue('saved', true)
       if (then === 'submit') await draft.save()
@@ -266,35 +268,35 @@ function BillForm({ initial }: { initial?: BillValues }) {
     const { data } = await supabase.from('supplier_bills').select('id')
       // Same number, any case; % and _ are matched literally, not as wildcards.
       .eq('supplier_id', v.supplier_id).ilike('bill_no', v.bill_no.trim().replace(/[\\%_]/g, (c) => `\\${c}`)).neq('id', v.id).neq('status', 'reversed')
-    setDupWarning(data?.length ? `You can see another bill numbered ${v.bill_no.trim()} from this supplier. Check it is not entered twice.` : '')
+    setDupWarning(data?.length ? t('billEdit.youCanSeeAnother', { value: v.bill_no.trim() }) : '')
   }
 
   function validate(v: BillValues, then: Then): string {
-    if (!v.supplier_id) return 'Choose the supplier.'
+    if (!v.supplier_id) return t('billEdit.chooseTheSupplier')
     // Paper first: a draft needs only the supplier, and the photo alone can go to Accounts.
     if (then === 'draft' && !v.lines.length) return ''
     if (then === 'submit' && !v.lines.length && (v.photos.length || initial || v.saved)) return ''
-    if (!v.bill_no.trim()) return then === 'submit' ? 'Take the bill photo, or enter the bill number.' : 'Enter the bill number.'
-    if (!v.lines.length) return 'Add at least one line.'
-    if (!mixed && !projectId) return 'Choose the project.'
+    if (!v.bill_no.trim()) return then === 'submit' ? t('billEdit.takeTheBillPhoto') : t('billEdit.enterTheBillNumber')
+    if (!v.lines.length) return t('billEdit.addAtLeastOne')
+    if (!mixed && !projectId) return t('billEdit.chooseTheProject')
     for (const [i, l] of v.lines.entries()) {
-      const n = `Line ${i + 1}`
-      if (mixed && !l.project_id) return `${n}: choose the project.`
-      if (!l.heading_id && !(l.material_id && materials.data?.find((m) => m.id === l.material_id)?.default_heading_id)) return `${n}: choose a cost heading.`
-      if (parseNPR(l.amount) === null) return `${n}: enter the amount.`
+      const n = t('billEdit.lineValue', { value: i + 1 })
+      if (mixed && !l.project_id) return t('billEdit.nChooseTheProject', { n })
+      if (!l.heading_id && !(l.material_id && materials.data?.find((m) => m.id === l.material_id)?.default_heading_id)) return t('billEdit.nChooseACost', { n })
+      if (parseNPR(l.amount) === null) return t('billEdit.nEnterTheAmount', { n })
       if (l.line_type === 'material') {
-        if (!l.material_id && !l.description.trim()) return `${n}: choose or type the material.`
-        if (!(Number(l.qty) > 0) || !l.unit_id) return `${n}: enter quantity and unit.`
-        if (lineAmount(0, l.qty) === null) return `${n}: use at most 3 decimals in the quantity.`
+        if (!l.material_id && !l.description.trim()) return t('billEdit.nChooseOrType', { n })
+        if (!(Number(l.qty) > 0) || !l.unit_id) return t('billEdit.nEnterQuantityAnd', { n })
+        if (lineAmount(0, l.qty) === null) return t('billEdit.nUseAtMost', { n })
       }
     }
     for (const c of ['discount', 'transport', 'vat'] as const) {
       if (v[c] && parseNPR(v[c]) === null) {
         revealField({ discount: 'b-disc', transport: 'b-trans', vat: 'b-vat' }[c])
-        return `The ${c} is not a valid amount.`
+        return t('billEdit.theCIsNot', { c })
       }
     }
-    if (then === 'post' && paper !== null && paper !== total) return `The lines and charges add up to ${formatNPR(total)}, but the paper bill says ${formatNPR(paper)}.`
+    if (then === 'post' && paper !== null && paper !== total) return t('billEdit.theLinesAndCharges', { total: formatNPR(total), paper: formatNPR(paper) })
     return ''
   }
 
@@ -316,65 +318,63 @@ function BillForm({ initial }: { initial?: BillValues }) {
   const startedFromLine = startedFrom ? deliveries.data?.get(startedFrom.id!) : undefined
 
   const crumbs: Crumb[] = initial
-    ? [{ to: '/bills', label: 'Bills' }, { to: `/bills/${initial.id}`, label: billTitle(initial.bill_no) }]
-    : [{ to: '/bills', label: 'Bills' }]
+    ? [{ to: '/bills', label: t('billEdit.bills') }, { to: `/bills/${initial.id}`, label: billTitle(initial.bill_no) }]
+    : [{ to: '/bills', label: t('billEdit.bills') }]
 
   return (
     <>
-      <PageHeader title={initial ? 'Edit bill' : 'Enter supplier bill'} crumbs={crumbs} subtitle={accounts ? 'Check the lines against the paper bill, then post it.' : 'Nothing counts as cost until Accounts posts the bill.'} />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored your unsaved bill.</Notice></div>}
+      <PageHeader title={initial ? t('billEdit.editBill') : t('billEdit.enterSupplierBill')} crumbs={crumbs} subtitle={accounts ? t('billEdit.checkTheLinesAgainst') : t('billEdit.nothingCountsAsCost')} />
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('billEdit.restoredYourUnsavedBill')}</Notice></div>}
       {startedFrom && startedFromLine && (
         <div className="mb-4"><Notice>
-          For the delivery of {formatDate(startedFromLine.receipt_date, auth.dateDisplay)} to {projectName(startedFrom.project_id!)}
-          {startedFromLine.challan_no && ` (challan ${startedFromLine.challan_no})`}. Its items are on the bill below; add the rates.
-        </Notice></div>
+          {t('billEdit.forTheDeliveryOf', { receiptDate: formatDate(startedFromLine.receipt_date, auth.dateDisplay), value: projectName(startedFrom.project_id!) })}{startedFromLine.challan_no && t('billEdit.challanChallanno', { challanNo: startedFromLine.challan_no })}{t('billEdit.itsItemsAreOn')}</Notice></div>
       )}
       <div className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] lg:items-start lg:gap-6">
-      <Card title="Bill photo" className="lg:sticky lg:top-4">
+      <Card title={t('billEdit.billPhoto')} className="lg:sticky lg:top-4">
         {initial || values.saved ? (
-          <Attachments owner={{ bill_id: values.id }} canAdd={canEnter(auth)} canRemove label="Take bill photo" large />
+          <Attachments owner={{ bill_id: values.id }} canAdd={canEnter(auth)} canRemove label={t('billEdit.takeBillPhoto')} large />
         ) : (
           <Controller control={control} name="photos" render={({ field }) => (
-            <PhotoPicker value={field.value} onChange={field.onChange} label="Take bill photo" what="Bill photo" large />
+            <PhotoPicker value={field.value} onChange={field.onChange} label={t('billEdit.takeBillPhoto')} what={t('billEdit.billPhoto')} large />
           )} />
         )}
         {!initial && !values.lines.length && (
           <p className="mt-2 text-sm text-subtle">
-            {accounts ? 'Type the lines while looking at the photo.' : 'In a hurry? Choose the supplier, take the photo and send it to Accounts. They type the rest.'}
+            {accounts ? t('billEdit.typeTheLinesWhile') : t('billEdit.inAHurryChoose')}
           </p>
         )}
       </Card>
       <form onSubmit={(e) => { e.preventDefault(); run('draft') }} className="flex min-w-0 flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Supplier" htmlFor="b-supplier">
+            <Field label={t('common.supplier')} htmlFor="b-supplier">
               {/* Controlled: the options arrive after the form, so a registered select would show "Choose". */}
               <Select id="b-supplier" value={supplierId} onChange={(e) => setValue('supplier_id', e.target.value)} onBlur={() => void checkDuplicate()}>
-                <option value="">Choose supplier</option>
+                <option value="">{t('common.supplier.choose')}</option>
                 {suppliers.data?.filter((s) => s.active || s.id === supplierId).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </Select>
             </Field>
-            <Field label="Bill number" htmlFor="b-no" hint={accounts ? undefined : 'Optional when you send the photo'}>
+            <Field label={t('billEdit.billNumber')} htmlFor="b-no" hint={accounts ? undefined : t('billEdit.optionalWhenYouSend')}>
               <Input id="b-no" {...register('bill_no', { onBlur: () => void checkDuplicate() })} />
             </Field>
-            <div className="sm:col-span-2"><Field label="Project" htmlFor="b-project"
-              hint={mixed ? 'This bill has lines for more than one project. Choose one to put every line on it.' : 'One bill is for one project. Enter a separate bill for each project.'}>
+            <div className="sm:col-span-2"><Field label={t('billEdit.project')} htmlFor="b-project"
+              hint={mixed ? t('billEdit.thisBillHasLines') : t('billEdit.oneBillIsFor')}>
               <Select id="b-project" value={projectId} onChange={(e) => chooseProject(e.target.value)}>
-                <option value="">{mixed ? 'Several projects' : 'Choose project'}</option>
+                <option value="">{mixed ? t('billEdit.severalProjects') : t('common.project.choose')}</option>
                 {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field></div>
-            <div className="sm:col-span-2"><Field label="Bill date" htmlFor="b-date">
+            <div className="sm:col-span-2"><Field label={t('billEdit.billDate')} htmlFor="b-date">
               <Controller control={control} name="bill_date" render={({ field }) => (
                 <DateInput id="b-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
               )} />
             </Field></div>
             {showDue && (
-              <div className="sm:col-span-2"><Field label="Due date" htmlFor="b-due" hint={
+              <div className="sm:col-span-2"><Field label={t('billEdit.dueDate')} htmlFor="b-due" hint={
                 <span className="flex gap-3">
                   {[15, 30].map((n) => (
                     <button key={n} type="button" className="underline underline-offset-4"
-                      onClick={() => setValue('due_date', addDays(getValues('bill_date'), n))}>{n} days</button>
+                      onClick={() => setValue('due_date', addDays(getValues('bill_date'), n))}>{t('billEdit.nDays', { n })}</button>
                   ))}
                 </span>
               }>
@@ -384,7 +384,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
               </Field></div>
             )}
             {showCostDate && (
-              <div className="sm:col-span-2"><Field label="Counts as cost on" htmlFor="b-cost" hint="Leave empty to use the bill date.">
+              <div className="sm:col-span-2"><Field label={t('billEdit.countsAsCostOn')} htmlFor="b-cost" hint={t('billEdit.leaveEmptyToUse')}>
                 <Controller control={control} name="cost_date" render={({ field }) => (
                   <DateInput id="b-cost" value={field.value} onChange={field.onChange} display={auth.dateDisplay} allowEmpty />
                 )} />
@@ -392,9 +392,10 @@ function BillForm({ initial }: { initial?: BillValues }) {
             )}
           </div>
           {(!showDue || !showCostDate) && (
-            <div className="mt-2 flex flex-wrap gap-x-4">
-              {!showDue && <Button type="button" variant="ghost" onClick={() => setShowDue(true)}>+ Add due date</Button>}
-              {!showCostDate && <Button type="button" variant="ghost" onClick={() => setShowCostDate(true)}>Counts as cost on a different date?</Button>}
+            // -ml-2: the ghost buttons' padding is for the hover fill; their labels line up with the fields.
+            <div className="mt-2 -ml-2 flex flex-wrap gap-x-2">
+              {!showDue && <Button type="button" variant="ghost" onClick={() => setShowDue(true)}>{t('billEdit.addDueDate')}</Button>}
+              {!showCostDate && <Button type="button" variant="ghost" onClick={() => setShowCostDate(true)}>{t('billEdit.countsAsCostOn2')}</Button>}
             </div>
           )}
           {dupWarning && <div className="mt-3"><Notice>{dupWarning}</Notice></div>}
@@ -402,17 +403,14 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
         {notOnBill.length > 0 && (projectId || mixed ? (
           <Notice>
-            {notOnBill.length} delivered item(s) from this supplier{projectId && ` to ${projectName(projectId)}`} are not billed yet.{' '}
-            <button type="button" className="font-semibold text-slate underline" onClick={() => addFromDeliveries()}>Add them as lines</button>
+            {t('billEdit.lengthDeliveredItemS', { length: notOnBill.length })}{projectId && ` to ${projectName(projectId)}`} {t('billEdit.areNotBilledYet', { value: ' ' })}<button type="button" className="font-semibold text-slate underline" onClick={() => addFromDeliveries()}>{t('billEdit.addThemAsLines')}</button>
           </Notice>
         ) : (
           <Notice>
-            Delivered items from this supplier are not billed yet. Which project is this bill for?
-            <span className="mt-1 flex flex-wrap gap-x-4">
+            {t('billEdit.deliveredItemsFromThis')}<span className="mt-1 flex flex-wrap gap-x-4">
               {notOnBillProjects.map((pid) => (
                 <button key={pid} type="button" className="min-h-11 font-semibold text-slate underline" onClick={() => addFromDeliveries(undefined, pid)}>
-                  {projectName(pid)}: {notOnBill.filter((u) => u.project_id === pid).length} item(s)
-                </button>
+                  {projectName(pid)}: {notOnBill.filter((u) => u.project_id === pid).length} {t('billEdit.itemS')}</button>
               ))}
             </span>
           </Notice>
@@ -427,19 +425,19 @@ function BillForm({ initial }: { initial?: BillValues }) {
             deliveries.data?.get(u.id!)?.unit_id === l.unit_id && !l.matches.some((m) => m.delivery_line_id === u.id))
           const matched = l.matches.reduce((s, m) => s + Number(m.billed_qty || 0), 0)
           return (
-            <Card key={field.key} title={l.line_type === 'charge' ? `Line ${i + 1}: charge` : `Line ${i + 1}`}
-              actions={<Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />Remove</Button>}>
+            <Card key={field.key} title={l.line_type === 'charge' ? t('billEdit.lineValueCharge', { value: i + 1 }) : t('billEdit.lineValue', { value: i + 1 })}
+              actions={<Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />{t('common.remove')}</Button>}>
               <div className="grid gap-3 sm:grid-cols-2">
                 {mixed && (
-                  <Field label="Project" htmlFor={`bl${i}-p`}>
+                  <Field label={t('billEdit.project')} htmlFor={`bl${i}-p`}>
                     <Select id={`bl${i}-p`} {...register(`lines.${i}.project_id`)}>
-                      <option value="">Choose project</option>
+                      <option value="">{t('common.project.choose')}</option>
                       {workable.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
                     </Select>
                   </Field>
                 )}
                 {l.line_type === 'material' ? (
-                  <Field label="Material" htmlFor={`bl${i}-m`}>
+                  <Field label={t('common.material')} htmlFor={`bl${i}-m`}>
                     <Select id={`bl${i}-m`} value={l.material_id} onChange={(e) => {
                       const m = materials.data?.find((x) => x.id === e.target.value)
                       setValue(`lines.${i}.material_id`, e.target.value)
@@ -448,17 +446,17 @@ function BillForm({ initial }: { initial?: BillValues }) {
                         if (m.default_heading_id) setValue(`lines.${i}.heading_id`, m.default_heading_id)
                       }
                     }}>
-                      <option value="">Other (type it)</option>
-                      {materials.data?.filter((m) => m.active).map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      <MaterialOptions companyId={auth.companyId} userId={auth.userId} />
+                      <option value="">{t('common.material.other')}</option>
                     </Select>
                   </Field>
                 ) : null}
                 {(l.line_type === 'charge' || !l.material_id) && (
-                  <Field label="Description" htmlFor={`bl${i}-d`}><Input id={`bl${i}-d`} {...register(`lines.${i}.description`)} /></Field>
+                  <Field label={t('billEdit.description')} htmlFor={`bl${i}-d`}><Input id={`bl${i}-d`} {...register(`lines.${i}.description`)} /></Field>
                 )}
-                <Field label="Cost heading" htmlFor={`bl${i}-h`}>
+                <Field label={t('billEdit.costHeading')} htmlFor={`bl${i}-h`}>
                   <Select id={`bl${i}-h`} {...register(`lines.${i}.heading_id`)}>
-                    <option value="">Choose heading</option>
+                    <option value="">{t('billEdit.chooseHeading')}</option>
                     {leafHeadings.map((h) => {
                       const parent = headings.data?.find((p) => p.id === h.parent_id)
                       return <option key={h.id} value={h.id}>{parent ? `${parent.name} › ` : ''}{h.name}</option>
@@ -467,20 +465,20 @@ function BillForm({ initial }: { initial?: BillValues }) {
                 </Field>
                 {l.line_type === 'material' && (
                   <div className="grid grid-cols-2 gap-3">
-                    <Field label="Quantity" htmlFor={`bl${i}-q`}><Input id={`bl${i}-q`} inputMode="decimal" {...register(`lines.${i}.qty`, { onChange: () => recalc(i) })} /></Field>
-                    <Field label="Unit" htmlFor={`bl${i}-u`}>
+                    <Field label={t('billEdit.quantity')} htmlFor={`bl${i}-q`}><Input id={`bl${i}-q`} inputMode="decimal" {...register(`lines.${i}.qty`, { onChange: () => recalc(i) })} /></Field>
+                    <Field label={t('common.unit')} htmlFor={`bl${i}-u`}>
                       <Select id={`bl${i}-u`} {...register(`lines.${i}.unit_id`)}>
-                        <option value="">Unit</option>
+                        <option value="">{t('common.unit')}</option>
                         {units.data?.filter((u) => u.active).map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
                       </Select>
                     </Field>
                   </div>
                 )}
                 {unit?.needs_note && (
-                  <Field label="Which vehicle / size?" htmlFor={`bl${i}-un`}><Input id={`bl${i}-un`} {...register(`lines.${i}.unit_note`)} /></Field>
+                  <Field label={t('billEdit.whichVehicleSize')} htmlFor={`bl${i}-un`}><Input id={`bl${i}-un`} {...register(`lines.${i}.unit_note`)} /></Field>
                 )}
                 {l.line_type === 'material' && (
-                  <Field label="Rate per unit" htmlFor={`bl${i}-r`}>
+                  <Field label={t('billEdit.ratePerUnit')} htmlFor={`bl${i}-r`}>
                     <Controller control={control} name={`lines.${i}.rate`} render={({ field: f }) => (
                       <MoneyInput id={`bl${i}-r`} value={f.value} onChange={(e) => { f.onChange(e); setValue(`lines.${i}.amount_edited`, false); recalc(i) }} />
                     )} />
@@ -490,7 +488,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
                     )}
                   </Field>
                 )}
-                <Field label="Amount" htmlFor={`bl${i}-a`} hint={l.line_type === 'material' ? 'Quantity × rate. Change it to match the paper bill.' : undefined}>
+                <Field label={t('billEdit.amount')} htmlFor={`bl${i}-a`} hint={l.line_type === 'material' ? t('billEdit.quantityRateChangeIt') : undefined}>
                   <Controller control={control} name={`lines.${i}.amount`} render={({ field: f }) => (
                     <MoneyInput id={`bl${i}-a`} value={f.value} onChange={(e) => { f.onChange(e); setValue(`lines.${i}.amount_edited`, true) }} />
                   )} />
@@ -499,39 +497,39 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
               {l.line_type === 'material' && (
                 <div className="mt-3 rounded-lg bg-muted p-3 text-sm">
-                  <div className="font-medium text-ink">Delivered against</div>
-                  {l.matches.length === 0 && <p className="text-subtle">Not matched to a delivery.</p>}
+                  <div className="font-medium text-ink">{t('billEdit.deliveredAgainst')}</div>
+                  {l.matches.length === 0 && <p className="text-subtle">{t('billEdit.notMatchedToA')}</p>}
                   {l.matches.map((m, j) => {
                     const dl = deliveries.data?.get(m.delivery_line_id)
                     return (
                       <div key={m.delivery_line_id} className="mt-2 flex items-end gap-2">
-                        <Field label={dl ? `Challan ${dl.challan_no ?? '—'} · ${formatDate(dl.receipt_date, auth.dateDisplay)}` : 'Delivery'} htmlFor={`bl${i}-m${j}`}>
+                        <Field label={dl ? t('billEdit.challanValueReceiptdate', { value: dl.challan_no ?? '—', receiptDate: formatDate(dl.receipt_date, auth.dateDisplay) }) : t('billEdit.delivery')} htmlFor={`bl${i}-m${j}`}>
                           <Input id={`bl${i}-m${j}`} inputMode="decimal" {...register(`lines.${i}.matches.${j}.billed_qty`)} />
                         </Field>
-                        <Button type="button" variant="ghost" onClick={() => setValue(`lines.${i}.matches`, l.matches.filter((_, k) => k !== j))}>Unlink</Button>
+                        <Button type="button" variant="ghost" onClick={() => setValue(`lines.${i}.matches`, l.matches.filter((_, k) => k !== j))}>{t('billEdit.unlink')}</Button>
                       </div>
                     )
                   })}
                   {available.length > 0 && (
-                    <Select aria-label="Link a delivery" className="mt-2" value="" onChange={(e) => {
+                    <Select aria-label={t('billEdit.linkADelivery')} className="mt-2" value="" onChange={(e) => {
                       const u = available.find((x) => x.id === e.target.value)
                       if (u) setValue(`lines.${i}.matches`, [...l.matches, { delivery_line_id: u.id!, billed_qty: String(u.billable_qty) }])
                     }}>
-                      <option value="">Link a delivery ({available.length} not billed)</option>
+                      <option value="">{t('billEdit.linkADeliveryLength', { length: available.length })}</option>
                       {available.map((u) => {
                         const dl = deliveries.data?.get(u.id!)
-                        return <option key={u.id} value={u.id!}>{formatDate(dl?.receipt_date, auth.dateDisplay)} · challan {dl?.challan_no ?? '—'} · {u.billable_qty} not billed</option>
+                        return <option key={u.id} value={u.id!}>{t('billEdit.receiptdateChallanValueBillableqty', { receiptDate: formatDate(dl?.receipt_date, auth.dateDisplay), value: dl?.challan_no ?? '—', billableQty: u.billable_qty })}</option>
                       })}
                     </Select>
                   )}
                   {Number(l.qty) > 0 && matched < Number(l.qty) && (
-                    <Field label={matched ? `Only ${matched} of ${l.qty} matched. Why?` : 'No delivery recorded. Why?'} htmlFor={`bl${i}-ur`}
-                      hint="Accounts needs this to post the bill.">
+                    <Field label={matched ? t('billEdit.onlyMatchedOfQty', { matched, qty: l.qty }) : t('billEdit.noDeliveryRecordedWhy')} htmlFor={`bl${i}-ur`}
+                      hint={t('billEdit.accountsNeedsThisTo')}>
                       <Input id={`bl${i}-ur`} {...register(`lines.${i}.unmatched_reason`)} />
                     </Field>
                   )}
                   {auth.canSeeFinance && (
-                    <Field label="Rate difference reason (if the rate differs from the order slip)" htmlFor={`bl${i}-rv`}>
+                    <Field label={t('billEdit.rateDifferenceReasonIf')} htmlFor={`bl${i}-rv`}>
                       <Input id={`bl${i}-rv`} {...register(`lines.${i}.rate_variance_reason`)} />
                     </Field>
                   )}
@@ -541,44 +539,44 @@ function BillForm({ initial }: { initial?: BillValues }) {
           )
         })}
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="secondary" onClick={() => lines.append(blankLine('material'))}>Add material line</Button>
-          <Button type="button" variant="secondary" onClick={() => lines.append(blankLine('charge'))}>Add charge line (transport, loading)</Button>
+          <Button type="button" variant="secondary" onClick={() => lines.append(blankLine('material'))}>{t('billEdit.addMaterialLine')}</Button>
+          <Button type="button" variant="secondary" onClick={() => lines.append(blankLine('charge'))}>{t('billEdit.addChargeLineTransport')}</Button>
         </div>
 
-        <Card title="Bill totals">
+        <Card title={t('billEdit.billTotals')}>
           {/* Simple forms fold the charges; the total and the paper-bill check stay in view. */}
-          <More label="Discount, transport, VAT" summary={chargesSummary}>
+          <More label={t('billEdit.discountTransportVat')} summary={chargesSummary}>
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Discount" htmlFor="b-disc">
+              <Field label={t('billEdit.discount')} htmlFor="b-disc">
                 <Controller control={control} name="discount" render={({ field }) => <MoneyInput id="b-disc" value={field.value} onChange={field.onChange} />} />
               </Field>
-              <Field label="Transport (on the bill header)" htmlFor="b-trans">
+              <Field label={t('billEdit.transportOnTheBill')} htmlFor="b-trans">
                 <Controller control={control} name="transport" render={({ field }) => <MoneyInput id="b-trans" value={field.value} onChange={field.onChange} />} />
               </Field>
-              <Field label="VAT" htmlFor="b-vat" hint={
+              <Field label={t('billEdit.vat')} htmlFor="b-vat" hint={
                 <button type="button" className="inline-flex min-h-11 items-center text-slate underline" onClick={() => {
                   const base = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0)
                   setValue('vat', paisaToInput(Math.round((base * Number(values.vat_rate || 13)) / 100)))
-                }}>Work out {values.vat_rate || 13}% VAT</button>
+                }}>{t('billEdit.workOutValueVat', { value: values.vat_rate || 13 })}</button>
               }>
                 <Controller control={control} name="vat" render={({ field }) => <MoneyInput id="b-vat" value={field.value} onChange={field.onChange} />} />
               </Field>
             </div>
           </More>
           <div className="mt-3 flex justify-between border-t border-line pt-3 text-sm">
-            <span className="text-subtle">Lines {formatNPR(subtotal)}</span>
-            <span className="font-semibold text-ink tabular-nums">Total {formatNPR(total)}</span>
+            <span className="text-subtle">{t('billEdit.linesSubtotal', { subtotal: formatNPR(subtotal) })}</span>
+            <span className="font-semibold text-ink tabular-nums">{t('billEdit.totalTotal', { total: formatNPR(total) })}</span>
           </div>
           {auth.canSeeFinance && (
             <div className="mt-3">
-              <Field label="Total on the paper bill" htmlFor="b-paper" hint="Optional. Posting waits until the lines add up to it.">
+              <Field label={t('billEdit.totalOnThePaper')} htmlFor="b-paper" hint={t('billEdit.optionalPostingWaitsUntil')}>
                 <Controller control={control} name="paper_total" render={({ field }) => <MoneyInput id="b-paper" value={field.value} onChange={field.onChange} />} />
               </Field>
               {paper !== null && (
                 <p role="status" className={`mt-1 text-sm font-medium ${paper === total ? 'text-good-ink' : 'text-danger'}`}>
-                  {paper === total ? 'Matches the paper bill.'
-                    : paper > total ? `${formatNPR(paper - total)} missing: the paper bill says ${formatNPR(paper)}.`
-                    : `${formatNPR(total - paper)} too much: the paper bill says ${formatNPR(paper)}.`}
+                  {paper === total ? t('billEdit.matchesThePaperBill')
+                    : paper > total ? t('billEdit.amountMissingThePaper', { amount: formatNPR(paper - total), paper: formatNPR(paper) })
+                    : t('billEdit.amountTooMuchThe', { amount: formatNPR(total - paper), paper: formatNPR(paper) })}
                 </p>
               )}
             </div>
@@ -587,7 +585,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
           {lineProjects.length > 1 && (
             <div className="mt-3">
               <Controller control={control} name="split_charges" render={({ field }) => (
-                <Checkbox label="Split header charges by project myself" hint="Otherwise discount, transport and VAT are shared by line amount."
+                <Checkbox label={t('billEdit.splitHeaderChargesBy')} hint={t('billEdit.otherwiseDiscountTransportAnd')}
                   checked={field.value} onChange={(e) => {
                     field.onChange(e.target.checked)
                     if (e.target.checked && !getValues('overrides').length) {
@@ -601,7 +599,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
               {values.split_charges && (
                 <div className="mt-2 grid gap-3 sm:grid-cols-2">
                   {overrides.fields.map((o, k) => (
-                    <Field key={o.key} label={`${o.charge[0].toUpperCase()}${o.charge.slice(1)} for ${projectName(o.project_id)}`} htmlFor={`ov-${k}`}>
+                    <Field key={o.key} label={t('billEdit.valueValue2ForProjectid', { value: o.charge[0].toUpperCase(), value2: o.charge.slice(1), projectId: projectName(o.project_id) })} htmlFor={`ov-${k}`}>
                       <Controller control={control} name={`overrides.${k}.amount`} render={({ field }) => (
                         <MoneyInput id={`ov-${k}`} value={field.value} onChange={field.onChange} />
                       )} />
@@ -613,16 +611,16 @@ function BillForm({ initial }: { initial?: BillValues }) {
           )}
         </Card>
 
-        <Field label="Notes" htmlFor="b-notes" hint="Optional"><Input id="b-notes" {...register('notes')} /></Field>
+        <Field label={t('billEdit.notes')} htmlFor="b-notes" hint={t('common.optional')}><Input id="b-notes" {...register('notes')} /></Field>
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
           {accounts ? (
-            <Button type="button" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'post'} onClick={() => run('post')}>Save and post</Button>
+            <Button type="button" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'post'} onClick={() => run('post')}>{t('billEdit.saveAndPost')}</Button>
           ) : (
-            <Button type="button" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'submit'} onClick={() => run('submit')}>Send to Accounts</Button>
+            <Button type="button" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'submit'} onClick={() => run('submit')}>{t('billEdit.sendToAccounts')}</Button>
           )}
-          <Button type="submit" variant="secondary" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'draft'}>Save draft</Button>
-          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>Cancel</Button>
+          <Button type="submit" variant="secondary" disabled={save.isPending} busy={save.isPending && save.variables?.then === 'draft'}>{t('common.saveDraft')}</Button>
+          <Button type="button" variant="ghost" onClick={() => navigate(-1)}>{t('common.cancel')}</Button>
         </FormActions>
       </form>
       </div>
@@ -668,11 +666,9 @@ function LastRate({ supplierId, materialId, current, onUse }: {
   return (
     <span className="mt-1 flex flex-wrap items-center gap-x-2 text-xs text-subtle">
       <span>
-        Last billed <span className="font-semibold text-ink tabular-nums">{formatNPR(r.rate_paisa)}</span> on {formatDate(r.bill_date, auth.dateDisplay)}
-        {r.bill_no ? ` (${billTitle(r.bill_no)})` : ''}
-      </span>
+        {t('billEdit.lastBilled')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(r.rate_paisa)}</span> {t('billEdit.onBilldateValue', { billDate: formatDate(r.bill_date, auth.dateDisplay), value: r.bill_no ? ` (${billTitle(r.bill_no)})` : '' })}</span>
       {current !== r.rate_paisa && (
-        <button type="button" className="min-h-11 font-semibold text-brand hover:underline" onClick={() => onUse(r.rate_paisa)}>Use</button>
+        <button type="button" className="min-h-11 font-semibold text-brand hover:underline" onClick={() => onUse(r.rate_paisa)}>{t('billEdit.use')}</button>
       )}
     </span>
   )

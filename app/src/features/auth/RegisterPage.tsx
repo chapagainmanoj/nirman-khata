@@ -22,8 +22,8 @@ export function RegisterPage() {
     e.preventDefault()
     setError('')
     const id = parseLoginId(form.login)
-    if (!id) return setError('Enter a mobile number (98XXXXXXXX) or email.')
-    if (form.password.length < MIN_PASSWORD) return setError(`Password must be at least ${MIN_PASSWORD} characters.`)
+    if (!id) return setError(t('register.enterAMobileNumber'))
+    if (form.password.length < MIN_PASSWORD) return setError(t('register.passwordMustBeAt', { minPassword: MIN_PASSWORD }))
     setBusy(true)
     try {
       await callFunction('register', form)
@@ -43,21 +43,21 @@ export function RegisterPage() {
     <AuthShell title={t('auth.register')}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <p className="text-sm text-subtle">{t('auth.byInvitation')}</p>
-        <Field label="Company name" htmlFor="company">
+        <Field label={t('register.companyName')} htmlFor="company">
           <Input id="company" value={form.company_name} onChange={set('company_name')} required />
         </Field>
-        <Field label="Your name" htmlFor="name">
+        <Field label={t('register.yourName')} htmlFor="name">
           <Input id="name" value={form.full_name} onChange={set('full_name')} autoComplete="name" required />
         </Field>
-        <Field label={t('auth.loginId')} htmlFor="login" hint="You will sign in with this.">
-          <Input id="login" value={form.login} onChange={set('login')} autoComplete="username" placeholder="98XXXXXXXX" required />
+        <Field label={t('auth.loginId')} htmlFor="login" hint={t('register.youWillSignIn')}>
+          <Input id="login" value={form.login} onChange={set('login')} autoComplete="username" placeholder={t('register.98xxxxxxxx')} required />
         </Field>
-        <Field label={t('auth.password')} htmlFor="password" hint={`At least ${MIN_PASSWORD} characters.`}>
+        <Field label={t('auth.password')} htmlFor="password" hint={t('register.atLeastMinpasswordCharacters', { minPassword: MIN_PASSWORD })}>
           <Input id="password" type="password" value={form.password} onChange={set('password')} autoComplete="new-password" required />
         </Field>
         <ErrorBanner>{error}</ErrorBanner>
-        <Button type="submit" busy={busy}>Create company</Button>
-        <Link to="/login" className="flex min-h-11 items-center justify-center text-sm font-medium text-slate">Already registered? {t('auth.login')}</Link>
+        <Button type="submit" busy={busy}>{t('register.createCompany')}</Button>
+        <Link to="/login" className="flex min-h-11 items-center justify-center text-sm font-medium text-slate">{t('register.alreadyRegistered')}{' '}{t('auth.login')}</Link>
       </form>
     </AuthShell>
   )

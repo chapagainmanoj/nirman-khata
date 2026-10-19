@@ -106,6 +106,12 @@ The running account between the company and one Party: every bill, work charge, 
 - **In code:** `ledger_entries`; "Ledger" in UI and `docs/requirements-v1.1.md` §3.1.
 - **Notes:** Regular suppliers simply run on the Khata: they bill, the company pays, and any difference carries forward. Peski belongs to new deals, not to this running account.
 
+## Material catalog
+The company's list of materials it buys, each with a usual unit and cost heading, so a slip or bill line picks one instead of typing it. A new company starts with the owner's full list (2026-10-19): rod, cement, sand (masino: river sand; crusher: machine-made), aggregate (gitti), brick, block, stone (small, large, cladding), tile, granite, GI pipe (galvanised, water lines), MS pipe (mild steel, railings and frames), UPVC / aluminium / wooden window or door, color (putty; primer / paint), electrical and plumbing items, and metal / hardware.
+
+- **Not:** a price list. The unit is only the usual one; a line can use any unit.
+- **In code:** `materials`, `units`, `cost_headings`; `private.seed_company_defaults` and `private.add_catalog_items`, which adds what a company lacks and never renames or duplicates (an older company's "Sand" and "Stone" count as Sand (masino) and Stone (small)).
+
 ## Order Slip (Maag Slip)
 A request to one Supplier for materials, numbered per company (`OS-0012`). Each line names its own project, so one Order Slip can order for several projects. It is shared with the supplier and tracks what has arrived against it.
 

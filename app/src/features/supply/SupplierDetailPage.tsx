@@ -14,6 +14,7 @@ import { BillRow } from './BillRow'
 import { canEnter, canManageSuppliers, canRecordPayments } from './permissions'
 import { SupplierForm } from './SuppliersPage'
 import { ComingFromThem, OwedByProject, TheirRates, UnpaidBills, useTheirRates } from './SupplierParts'
+import { t } from '../../lib/i18n'
 
 type Tab = 'khata' | 'bills' | 'payments'
 
@@ -27,30 +28,30 @@ export function SupplierDetailPage() {
   if (suppliers.isPending) return <Spinner />
   if (suppliers.error) return <ErrorBanner onRetry={() => void suppliers.refetch()}>{friendlyError(suppliers.error)}</ErrorBanner>
   const s = suppliers.data.find((x) => x.id === supplierId)
-  if (!s) return <EmptyState title="Supplier not found"><Link className="text-slate" to="/suppliers">Back to suppliers</Link></EmptyState>
+  if (!s) return <EmptyState title={t('supplierDetail.supplierNotFound')}><Link className="text-slate" to="/suppliers">{t('supplierDetail.backToSuppliers')}</Link></EmptyState>
 
   // Record payment is the main action here; orders start from the project or "+ Record".
   const pays = canRecordPayments(auth)
   const tabs: Array<[Tab, string]> = auth.canSeeFinance
-    ? [['khata', 'Khata'], ['bills', 'Bills'], ['payments', 'Payments']]
-    : [['bills', 'My bill drafts']]
+    ? [['khata', t('supplierDetail.khata')], ['bills', t('supplierDetail.bills')], ['payments', t('supplierDetail.payments')]]
+    : [['bills', t('supplierDetail.myBillDrafts')]]
 
   return (
     <>
       <PageHeader
         title={s.name}
-        crumbs={[{ to: '/parties', label: 'Parties' }, { to: '/suppliers', label: 'Suppliers' }]}
+        crumbs={[{ to: '/parties', label: t('supplierDetail.parties') }, { to: '/suppliers', label: t('supplierDetail.suppliers') }]}
         subtitle={s.categories.join(' · ') || undefined}
         actions={
           <div className="flex flex-wrap gap-2">
-            {pays && <ButtonLink to={`/payments/new?supplier=${s.id}`}>Record payment</ButtonLink>}
-            {canEnter(auth) && <ButtonLink variant={pays ? 'secondary' : 'primary'} to={`/bills/new?supplier=${s.id}`}>Enter bill</ButtonLink>}
+            {pays && <ButtonLink to={`/payments/new?supplier=${s.id}`}>{t('supplierDetail.recordPayment')}</ButtonLink>}
+            {canEnter(auth) && <ButtonLink variant={pays ? 'secondary' : 'primary'} to={`/bills/new?supplier=${s.id}`}>{t('supplierDetail.enterBill')}</ButtonLink>}
           </div>
         }
       />
       <ContactRow phone={s.phone} links={[
-        [`/suppliers/${s.id}/details`, 'Details'],
-        hasRates && [`/suppliers/${s.id}/rates`, 'Their rates'],
+        [`/suppliers/${s.id}/details`, t('supplierDetail.details')],
+        hasRates && [`/suppliers/${s.id}/rates`, t('supplierDetail.theirRates')],
       ]} />
       <div className="grid items-start gap-4 lg:grid-cols-2">
         {auth.canSeeFinance && <BalanceCard kind="supplier" partyId={s.id}><OwedByProject supplierId={s.id} /></BalanceCard>}
@@ -58,7 +59,7 @@ export function SupplierDetailPage() {
         {canEnter(auth) && <ComingFromThem supplierId={s.id} />}
       </div>
 
-      <Tabs tabs={tabs} value={tab} onChange={setTab} label="Supplier records">
+      <Tabs tabs={tabs} value={tab} onChange={setTab} label={t('supplierDetail.supplierRecords')}>
         {tab === 'khata' && <Khata kind="supplier" partyId={s.id} />}
         {tab === 'bills' && <BillList supplierId={s.id} />}
         {tab === 'payments' && (
@@ -89,14 +90,14 @@ export function SupplierInfoPage() {
 
   return (
     <>
-      <PageHeader title="Details" crumbs={supplierCrumbs(s)} />
-      <Card title={s.name} actions={canManageSuppliers(auth) && <ButtonLink variant="ghost" to={`/suppliers/${s.id}/edit`}>Edit</ButtonLink>}>
-        <Detail label="Contact">{s.contact_person}</Detail>
-        <Detail label="Phone">{s.phone && <a className="text-slate" href={`tel:${s.phone}`}>{s.phone}</a>}</Detail>
-        <Detail label="Address">{s.address}</Detail>
-        <Detail label="PAN / VAT">{s.pan_vat}</Detail>
-        <Detail label="Payment terms">{s.payment_terms}</Detail>
-        {!hasDetails(s) && <p className="text-sm text-subtle">No contact details yet.</p>}
+      <PageHeader title={t('supplierDetail.details')} crumbs={supplierCrumbs(s)} />
+      <Card title={s.name} actions={canManageSuppliers(auth) && <ButtonLink variant="ghost" to={`/suppliers/${s.id}/edit`}>{t('common.edit')}</ButtonLink>}>
+        <Detail label={t('supplierDetail.contact')}>{s.contact_person}</Detail>
+        <Detail label={t('supplierDetail.phone')}>{s.phone && <a className="text-slate" href={`tel:${s.phone}`}>{s.phone}</a>}</Detail>
+        <Detail label={t('supplierDetail.address')}>{s.address}</Detail>
+        <Detail label={t('supplierDetail.panVat')}>{s.pan_vat}</Detail>
+        <Detail label={t('supplierDetail.paymentTerms')}>{s.payment_terms}</Detail>
+        {!hasDetails(s) && <p className="text-sm text-subtle">{t('supplierDetail.noContactDetailsYet')}</p>}
       </Card>
     </>
   )
@@ -117,16 +118,16 @@ export function SupplierEditPage() {
   const details = `/suppliers/${s.id}/details`
   return (
     <>
-      <PageHeader title="Edit supplier" crumbs={[...supplierCrumbs(s), { to: details, label: 'Details' }]} />
+      <PageHeader title={t('supplierDetail.editSupplier')} crumbs={[...supplierCrumbs(s), { to: details, label: t('supplierDetail.details') }]} />
       <SupplierForm supplier={s} onDone={() => navigate(details, { replace: true })} />
     </>
   )
 }
 
-const supplierCrumbs = (s: Supplier) => [{ to: '/parties', label: 'Parties' }, { to: '/suppliers', label: 'Suppliers' }, { to: `/suppliers/${s.id}`, label: s.name }]
+const supplierCrumbs = (s: Supplier) => [{ to: '/parties', label: t('supplierDetail.parties') }, { to: '/suppliers', label: t('supplierDetail.suppliers') }, { to: `/suppliers/${s.id}`, label: s.name }]
 
 function SupplierNotFound() {
-  return <EmptyState title="Supplier not found"><Link className="text-slate" to="/suppliers">Back to suppliers</Link></EmptyState>
+  return <EmptyState title={t('supplierDetail.supplierNotFound')}><Link className="text-slate" to="/suppliers">{t('supplierDetail.backToSuppliers')}</Link></EmptyState>
 }
 
 /** The last billed rate for each material from this supplier: checked before ordering. */
@@ -138,15 +139,15 @@ export function SupplierRatesPage() {
   if (suppliers.isPending) return <Spinner />
   if (suppliers.error) return <ErrorBanner onRetry={() => void suppliers.refetch()}>{friendlyError(suppliers.error)}</ErrorBanner>
   const s = suppliers.data.find((x) => x.id === supplierId)
-  if (!s || !auth.canSeeFinance) return <EmptyState title="Supplier not found"><Link className="text-slate" to="/suppliers">Back to suppliers</Link></EmptyState>
+  if (!s || !auth.canSeeFinance) return <EmptyState title={t('supplierDetail.supplierNotFound')}><Link className="text-slate" to="/suppliers">{t('supplierDetail.backToSuppliers')}</Link></EmptyState>
 
   return (
     <>
       <PageHeader
-        title="Their rates"
+        title={t('supplierDetail.theirRates')}
         crumbs={supplierCrumbs(s)}
       />
-      <TheirRates supplierId={s.id} emptyText="No posted bills with rates yet." />
+      <TheirRates supplierId={s.id} emptyText={t('supplierDetail.noPostedBillsWith')} />
     </>
   )
 }
@@ -157,7 +158,7 @@ function BillList({ supplierId }: { supplierId: string }) {
     <Card>
       {bills.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void bills.refetch()}>{bills.error && friendlyError(bills.error)}</ErrorBanner>
-      {bills.data?.length === 0 && <p className="text-sm text-subtle">No bills.</p>}
+      {bills.data?.length === 0 && <p className="text-sm text-subtle">{t('supplierDetail.noBills')}</p>}
       <ul>{bills.data?.map((b) => <BillRow key={b.id} bill={b} />)}</ul>
       <ShowMore list={bills} />
     </Card>

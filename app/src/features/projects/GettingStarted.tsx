@@ -6,6 +6,7 @@ import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { Button, ButtonLink, Card } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
+import { t } from '../../lib/i18n'
 
 const hiddenKey = (companyId: string) => `getting-started-hidden:${companyId}`
 
@@ -39,10 +40,10 @@ export function GettingStarted() {
   if (!auth.isAdmin || hidden || !counts.data) return null
   const c = counts.data
   const steps: Array<[boolean, string, string, string, string]> = [
-    [c.suppliers > 0, 'Add your suppliers', 'The shops and dealers you buy from.', '/suppliers', 'Add suppliers'],
-    [c.openings > 0, 'Set opening balances', 'What you owed each supplier when you started, from your old khata.', '/suppliers', 'Set balances'],
-    [c.projects > 0, 'Add your projects', 'Each site, with its contract amount and budget.', '/projects/new', 'Add a project'],
-    [c.assignments > 0, 'Add staff and assign them', 'Site staff see only the projects they are assigned to.', '/staff', 'Add staff'],
+    [c.suppliers > 0, t('gettingStarted.addYourSuppliers'), t('gettingStarted.theShopsAndDealers'), '/suppliers', t('gettingStarted.addSuppliers')],
+    [c.openings > 0, t('gettingStarted.setOpeningBalances'), t('gettingStarted.whatYouOwedEach'), '/suppliers', t('gettingStarted.setBalances')],
+    [c.projects > 0, t('gettingStarted.addYourProjects'), t('gettingStarted.eachSiteWithIts'), '/projects/new', t('gettingStarted.addAProject')],
+    [c.assignments > 0, t('gettingStarted.addStaffAndAssign'), t('gettingStarted.siteStaffSeeOnly'), '/staff', t('gettingStarted.addStaff')],
   ]
   if (steps.every(([done]) => done)) return null
 
@@ -59,7 +60,7 @@ export function GettingStarted() {
   const done = steps.filter(([d]) => d).length
   const todo = steps.filter(([d]) => !d)
   return (
-    <Card title={`Getting started · ${done} of ${steps.length} done`} className="mb-4" actions={<Button variant="ghost" onClick={hide}>Hide</Button>}>
+    <Card title={t('gettingStarted.gettingStartedDoneOf', { done, length: steps.length })} className="mb-4" actions={<Button variant="ghost" onClick={hide}>{t('gettingStarted.hide')}</Button>}>
       <ol className="flex flex-col">
         {todo.map(([, title, hint, to, action], i) => (
           <li key={title} className="flex flex-wrap items-center justify-between gap-3 border-b border-line py-2 last:border-0">

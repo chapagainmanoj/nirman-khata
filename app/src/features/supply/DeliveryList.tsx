@@ -12,6 +12,7 @@ import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
 import { rpc, useDeliveries, useDeliveryStatusFor, type DeliveryFilter } from './api'
 import { canEnter } from './permissions'
+import { t } from '../../lib/i18n'
 
 const qty = (n: number) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 })
 
@@ -33,9 +34,9 @@ export const isLocked = (d: Delivery, status: LineStatus) =>
 function billing(d: Delivery, status: LineStatus): [string, 'neutral' | 'good' | 'warn'] | null {
   const sum = (k: 'billed_qty' | 'billable_qty' | 'awaiting_credit_qty') => d.delivery_lines.reduce((n, l) => n + (status.get(l.id)?.[k] ?? 0), 0)
   if (!d.delivery_lines.some((l) => status.has(l.id))) return null
-  if (sum('awaiting_credit_qty') > 0) return ['Awaiting credit', 'warn']
-  if (sum('billable_qty') > 0) return sum('billed_qty') > 0 ? ['Part billed', 'warn'] : ['Not billed', 'neutral']
-  return sum('billed_qty') > 0 ? ['Billed', 'good'] : null
+  if (sum('awaiting_credit_qty') > 0) return [t('deliveryList.awaitingCredit'), 'warn']
+  if (sum('billable_qty') > 0) return sum('billed_qty') > 0 ? [t('deliveryList.partBilled'), 'warn'] : [t('deliveryList.notBilled'), 'neutral']
+  return sum('billed_qty') > 0 ? [t('deliveryList.billed'), 'good'] : null
 }
 
 /**
@@ -50,7 +51,7 @@ export function DeliveryList({ filter, empty }: { filter: DeliveryFilter; empty?
   if (deliveries.isPending) return <Spinner />
   if (deliveries.error) return <ErrorBanner onRetry={() => void deliveries.refetch()}>{friendlyError(deliveries.error)}</ErrorBanner>
   const list = deliveries.data ?? []
-  if (!list.length) return empty ?? <p className="text-sm text-subtle">No deliveries recorded yet.</p>
+  if (!list.length) return empty ?? <p className="text-sm text-subtle">{t('deliveryList.noDeliveriesRecordedYet')}</p>
   const showProject = !filter.projectId
   const th = 'py-2 pr-3 font-medium'
   return (
@@ -59,32 +60,32 @@ export function DeliveryList({ filter, empty }: { filter: DeliveryFilter; empty?
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs text-subtle">
-              <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
-              <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>Supplier</th>
-              <th scope="col" className={`hidden md:table-cell ${th}`}>Challan</th>
-              {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>Project</th>}
-              <th scope="col" className={`hidden lg:table-cell ${th}`}>Items</th>
-              <th scope="col" className="py-2 pr-4 text-right font-medium">Received</th>
+              <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>{t('deliveryList.date')}</th>
+              <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>{t('common.supplier')}</th>
+              <th scope="col" className={`hidden md:table-cell ${th}`}>{t('deliveryList.challan')}</th>
+              {showProject && <th scope="col" className={`hidden md:table-cell ${th}`}>{t('deliveryList.project')}</th>}
+              <th scope="col" className={`hidden lg:table-cell ${th}`}>{t('deliveryList.items')}</th>
+              <th scope="col" className="py-2 pr-4 text-right font-medium">{t('deliveryList.received')}</th>
             </tr>
           </thead>
           <tbody>
             {list.map((d) => {
               const to = `/deliveries/${d.id}`
               const [first, ...rest] = d.delivery_lines
-              const items = first && <>{lineName(first)}{first.spec && <span className="text-subtle"> · {first.spec}</span>}{rest.length > 0 && <span className="text-subtle"> +{rest.length} more</span>}</>
+              const items = first && <>{lineName(first)}{first.spec && <span className="text-subtle"> · {first.spec}</span>}{rest.length > 0 && <span className="text-subtle"> {t('deliveryList.lengthMore', { length: rest.length })}</span>}</>
               const issue = d.delivery_lines.find((l) => l.issue)?.issue
               const bill = billing(d, status)
               return (
                 <tr key={d.id} className="border-b border-line align-middle last:border-0 hover:bg-muted">
                   <td className="hidden py-2 pr-3 pl-4 whitespace-nowrap text-subtle sm:table-cell"><DateText value={d.receipt_date} display={auth.dateDisplay} /></td>
                   <td className="py-2 pr-3 pl-4 sm:pl-0">
-                    <Link to={to} className="inline-flex min-h-8 items-center font-medium break-words text-ink hover:underline">{d.suppliers?.name}</Link>
+                    <Link to={to} className="inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 items-center font-medium break-words text-ink hover:underline">{d.suppliers?.name}</Link>
                     {issue && <> <Badge tone="warn">{DELIVERY_ISSUES[issue]}</Badge></>}
                     {/* Smaller screens: what the hidden columns say. */}
                     {items && <div className="text-xs break-words text-ink lg:hidden">{items}</div>}
                     <div className="text-xs text-subtle md:hidden">
                       <span className="sm:hidden"><DateText value={d.receipt_date} display={auth.dateDisplay} /></span>
-                      {d.challan_no && <><span className="sm:hidden"> · </span>Challan {d.challan_no}</>}
+                      {d.challan_no && <><span className="sm:hidden"> · </span>{t('deliveryList.challanChallanno', { challanNo: d.challan_no })}</>}
                       {showProject && d.projects && <> · {d.projects.code}</>}
                     </div>
                   </td>
@@ -93,12 +94,12 @@ export function DeliveryList({ filter, empty }: { filter: DeliveryFilter; empty?
                   <td className="hidden py-2 pr-3 break-words lg:table-cell">{items}</td>
                   <td className="py-2 pr-4 text-right">
                     <span className="whitespace-nowrap tabular-nums">
-                      {d.delivery_lines.length === 1 ? `${qty(first.accepted_qty ?? 0)} ${first.units?.code ?? ''}` : `${d.delivery_lines.length} items`}
+                      {d.delivery_lines.length === 1 ? `${qty(first.accepted_qty ?? 0)} ${first.units?.code ?? ''}` : t('deliveryList.lengthItems', { length: d.delivery_lines.length })}
                     </span>
                     {bill && <div className="mt-1"><Badge tone={bill[1]}>{bill[0]}</Badge></div>}
                     {/* The next step for a delivery is its bill. */}
                     {canEnter(auth) && billableQty(d, status) > 0 && (
-                      <div><Link to={`/bills/new?supplier=${d.supplier_id}&delivery=${d.id}`} className="inline-flex min-h-8 items-center text-xs font-semibold text-brand hover:underline">Enter bill for this</Link></div>
+                      <div><Link to={`/bills/new?supplier=${d.supplier_id}&delivery=${d.id}`} className="inline-flex min-h-11 min-w-11 [@media(pointer:fine)]:min-h-8 items-center text-xs font-semibold text-brand hover:underline">{t('deliveryList.enterBillForThis')}</Link></div>
                     )}
                   </td>
                 </tr>
@@ -127,10 +128,10 @@ export function DeliveryLines({ d, status }: { d: Delivery; status: LineStatus }
             </span>
             <span className="shrink-0 text-right tabular-nums">
               {qty(l.accepted_qty ?? 0)} {l.units?.code}
-              {l.rejected_qty > 0 && <span className="block text-xs text-subtle">{qty(l.rejected_qty)} rejected</span>}
-              {s && s.returned_qty! > 0 && <span className="block text-xs text-subtle">{qty(s.returned_qty!)} returned</span>}
-              {s && s.billed_qty! > 0 && <span className="block text-xs text-subtle">{qty(s.billed_qty!)} billed</span>}
-              {s && s.awaiting_credit_qty! > 0 && <span className="block text-xs text-warn-ink">{qty(s.awaiting_credit_qty!)} awaiting credit</span>}
+              {l.rejected_qty > 0 && <span className="block text-xs text-subtle">{t('deliveryList.rejectedqtyRejected', { rejectedQty: qty(l.rejected_qty) })}</span>}
+              {s && s.returned_qty! > 0 && <span className="block text-xs text-subtle">{t('deliveryList.valueReturned', { value: qty(s.returned_qty!) })}</span>}
+              {s && s.billed_qty! > 0 && <span className="block text-xs text-subtle">{t('deliveryList.valueBilled', { value: qty(s.billed_qty!) })}</span>}
+              {s && s.awaiting_credit_qty! > 0 && <span className="block text-xs text-warn-ink">{t('deliveryList.valueAwaitingCredit', { value: qty(s.awaiting_credit_qty!) })}</span>}
             </span>
           </li>
         )
@@ -168,19 +169,19 @@ export function ReturnForm({ d, onDone }: { d: Delivery; onDone: () => void }) {
 
   return (
     <form onSubmit={submit} className="mt-3 flex flex-col gap-3 rounded-lg bg-muted p-3">
-      <div className="font-semibold text-ink">Return to supplier</div>
-      <p className="text-xs text-subtle">This changes quantities only. If the goods were billed, ask the supplier for a credit note.</p>
+      <div className="font-semibold text-ink">{t('deliveryList.returnToSupplier')}</div>
+      <p className="text-xs text-subtle">{t('deliveryList.thisChangesQuantitiesOnly')}</p>
       {d.delivery_lines.map((l) => (
         <Field key={l.id} label={`${lineName(l)} (${l.units?.code})`} htmlFor={`ret-${l.id}`}>
           <Input id={`ret-${l.id}`} inputMode="decimal" value={qtys[l.id] ?? ''} onChange={(e) => setQtys({ ...qtys, [l.id]: e.target.value })} />
         </Field>
       ))}
-      <Field label="Return date" htmlFor={`ret-date-${d.id}`}><DateInput id={`ret-date-${d.id}`} value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
-      <Field label="Reason" htmlFor={`ret-note-${d.id}`}><Input id={`ret-note-${d.id}`} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
+      <Field label={t('deliveryList.returnDate')} htmlFor={`ret-date-${d.id}`}><DateInput id={`ret-date-${d.id}`} value={date} onChange={setDate} display={auth.dateDisplay} /></Field>
+      <Field label={t('deliveryList.reason')} htmlFor={`ret-note-${d.id}`}><Input id={`ret-note-${d.id}`} value={note} onChange={(e) => setNote(e.target.value)} /></Field>
       <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
       <div className="flex gap-2">
-        <Button type="submit" busy={save.isPending}>Record return</Button>
-        <Button type="button" variant="secondary" onClick={onDone}>Cancel</Button>
+        <Button type="submit" busy={save.isPending}>{t('deliveryList.recordReturn')}</Button>
+        <Button type="button" variant="secondary" onClick={onDone}>{t('common.cancel')}</Button>
       </div>
     </form>
   )

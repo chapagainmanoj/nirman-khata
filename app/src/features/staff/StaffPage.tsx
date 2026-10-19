@@ -53,20 +53,20 @@ function PermissionPicker({ value, onChange, roles }: { value: Permissions; onCh
   return (
     <div className="grid gap-1">
       <Checkbox
-        label="Can see money amounts"
-        hint={allMoney ? 'Admin and Accounts always see amounts.' : 'Contract, budget, bills and payments on their assigned projects.'}
+        label={t('staff.canSeeMoneyAmounts')}
+        hint={allMoney ? t('staff.adminAndAccountsAlways') : t('staff.contractBudgetBillsAnd')}
         checked={allMoney || value.can_view_finance}
         disabled={allMoney}
         onChange={(e) => onChange({ ...value, can_view_finance: e.target.checked })}
       />
       <Checkbox
-        label="Can record payments"
+        label={t('staff.canRecordPayments')}
         checked={value.can_record_payments}
         onChange={(e) => onChange({ ...value, can_record_payments: e.target.checked })}
       />
       <Checkbox
-        label="Can approve order slips"
-        hint="Project managers need this to approve order slips for their projects."
+        label={t('staff.canApproveOrderSlips')}
+        hint={t('staff.projectManagersNeedThis')}
         checked={value.can_approve_slips}
         onChange={(e) => onChange({ ...value, can_approve_slips: e.target.checked })}
       />
@@ -100,10 +100,10 @@ function AddStaffForm({ onDone }: { onDone: () => void }) {
   function submit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    if (!name.trim()) return setError('Enter the staff member’s name.')
-    if (!parseLoginId(login)) return setError('Enter a mobile number (98XXXXXXXX) or email.')
-    if (password.length < MIN_PASSWORD) return setError(`Password must be at least ${MIN_PASSWORD} characters.`)
-    if (roles.length === 0) return setError('Choose at least one role.')
+    if (!name.trim()) return setError(t('staff.enterTheStaffMember'))
+    if (!parseLoginId(login)) return setError(t('staff.enterAMobileNumber'))
+    if (password.length < MIN_PASSWORD) return setError(t('staff.passwordMustBeAt', { minPassword: MIN_PASSWORD }))
+    if (roles.length === 0) return setError(t('staff.chooseAtLeastOne'))
     create.mutate()
   }
 
@@ -113,18 +113,18 @@ function AddStaffForm({ onDone }: { onDone: () => void }) {
     <Card title={t('staff.add')} className="mb-4">
       <form onSubmit={submit} className="flex flex-col gap-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Name" htmlFor="staff-name"><Input id="staff-name" value={name} onChange={(e) => setName(e.target.value)} /></Field>
-          <Field label={t('auth.loginId')} htmlFor="staff-login" hint="They sign in with this.">
-            <Input id="staff-login" value={login} onChange={(e) => setLogin(e.target.value)} placeholder="98XXXXXXXX" />
+          <Field label={t('staff.name')} htmlFor="staff-name"><Input id="staff-name" value={name} onChange={(e) => setName(e.target.value)} /></Field>
+          <Field label={t('auth.loginId')} htmlFor="staff-login" hint={t('staff.theySignInWith')}>
+            <Input id="staff-login" value={login} onChange={(e) => setLogin(e.target.value)} placeholder={t('staff.98xxxxxxxx')} />
           </Field>
-          <Field label="Starting password" htmlFor="staff-password" hint="Tell them this password. You can reset it later.">
+          <Field label={t('staff.startingPassword')} htmlFor="staff-password" hint={t('staff.tellThemThisPassword')}>
             <Input id="staff-password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
           </Field>
         </div>
-        <Field label="Roles"><RolePicker roles={roles} onChange={setRoles} /></Field>
-        <Field label="Permissions"><PermissionPicker value={perms} onChange={setPerms} roles={roles} /></Field>
+        <Field label={t('staff.roles')}><RolePicker roles={roles} onChange={setRoles} /></Field>
+        <Field label={t('staff.permissions')}><PermissionPicker value={perms} onChange={setPerms} roles={roles} /></Field>
         {!seesAll && (
-          <Field label="Projects" hint="They only see the projects they are assigned to.">
+          <Field label={t('staff.projects')} hint={t('staff.theyOnlySeeThe')}>
             <div className="grid gap-1 sm:grid-cols-2">
               {projects.data?.map((p) => (
                 <Checkbox
@@ -174,43 +174,41 @@ function MemberCard({ member: m, isSelf }: { member: Member; isSelf: boolean }) 
     onSuccess: () => {
       setPassword('')
       setMode('view')
-      setDone('Password reset. Tell them the new password.')
+      setDone(t('staff.passwordResetTellThem'))
     },
   })
 
   const contact = m.profiles?.phone ?? m.profiles?.email ?? ''
-  const name = m.profiles?.full_name ?? 'Staff member'
+  const name = m.profiles?.full_name ?? t('staff.staffMember')
   const error = update.error || reset.error
 
   return (
     <Card>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0 break-words">
-          <div className="font-semibold text-ink">{name} {isSelf && <span className="text-xs text-subtle">(you)</span>}</div>
+          <div className="font-semibold text-ink">{name} {isSelf && <span className="text-xs text-subtle">{t('staff.you')}</span>}</div>
           <div className="text-sm text-subtle">{contact}</div>
           <div className="mt-1 flex flex-wrap gap-1">
             {m.roles.map((r) => <Badge key={r} tone="info">{ROLE_LABELS[r]}</Badge>)}
-            {!m.active && <Badge tone="bad">Inactive</Badge>}
-            {m.can_view_finance && <Badge>Sees amounts</Badge>}
-            {m.can_record_payments && <Badge>Records payments</Badge>}
-            {m.can_approve_slips && <Badge>Approves order slips</Badge>}
+            {!m.active && <Badge tone="bad">{t('staff.inactive')}</Badge>}
+            {m.can_view_finance && <Badge>{t('staff.seesAmounts')}</Badge>}
+            {m.can_record_payments && <Badge>{t('staff.recordsPayments')}</Badge>}
+            {m.can_approve_slips && <Badge>{t('staff.approvesOrderSlips')}</Badge>}
           </div>
         </div>
         {mode === 'view' && (
           <div className="flex flex-wrap gap-1">
-            <Button variant="ghost" aria-label={`Edit ${name}`} onClick={() => setMode('edit')}>{t('common.edit')}</Button>
-            <Button variant="ghost" aria-label={`Reset password for ${name}`} onClick={() => { setDone(''); setMode('password') }}>Reset password</Button>
+            <Button variant="ghost" aria-label={t('staff.editName', { name })} onClick={() => setMode('edit')}>{t('common.edit')}</Button>
+            <Button variant="ghost" aria-label={t('staff.resetPasswordForName', { name })} onClick={() => { setDone(''); setMode('password') }}>{t('staff.resetPassword')}</Button>
             {!isSelf && m.active && (
               // Deactivating blocks their sign-in straight away, so it asks first.
-              <ConfirmButton label={`Deactivate ${name}`} confirmLabel="Yes, deactivate" disabled={update.isPending}
+              <ConfirmButton label={t('staff.deactivateName', { name })} confirmLabel={t('staff.yesDeactivate')} disabled={update.isPending}
                 onConfirm={() => update.mutate({ active: false })}>
-                Deactivate
-              </ConfirmButton>
+                {t('staff.deactivate')}</ConfirmButton>
             )}
             {!isSelf && !m.active && (
-              <Button variant="ghost" aria-label={`Reactivate ${name}`} onClick={() => update.mutate({ active: true })} disabled={update.isPending}>
-                Reactivate
-              </Button>
+              <Button variant="ghost" aria-label={t('staff.reactivateName', { name })} onClick={() => update.mutate({ active: true })} disabled={update.isPending}>
+                {t('staff.reactivate')}</Button>
             )}
           </div>
         )}
@@ -220,8 +218,8 @@ function MemberCard({ member: m, isSelf }: { member: Member; isSelf: boolean }) 
 
       {mode === 'edit' && (
         <div className="mt-4 flex flex-col gap-4">
-          <Field label="Roles"><RolePicker roles={roles} onChange={setRoles} /></Field>
-          <Field label="Permissions"><PermissionPicker value={perms} onChange={setPerms} roles={roles} /></Field>
+          <Field label={t('staff.roles')}><RolePicker roles={roles} onChange={setRoles} /></Field>
+          <Field label={t('staff.permissions')}><PermissionPicker value={perms} onChange={setPerms} roles={roles} /></Field>
           <div className="flex gap-2">
             <Button busy={update.isPending} disabled={roles.length === 0} onClick={() => update.mutate({ roles, ...perms })}>{t('common.save')}</Button>
             <Button variant="secondary" onClick={() => setMode('view')}>{t('common.cancel')}</Button>
@@ -231,11 +229,11 @@ function MemberCard({ member: m, isSelf }: { member: Member; isSelf: boolean }) 
 
       {mode === 'password' && (
         <div className="mt-4 flex flex-col gap-3">
-          <Field label="New password" htmlFor={`pw-${m.id}`} hint={`At least ${MIN_PASSWORD} characters.`}>
+          <Field label={t('staff.newPassword')} htmlFor={`pw-${m.id}`} hint={t('staff.atLeastMinpasswordCharacters', { minPassword: MIN_PASSWORD })}>
             <Input id={`pw-${m.id}`} value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" />
           </Field>
           <div className="flex gap-2">
-            <Button busy={reset.isPending} disabled={password.length < MIN_PASSWORD} onClick={() => reset.mutate()}>Reset password</Button>
+            <Button busy={reset.isPending} disabled={password.length < MIN_PASSWORD} onClick={() => reset.mutate()}>{t('staff.resetPassword')}</Button>
             <Button variant="secondary" onClick={() => setMode('view')}>{t('common.cancel')}</Button>
           </div>
         </div>

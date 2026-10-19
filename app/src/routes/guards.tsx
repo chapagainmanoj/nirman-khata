@@ -17,7 +17,7 @@ export function RequireCompany({ children }: { children: ReactNode }) {
   if (auth.loadError) {
     return (
       <div className="mx-auto max-w-md px-4 py-16">
-        <ErrorBanner onRetry={auth.retryLoad}>Could not load your company. {friendlyError(auth.loadError)}</ErrorBanner>
+        <ErrorBanner onRetry={auth.retryLoad}>{t('guards.couldNotLoadYour', { loadError: friendlyError(auth.loadError) })}</ErrorBanner>
         <Button className="mt-6 w-full" variant="secondary" onClick={() => void auth.signOut()}>{t('nav.signOut')}</Button>
       </div>
     )

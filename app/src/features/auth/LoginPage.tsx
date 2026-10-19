@@ -19,13 +19,13 @@ export function LoginPage() {
     e.preventDefault()
     setError('')
     const id = parseLoginId(login)
-    if (!id) return setError('Enter your mobile number (98XXXXXXXX) or email.')
+    if (!id) return setError(t('login.enterYourMobileNumber'))
     setBusy(true)
     const { error } = await supabase.auth.signInWithPassword({ email: id.email, password })
     setBusy(false)
     if (error) {
       return setError(
-        error.message.includes('Invalid login') ? 'Wrong mobile number/email or password.' : 'Could not sign in. Check your connection.',
+        error.message.includes('Invalid login') ? t('login.wrongMobileNumberEmail') : t('login.couldNotSignIn'),
       )
     }
     navigate((location.state as { from?: string } | null)?.from ?? '/', { replace: true })
@@ -35,10 +35,10 @@ export function LoginPage() {
     <AuthShell title={t('auth.login')}>
       <form onSubmit={submit} className="flex flex-col gap-4">
         {(location.state as { registered?: boolean } | null)?.registered && (
-          <Notice>Your company was created. Sign in with the mobile number or email and password you just chose.</Notice>
+          <Notice>{t('login.yourCompanyWasCreated')}</Notice>
         )}
         <Field label={t('auth.loginId')} htmlFor="login">
-          <Input id="login" value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="username" inputMode="email" placeholder="98XXXXXXXX" required />
+          <Input id="login" value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="username" inputMode="email" placeholder={t('login.98xxxxxxxx')} required />
         </Field>
         <Field label={t('auth.password')} htmlFor="password">
           <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
@@ -46,7 +46,7 @@ export function LoginPage() {
         <ErrorBanner>{error}</ErrorBanner>
         <Button type="submit" busy={busy}>{t('auth.login')}</Button>
         {EMAIL_RESET
-          ? <Link to="/forgot" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">Forgot password?</Link>
+          ? <Link to="/forgot" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">{t('login.forgotPassword')}</Link>
           : <p className="text-xs text-subtle">{t('auth.forgot')}</p>}
         <Link to="/register" className="flex min-h-11 items-center justify-center text-sm font-medium text-slate">{t('auth.register')}</Link>
       </form>

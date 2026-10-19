@@ -33,6 +33,9 @@
   /* Segmented controls and tab strips: the track behind the white chosen pill. Darker than the
      page so the choice reads as one control; subtle text 5.3:1 on it. */
   --color-track: #ddd7cc;
+  /* A lighter track for a wide row of page sections (the project page), so it stays quiet:
+     1.13:1 on the page, the white pill on it 1.28:1, subtle text 5.9:1. */
+  --color-track-soft: #e7e3db;
   --color-surface: #ffffff;
   /* Page: a warm grey just under the white cards, so the cards stand out as islands and
      the space between them recedes. Subtle text 6.7:1, links 5.4:1, field edges 3.2:1 on it. */

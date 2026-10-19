@@ -4,6 +4,7 @@ import { useId, useState, type FormEvent, type ReactNode } from 'react'
 import { DateInput } from './DateInput'
 import { Button, ErrorBanner, Field, Input } from './ui'
 import type { DateDisplay } from '../lib/dates'
+import { t } from '../lib/i18n'
 
 export function ReasonButton({
   children, title, confirmLabel, hint, onConfirm, busy, error, variant = 'secondary', withDate, open: openProp, onOpenChange,
@@ -41,7 +42,7 @@ export function ReasonButton({
   return (
     <form onSubmit={submit} className="flex w-full flex-col gap-3 rounded-lg bg-muted p-3">
       <div className="font-semibold text-ink">{title}</div>
-      <Field label="Reason" htmlFor={`${id}-reason`} hint={hint}>
+      <Field label={t('reasonButton.reason')} htmlFor={`${id}-reason`} hint={hint}>
         <Input id={`${id}-reason`} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />
       </Field>
       {withDate && (
@@ -54,7 +55,7 @@ export function ReasonButton({
         <Button type="submit" variant={variant === 'danger' ? 'danger' : 'primary'} busy={busy} disabled={!reason.trim()}>
           {confirmLabel}
         </Button>
-        <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Keep</Button>
+        <Button type="button" variant="secondary" onClick={() => setOpen(false)}>{t('reasonButton.keep')}</Button>
       </div>
     </form>
   )

@@ -5,6 +5,7 @@
 import type { ProjectStatus } from '../../lib/supabase'
 import { Link } from 'react-router'
 import { formatNPR, percent } from '../../lib/money'
+import { t } from '../../lib/i18n'
 
 /** The figures project_dashboard returns (amounts are null for people who cannot see money). */
 export type ProjectFigures = {
@@ -41,7 +42,7 @@ function Bar({ label, value, tone }: { label: string; value: number | null; tone
     <span className="block">
       <span className="flex justify-between text-xs text-subtle">
         <span>{label}</span>
-        <span className="font-semibold text-ink tabular-nums">{value === null ? 'Not set' : `${Number(value.toFixed(1))}%`}</span>
+        <span className="font-semibold text-ink tabular-nums">{value === null ? t('parts.notSet') : `${Number(value.toFixed(1))}%`}</span>
       </span>
       <span className="mt-1 block h-2 overflow-hidden rounded-full bg-muted" role="progressbar" aria-label={label}
         aria-valuenow={Math.round(value ?? 0)} aria-valuemin={0} aria-valuemax={100}>
@@ -61,13 +62,13 @@ export function UsedBars({ figures: f, setProgress }: { figures: ProjectFigures;
     <span className="mt-3 grid gap-2 sm:grid-cols-2">
       {f.progress_pct === null ? (
         <span className="flex justify-between text-xs text-subtle">
-          <span>Work done</span>
+          <span>{t('parts.workDone')}</span>
           {setProgress
-            ? <Link to={setProgress} className="relative z-10 -my-3.5 inline-flex min-h-11 items-center font-medium text-brand hover:underline">Set progress <span aria-hidden>&nbsp;→</span></Link>
-            : <span>Not set</span>}
+            ? <Link to={setProgress} className="relative z-10 -my-3.5 inline-flex min-h-11 items-center font-medium text-brand hover:underline">{t('parts.setProgress')}{' '}<span aria-hidden>&nbsp;→</span></Link>
+            : <span>{t('parts.notSet')}</span>}
         </span>
-      ) : <Bar label="Work done" value={Number(f.progress_pct)} tone="bg-bar" />}
-      {f.money_visible && <Bar label="Budget used" value={used} tone={used !== null && used > 100 ? 'bg-danger' : 'bg-bar'} />}
+      ) : <Bar label={t('parts.workDone')} value={Number(f.progress_pct)} tone="bg-bar" />}
+      {f.money_visible && <Bar label={t('parts.budgetUsed')} value={used} tone={used !== null && used > 100 ? 'bg-danger' : 'bg-bar'} />}
     </span>
   )
 }
@@ -82,19 +83,20 @@ export function Completeness({ figures: f, compact, status }: { figures: Project
   const items: string[] = []
   if (f.unbilled_lines > 0) {
     const est = f.money_visible && f.unbilled_estimate_paisa
-      ? ` (about ${formatNPR(f.unbilled_estimate_paisa)}${f.unbilled_without_rate ? ', some with no rate yet' : ''})` : ''
-    items.push(`${f.unbilled_lines} received item${f.unbilled_lines === 1 ? '' : 's'} not billed${est}`)
+      ? t(f.unbilled_without_rate ? 'parts.aboutNoRate' : 'parts.about', { amount: formatNPR(f.unbilled_estimate_paisa) }) : ''
+    items.push(t(f.unbilled_lines === 1 ? 'parts.unbilled.one' : 'parts.unbilled.many', { n: f.unbilled_lines, estimate: est }))
   }
   if (f.draft_bills) {
-    items.push(`${f.draft_bills} bill${f.draft_bills === 1 ? '' : 's'} not posted${f.draft_bills_paisa ? ` (${formatNPR(f.draft_bills_paisa)} typed)` : ''}`)
+    items.push(t(f.draft_bills === 1 ? 'parts.draftBills.one' : 'parts.draftBills.many', {
+      n: f.draft_bills, typed: f.draft_bills_paisa ? t('parts.draftbillsTyped', { draftBills: formatNPR(f.draft_bills_paisa) }) : '',
+    }))
   }
-  if (f.days_since_report === null) items.push('no daily report yet')
-  else if (f.days_since_report > 2) items.push(`last daily report ${f.days_since_report} days ago`)
-  if (!items.length) return compact ? null : <p className="mt-2 text-xs text-subtle">Nothing waiting: every receipt is billed and posted.</p>
+  if (f.days_since_report === null) items.push(t('parts.noDailyReport'))
+  else if (f.days_since_report > 2) items.push(t('parts.lastReportDaysAgo', { days: f.days_since_report }))
+  if (!items.length) return compact ? null : <p className="mt-2 text-xs text-subtle">{t('parts.nothingWaitingEveryReceipt')}</p>
   return (
     <span className={`mt-2 block text-subtle ${compact ? 'text-xs' : 'text-sm'}`}>
-      Not in recorded cost yet: {items.join(' · ')}
-    </span>
+      {t('parts.notInRecordedCost', { value: items.join(' · ') })}</span>
   )
 }
 
@@ -105,8 +107,8 @@ export function SourceList({ figures: f }: { figures: ProjectFigures }) {
 }
 
 const SOURCE_KINDS = [
-  ['materials', 'Materials', 'bg-bar'], ['subcontract', 'Subcontract', 'bg-bar-2'],
-  ['labour', 'Own labour', 'bg-bar-3'], ['other', 'Other expenses', 'bg-bar-4'],
+  ['materials', 'parts.source.materials', 'bg-bar'], ['subcontract', 'parts.source.subcontract', 'bg-bar-2'],
+  ['labour', 'parts.source.labour', 'bg-bar-3'], ['other', 'parts.source.other', 'bg-bar-4'],
 ] as const
 
 /**
@@ -114,8 +116,8 @@ const SOURCE_KINDS = [
  * kinds that have money; the empty ones share one quiet line. Grey, not coloured: nothing to act on.
  */
 export function SourceBar({ bySource: s, total }: { bySource: NonNullable<ProjectFigures['by_source']>; total: number }) {
-  if (!total) return <p className="text-sm text-subtle">Nothing spent yet.</p>
-  const kinds = SOURCE_KINDS.map(([k, label, shade]) => ({ k, label, shade, n: Number(s[k]) }))
+  if (!total) return <p className="text-sm text-subtle">{t('parts.nothingSpentYet')}</p>
+  const kinds = SOURCE_KINDS.map(([k, label, shade]) => ({ k, label: t(label), shade, n: Number(s[k]) }))
   const used = kinds.filter((x) => x.n > 0)
   const empty = kinds.filter((x) => x.n <= 0)
   return (
@@ -134,7 +136,7 @@ export function SourceBar({ bySource: s, total }: { bySource: NonNullable<Projec
         ))}
       </ul>
       {empty.length > 0 && (
-        <p className="mt-1.5 text-xs text-subtle">Nothing yet on {empty.map((x) => x.label.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' or $1')}.</p>
+        <p className="mt-1.5 text-xs text-subtle">{t('parts.nothingYetOn')}{' '}{empty.map((x) => x.label.toLowerCase()).join(', ').replace(/, ([^,]*)$/, ' or $1')}.</p>
       )}
     </>
   )
@@ -144,7 +146,7 @@ export function SourceBar({ bySource: s, total }: { bySource: NonNullable<Projec
 export function SourceRows({ bySource: s, total, whole }: {
   bySource: NonNullable<ProjectFigures['by_source']>; total: number; whole?: boolean
 }) {
-  const rows: Array<[string, number]> = [['Materials', s.materials], ['Subcontract', s.subcontract], ['Own labour', s.labour], ['Other expenses', s.other]]
+  const rows: Array<[string, number]> = [[t('parts.materials'), s.materials], [t('parts.subcontract'), s.subcontract], [t('parts.ownLabour'), s.labour], [t('parts.otherExpenses'), s.other]]
   return (
     <ul>
       {rows.map(([label, n]) => (

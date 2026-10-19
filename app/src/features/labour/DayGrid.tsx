@@ -1,14 +1,16 @@
 // A month of one worker's days as a calendar, Sunday first (Saturday is the day off in Nepal). Each
-// box shows the hours and the times on wider screens. A Draft is plain, marked "Draft"; a Verified
+// box shows the hours and the times on wider screens. An unmarked day is a soft grey box with no edge,
+// so the marked ones stand out. A Draft is plain, marked "Draft"; a Verified
 // day is green with a tick (GLOSSARY: Attendance). A tap opens the day's editor at the box: a card
 // beside it on a tablet or desktop, a sheet from the bottom on a phone, with the editor's own buttons
 // at the bottom (Save draft, Verified). Used by the crew page, the one place attendance is marked.
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { CheckIcon } from '../../components/icons'
 import { adToBs, formatDate, type IsoDate } from '../../lib/dates'
+import { t } from '../../lib/i18n'
 import { hhmm, hoursText } from './api'
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAYS = ['date.weekday.sun', 'date.weekday.mon', 'date.weekday.tue', 'date.weekday.wed', 'date.weekday.thu', 'date.weekday.fri', 'date.weekday.sat'] as const
 const weekday = (iso: IsoDate) => new Date(`${iso}T00:00:00Z`).getUTCDay()
 
 /** Hours in a box: 8, 4½, 9.25. */
@@ -42,9 +44,9 @@ export function DayGrid({ name, days, today, display, entries, selected, onPick,
   return (
     <div ref={wrapper} className="relative">
       <div className="grid grid-cols-7 gap-1 pb-1 text-center text-xs font-medium text-subtle" aria-hidden>
-        {WEEKDAYS.map((d, i) => <span key={d} className={i === 6 ? 'text-brand' : ''}>{d}</span>)}
+        {WEEKDAYS.map((d, i) => <span key={d} className={i === 6 ? 'text-brand' : ''}>{t(d)}</span>)}
       </div>
-      <div className="grid grid-cols-7 gap-1" role="group" aria-label={`${name}'s days`}>
+      <div className="grid grid-cols-7 gap-1" role="group" aria-label={t('dayGrid.nameSDays', { name })}>
         {Array.from({ length: lead }, (_, i) => <span key={`lead-${i}`} aria-hidden />)}
         {days.map((d) => {
           const all = entries(d)
@@ -54,17 +56,17 @@ export function DayGrid({ name, days, today, display, entries, selected, onPick,
           const verified = all.length > 0 && all.every((r) => r.verified)
           const draft = all.length > 0 && !verified
           const one = rows.length === 1 ? rows[0] : null
-          const times = one?.time_in && one.time_out ? `${hhmm(one.time_in)}–${hhmm(one.time_out)}` : rows.length > 1 ? `${rows.length} projects` : ''
+          const times = one?.time_in && one.time_out ? `${hhmm(one.time_in)}–${hhmm(one.time_out)}` : rows.length > 1 ? t('dayGrid.lengthProjects', { length: rows.length }) : ''
           const future = d > today
           const dayNo = display === 'bs' ? adToBs(d).day : Number(d.slice(8))
-          const label = `${formatDate(d, display)}, ${rows.length ? hoursText(minutes) : absent ? 'absent' : 'not marked'}${verified ? ', verified' : draft ? ', draft' : ''}`
+          const label = `${formatDate(d, display)}, ${rows.length ? hoursText(minutes) : absent ? t('dayGrid.state.absent') : t('dayGrid.state.notMarked')}${verified ? t('dayGrid.state.verified') : draft ? t('dayGrid.state.draft') : ''}`
           return (
             <button key={d} type="button" disabled={future} aria-label={label} aria-expanded={selected === d} aria-haspopup="dialog"
               ref={(el) => { if (el) boxes.current.set(d, el); else boxes.current.delete(d) }}
               aria-current={d === today ? 'date' : undefined} onClick={() => onPick(selected === d ? null : d)}
               className={`relative flex min-h-14 flex-col items-center justify-center rounded-lg border px-0.5 pt-3 pb-1 text-center tabular-nums transition-colors disabled:opacity-40 sm:min-h-18
-                ${selected === d ? 'border-brand ring-2 ring-brand' : verified ? 'border-good-ink/40' : draft ? 'border-slate/60' : 'border-line'}
-                ${verified && rows.length ? 'bg-good-soft' : 'bg-surface'} ${absent || draft ? 'border-dashed' : ''}
+                ${selected === d ? 'border-brand ring-2 ring-brand' : verified ? 'border-good-ink/40' : draft ? 'border-slate/60' : absent ? 'border-line' : 'border-transparent'}
+                ${verified && rows.length ? 'bg-good-soft' : all.length ? 'bg-surface' : 'bg-muted'} ${absent || draft ? 'border-dashed' : ''}
                 enabled:hover:border-slate`}>
               <span className={`absolute top-1 left-1.5 text-[11px] leading-none ${d === today ? 'rounded bg-brand px-1 py-0.5 font-bold text-white' : 'text-subtle'}`}>{dayNo}</span>
               {rows.length > 0 && (
@@ -73,18 +75,17 @@ export function DayGrid({ name, days, today, display, entries, selected, onPick,
                     {boxHours(minutes)}<span className="text-xs font-medium"> h</span>
                   </span>
                   {times && <span className="hidden truncate text-[10px] leading-tight text-subtle sm:block">{times}</span>}
-                  {draft && <span className="text-[10px] leading-tight font-medium text-subtle uppercase">Draft</span>}
+                  {draft && <span className="text-[10px] leading-tight font-medium text-subtle uppercase">{t('day.draft')}</span>}
                 </>
               )}
-              {absent && <span className="text-xs font-medium text-subtle"><span aria-hidden>✕</span> Absent</span>}
+              {absent && <span className="text-xs font-medium text-subtle"><span aria-hidden>✕</span> {t('dayGrid.absent')}</span>}
               {verified && <span className="absolute top-1 right-1.5 text-good-ink"><CheckIcon size={12} /></span>}
             </button>
           )
         })}
       </div>
-      <p className="mt-2 text-xs text-subtle">
-        Tap a day to mark it. A draft is not counted yet; <CheckIcon size={11} className="inline text-good-ink" /> verified is labour cost, owed to the worker.
-      </p>
+      <p className="mt-3 text-xs text-subtle">
+        {t('dayGrid.tapADayTo')}{' '}<CheckIcon size={11} className="inline text-good-ink" /> {t('dayGrid.verifiedIsLabourCost')}</p>
       {selected && (
         <DayPopover key={selected} anchor={() => boxes.current.get(selected)} wrapper={wrapper} title={title} onClose={() => onPick(null)} actions={actions}>
           {editor}

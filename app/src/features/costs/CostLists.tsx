@@ -49,26 +49,25 @@ function ReverseEntry({ id, what, company, open, onOpenChange }: {
     { onSuccess: () => refresh() },
   )
   return (
-    <ReasonButton variant="ghost" title={`Reverse this ${what}`}
-      hint={company ? 'It stays in the list, marked reversed.' : 'Cost goes back down. Money already paid becomes overpaid, deducted from their next bill.'}
-      confirmLabel="Reverse" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
-      withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
+    <ReasonButton variant="ghost" title={t('costLists.reverseThisWhat', { what })}
+      hint={company ? t('costLists.itStaysInThe') : t('costLists.costGoesBackDown')}
+      confirmLabel={t('costLists.reverse')} busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
+      withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: t('costLists.reversalDate') }}
       onConfirm={(reason, date) => reverse.mutate({ reason, date })} open={open} onOpenChange={onOpenChange}>
-      Reverse
-    </ReasonButton>
+      {t('costLists.reverse')}</ReasonButton>
   )
 }
 
 /** Paid, part paid or unpaid; part paid also says what is still due, as the bills table does. */
 function PaidBadge({ amount, settled, reversed }: { amount: number; settled: number; reversed: boolean }) {
-  if (reversed) return <Badge tone="bad">Reversed</Badge>
+  if (reversed) return <Badge tone="bad">{t('costLists.reversed')}</Badge>
   const due = amount - settled
   const [label, tone] = settlementLabel(due, settled)
   if (!(due > 0 && settled > 0)) return <Badge tone={tone}>{label}</Badge>
   return (
     <span className="inline-flex flex-col items-start">
       <Badge tone={tone}>{label}</Badge>
-      <span className="mt-0.5 text-xs whitespace-nowrap text-ink tabular-nums">{formatNPR(due)} due</span>
+      <span className="mt-0.5 text-xs whitespace-nowrap text-ink tabular-nums">{t('costLists.dueDue', { due: formatNPR(due) })}</span>
     </span>
   )
 }
@@ -77,11 +76,11 @@ export function LabourSection({ projectId }: { projectId: string }) {
   const auth = useCompany()
   const labour = useLabourCosts({ projectId })
   return (
-    <Section title="Labour" action={canEnter(auth) && <ButtonLink variant="secondary" to={labourPath(auth.company, { project: projectId })}>{auth.company.labour_mode === 'attendance' ? 'Attendance' : 'Enter labour'}</ButtonLink>}>
-      {!auth.canSeeFinance && <p className="mb-2 text-xs text-subtle">Shows labour you entered in the last 7 days.</p>}
+    <Section title={t('costLists.labour')} action={canEnter(auth) && <ButtonLink variant="secondary" to={labourPath(auth.company, { project: projectId })}>{auth.company.labour_mode === 'attendance' ? t('costLists.attendance') : t('costLists.enterLabour')}</ButtonLink>}>
+      {!auth.canSeeFinance && <p className="mb-2 text-xs text-subtle">{t('costLists.showsLabourYouEntered')}</p>}
       {labour.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void labour.refetch()}>{labour.error && friendlyError(labour.error)}</ErrorBanner>
-      {labour.data?.length === 0 && <p className="text-sm text-subtle">No labour entered yet.</p>}
+      {labour.data?.length === 0 && <p className="text-sm text-subtle">{t('costLists.noLabourEnteredYet')}</p>}
       {labour.data && labour.data.length > 0 && <LabourTable rows={labour.data} />}
       <ShowMore list={labour} />
     </Section>
@@ -106,21 +105,21 @@ function LabourTable({ rows }: { rows: Labour[] }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs text-subtle">
-            <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
-            <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>Who</th>
-            <th scope="col" className={`hidden md:table-cell ${th}`}>Work</th>
-            <th scope="col" className={`hidden text-right md:table-cell ${th}`}>Person-days</th>
-            <th scope="col" className={`hidden lg:table-cell ${th}`}>Note</th>
-            <th scope="col" className={`text-right ${th}`}>Amount</th>
-            <th scope="col" className={`hidden sm:table-cell ${th}`}>Status</th>
-            {mayReverse && <th scope="col" className="w-0 py-2 pr-4"><span className="sr-only">Actions</span></th>}
+            <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>{t('costLists.date')}</th>
+            <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>{t('costLists.who')}</th>
+            <th scope="col" className={`hidden md:table-cell ${th}`}>{t('costLists.work')}</th>
+            <th scope="col" className={`hidden text-right md:table-cell ${th}`}>{t('costLists.personDays')}</th>
+            <th scope="col" className={`hidden lg:table-cell ${th}`}>{t('common.note')}</th>
+            <th scope="col" className={`text-right ${th}`}>{t('costLists.amount')}</th>
+            <th scope="col" className={`hidden sm:table-cell ${th}`}>{t('costLists.status')}</th>
+            {mayReverse && <th scope="col" className="w-0 py-2 pr-4"><span className="sr-only">{t('costLists.actions')}</span></th>}
           </tr>
         </thead>
         <tbody>
           {rows.map((l) => {
             const days = l.person_days != null ? Number(l.person_days) : null
             // A crew entry counts heads; a worker's own entry is always one person, so it says nothing.
-            const note = [l.headcount && l.headcount > 1 && `${l.headcount} people`, l.description].filter(Boolean).join(' · ')
+            const note = [l.headcount && l.headcount > 1 && t('costLists.headcountPeople', { headcount: l.headcount }), l.description].filter(Boolean).join(' · ')
             const status = <PaidBadge amount={l.amount_paisa} settled={l.settled_paisa} reversed={l.status === 'reversed'} />
             const canReverse = mayReverse && l.status === 'posted'
             return (
@@ -132,7 +131,7 @@ function LabourTable({ rows }: { rows: Labour[] }) {
                     {/* Phone: what the hidden columns say, and the status. */}
                     <div className="text-xs text-subtle md:hidden">
                       {[<span key="d" className="sm:hidden"><DateText value={l.work_date} display={auth.dateDisplay} /></span>,
-                        l.work_type, days != null && `${days} person-days`, note]
+                        l.work_type, days != null && t('costLists.daysPersonDays', { days }), note]
                         .filter(Boolean).map((part, i) => <Fragment key={i}>{i > 0 && ' · '}{part}</Fragment>)}
                     </div>
                     <div className="mt-1 sm:hidden">{status}</div>
@@ -147,8 +146,7 @@ function LabourTable({ rows }: { rows: Labour[] }) {
                       {canReverse && reversing !== l.id && (
                         <button type="button" onClick={() => setReversing(l.id)}
                           className="min-h-11 text-sm font-medium text-subtle underline underline-offset-2 hover:text-ink [@media(pointer:fine)]:min-h-8">
-                          Reverse
-                        </button>
+                          {t('costLists.reverse')}</button>
                       )}
                     </td>
                   )}
@@ -156,7 +154,7 @@ function LabourTable({ rows }: { rows: Labour[] }) {
                 {canReverse && reversing === l.id && (
                   <tr className="border-b border-line">
                     <td colSpan={cols} className="px-4 py-2">
-                      <ReverseEntry id={l.id} what="labour entry" open onOpenChange={(o) => { if (!o) setReversing(null) }} />
+                      <ReverseEntry id={l.id} what={t('costLists.what.labour')} open onOpenChange={(o) => { if (!o) setReversing(null) }} />
                     </td>
                   </tr>
                 )}
@@ -192,14 +190,14 @@ export function ExpenseTable({ rows, projectCode }: {
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b border-line text-left text-xs text-subtle">
-            <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>Date</th>
-            <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>What for</th>
-            {projectCode && <th scope="col" className={`hidden md:table-cell ${th}`}>Project</th>}
-            <th scope="col" className={`hidden md:table-cell ${th}`}>Paid to</th>
-            <th scope="col" className={`hidden lg:table-cell ${th}`}>Heading</th>
-            <th scope="col" className={`text-right ${th}`}>Amount</th>
-            <th scope="col" className={`hidden sm:table-cell ${th}`}>Status</th>
-            {mayReverse && <th scope="col" className="w-0 py-2 pr-4"><span className="sr-only">Actions</span></th>}
+            <th scope="col" className={`hidden pl-4 sm:table-cell ${th}`}>{t('costLists.date')}</th>
+            <th scope="col" className={`pl-4 sm:pl-0 ${th}`}>{t('costLists.whatFor')}</th>
+            {projectCode && <th scope="col" className={`hidden md:table-cell ${th}`}>{t('costLists.project')}</th>}
+            <th scope="col" className={`hidden md:table-cell ${th}`}>{t('costLists.paidTo')}</th>
+            <th scope="col" className={`hidden lg:table-cell ${th}`}>{t('costLists.heading')}</th>
+            <th scope="col" className={`text-right ${th}`}>{t('costLists.amount')}</th>
+            <th scope="col" className={`hidden sm:table-cell ${th}`}>{t('costLists.status')}</th>
+            {mayReverse && <th scope="col" className="w-0 py-2 pr-4"><span className="sr-only">{t('costLists.actions')}</span></th>}
           </tr>
         </thead>
         <tbody>
@@ -215,10 +213,10 @@ export function ExpenseTable({ rows, projectCode }: {
             const status = (
               <span className="inline-flex flex-wrap items-center gap-x-2">
                 {company
-                  ? e.status === 'reversed' ? <Badge tone="bad">Reversed</Badge> : <Badge tone="good">Paid</Badge>
+                  ? e.status === 'reversed' ? <Badge tone="bad">{t('costLists.reversed')}</Badge> : <Badge tone="good">{t('costLists.paid')}</Badge>
                   : <PaidBadge amount={e.amount_paisa} settled={e.settled_paisa} reversed={e.status === 'reversed'} />}
                 {paidBy.map((p) => (
-                  <Link key={p.id} className="text-xs text-slate underline underline-offset-2" to={`/payments/${p.id}`}>{p.number}</Link>
+                  <Link key={p.id} className="inline-flex min-h-11 items-center text-xs text-slate underline underline-offset-2 [@media(pointer:fine)]:min-h-0" to={`/payments/${p.id}`}>{p.number}</Link>
                 ))}
               </span>
             )
@@ -246,8 +244,7 @@ export function ExpenseTable({ rows, projectCode }: {
                       {canReverse && reversing !== e.id && (
                         <button type="button" onClick={() => setReversing(e.id)}
                           className="min-h-11 text-sm font-medium text-subtle underline underline-offset-2 hover:text-ink [@media(pointer:fine)]:min-h-8">
-                          Reverse
-                        </button>
+                          {t('costLists.reverse')}</button>
                       )}
                     </td>
                   )}
@@ -255,7 +252,7 @@ export function ExpenseTable({ rows, projectCode }: {
                 {canReverse && reversing === e.id && (
                   <tr className="border-b border-line">
                     <td colSpan={cols} className="px-4 py-2">
-                      <ReverseEntry id={e.id} what={company ? 'company expense' : 'other expense'} company={company}
+                      <ReverseEntry id={e.id} what={company ? t('costLists.what.companyExpense') : t('costLists.what.otherExpense')} company={company}
                         open onOpenChange={(o) => { if (!o) setReversing(null) }} />
                     </td>
                   </tr>
@@ -273,11 +270,11 @@ export function ExpenseSection({ projectId }: { projectId: string }) {
   const auth = useCompany()
   const expenses = useExpenses({ projectId })
   return (
-    <Section title="Other expenses" action={canEnter(auth) && <ButtonLink variant="secondary" to={`/expenses/new?project=${projectId}`}>Enter other expense</ButtonLink>}>
+    <Section title={t('costLists.otherExpenses')} action={canEnter(auth) && <ButtonLink variant="secondary" to={`/expenses/new?project=${projectId}`}>{t('costLists.enterOtherExpense')}</ButtonLink>}>
       {!auth.canSeeFinance && <p className="mb-2 text-xs text-subtle">{t('expenses.mine')}</p>}
       {expenses.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void expenses.refetch()}>{expenses.error && friendlyError(expenses.error)}</ErrorBanner>
-      {expenses.data?.length === 0 && <p className="text-sm text-subtle">No other expenses entered yet.</p>}
+      {expenses.data?.length === 0 && <p className="text-sm text-subtle">{t('costLists.noOtherExpensesEntered')}</p>}
       {expenses.data && expenses.data.length > 0 && (
         <ExpenseTable rows={expenses.data} />
       )}
@@ -292,10 +289,10 @@ export function SubcontractSection({ projectId }: { projectId: string }) {
   const figures = usePackageFigures(projectId, auth.canSeeFinance)
   const fig = new Map(figures.data?.map((f) => [f.work_package_id, f]))
   return (
-    <Section title="Subcontract work" action={canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/new?project=${projectId}`}>New work package</ButtonLink>}>
+    <Section title={t('costLists.subcontractWork')} action={canManageSuppliers(auth) && <ButtonLink variant="secondary" to={`/work/new?project=${projectId}`}>{t('costLists.newWorkPackage')}</ButtonLink>}>
       {packages.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void packages.refetch()}>{packages.error && friendlyError(packages.error)}</ErrorBanner>
-      {packages.data?.length === 0 && <p className="text-sm text-subtle">No work given to subcontractors yet.</p>}
+      {packages.data?.length === 0 && <p className="text-sm text-subtle">{t('costLists.noWorkGivenTo')}</p>}
       <ul className="grid gap-3 lg:grid-cols-2">
         {packages.data?.map((w) => {
           const [label, tone] = PACKAGE_STATUS[w.status]
@@ -306,13 +303,13 @@ export function SubcontractSection({ projectId }: { projectId: string }) {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="font-semibold break-words text-ink">{w.scope}</div>
-                    <div className="text-sm text-subtle">{w.subcontractors?.name} · {Number(w.progress_pct)}% done</div>
+                    <div className="text-sm text-subtle">{t('costLists.nameValueDone', { name: w.subcontractors?.name, value: Number(w.progress_pct) })}</div>
                   </div>
                   <Badge tone={tone}>{label}</Badge>
                 </div>
                 {f && (
                   <div className="mt-2 text-sm">
-                    Approved {formatNPR(f.approved_paisa)}{f.agreed_value_paisa !== null && ` of ${formatNPR(f.agreed_value_paisa)}`} ·{' '}
+                    {t('costLists.approvedApproved', { approved: formatNPR(f.approved_paisa) })}{f.agreed_value_paisa !== null && ` of ${formatNPR(f.agreed_value_paisa)}`} ·{' '}
                     <BalanceText paisa={f.balance_paisa} />
                   </div>
                 )}

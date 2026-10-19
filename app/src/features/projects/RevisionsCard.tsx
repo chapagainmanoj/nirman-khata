@@ -46,7 +46,7 @@ export function RevisionsCard({ projectId, members, scrollTo }: { projectId: str
     })),
   ].sort((a, b) => b.effective_date.localeCompare(a.effective_date) || b.created_at.localeCompare(a.created_at))
 
-  const headingName = (id: string) => headings.data?.find((h) => h.id === id)?.name ?? 'Heading'
+  const headingName = (id: string) => headings.data?.find((h) => h.id === id)?.name ?? t('revisionsCard.heading')
 
   return (
     <div ref={box} className="scroll-mt-4">
@@ -55,8 +55,8 @@ export function RevisionsCard({ projectId, members, scrollTo }: { projectId: str
         className="lg:col-span-2"
         actions={auth.isAdmin && !form && (
           <div className="flex gap-1">
-            <Button variant="ghost" onClick={() => setForm('contract')}>Revise contract</Button>
-            <Button variant="ghost" onClick={() => setForm('budget')}>Revise budget</Button>
+            <Button variant="ghost" onClick={() => setForm('contract')}>{t('revisionsCard.reviseContract')}</Button>
+            <Button variant="ghost" onClick={() => setForm('budget')}>{t('revisionsCard.reviseBudget')}</Button>
           </div>
         )}
       >
@@ -68,10 +68,10 @@ export function RevisionsCard({ projectId, members, scrollTo }: { projectId: str
             <li key={r.id} className="border-b border-line py-3 last:border-0">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <Badge tone="neutral">{r.kind}</Badge>
+                  <Badge tone="neutral">{r.kind === 'Contract' ? t('revisionsCard.contract') : t('revisionsCard.budget')}</Badge>
                   <span className="font-semibold text-ink tabular-nums">{formatNPR(r.amount)}</span>
                 </div>
-                <span className="text-sm text-subtle">from <DateText value={r.effective_date} display={auth.dateDisplay} dual /></span>
+                <span className="text-sm text-subtle">{t('revisionsCard.from')}{' '}<DateText value={r.effective_date} display={auth.dateDisplay} dual /></span>
               </div>
               <div className="mt-1 break-words text-sm text-ink">{r.reason}</div>
               {r.lines && r.lines.length > 0 && (
@@ -79,7 +79,7 @@ export function RevisionsCard({ projectId, members, scrollTo }: { projectId: str
                   {r.lines.map((l) => <li key={l.heading_id}>{headingName(l.heading_id)}: {formatNPR(l.amount_paisa)}</li>)}
                 </ul>
               )}
-              <div className="mt-1 text-xs text-subtle">By {memberName(members, r.created_by)}</div>
+              <div className="mt-1 text-xs text-subtle">{t('revisionsCard.byMembers', { name: memberName(members, r.created_by) })}</div>
             </li>
           ))}
         </ul>
@@ -131,7 +131,7 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
       // Contract and budget feed both dashboards (to collect, budget used, over budget).
       await Promise.all(['dashboard', 'project-dashboard'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
       if (result && !result.lines_match_total) {
-        setWarning('Saved. Note: the heading budgets do not add up to the total budget.')
+        setWarning(t('revisionsCard.savedNoteTheHeading'))
         return
       }
       onDone()
@@ -141,8 +141,8 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
   function submit(e: FormEvent) {
     e.preventDefault()
     setError('')
-    if (totalPaisa === null || totalPaisa < 0) return setError('Enter a valid amount.')
-    if (!reason.trim()) return setError('Give a reason for the change.')
+    if (totalPaisa === null || totalPaisa < 0) return setError(t('revisionsCard.enterAValidAmount'))
+    if (!reason.trim()) return setError(t('revisionsCard.giveAReasonFor'))
     save.mutate()
   }
 
@@ -150,27 +150,27 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
     return (
       <div className="mb-4 flex flex-col gap-2">
         <Notice>{warning}</Notice>
-        <Button variant="secondary" onClick={onDone}>OK</Button>
+        <Button variant="secondary" onClick={onDone}>{t('revisionsCard.ok')}</Button>
       </div>
     )
   }
 
   return (
     <form onSubmit={submit} className="mb-4 flex flex-col gap-3 rounded-lg bg-muted p-3">
-      <div className="font-semibold text-ink">{kind === 'contract' ? 'New contract amount' : 'New spending budget'}</div>
+      <div className="font-semibold text-ink">{kind === 'contract' ? t('revisionsCard.newContractAmount') : t('revisionsCard.newSpendingBudget')}</div>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label={kind === 'contract' ? 'Contract amount' : 'Total budget'} htmlFor="rev-amount">
+        <Field label={kind === 'contract' ? t('revisionsCard.contractAmount') : t('revisionsCard.totalBudget')} htmlFor="rev-amount">
           <MoneyInput id="rev-amount" value={amount} onChange={(e) => setAmount(e.target.value)} />
         </Field>
-        <Field label="Effective from" htmlFor="rev-date">
+        <Field label={t('revisionsCard.effectiveFrom')} htmlFor="rev-date">
           <DateInput id="rev-date" value={date} onChange={setDate} display={auth.dateDisplay} allowFuture />
         </Field>
       </div>
-      <Field label="Reason" htmlFor="rev-reason" hint="e.g. Variation: extra floor approved by client">
+      <Field label={t('revisionsCard.reason')} htmlFor="rev-reason" hint={t('revisionsCard.eg.variationExtraFloor')}>
         <Input id="rev-reason" value={reason} onChange={(e) => setReason(e.target.value)} />
       </Field>
       {kind === 'budget' && (
-        <Checkbox label="Split by cost heading (optional)" checked={split} onChange={(e) => setSplit(e.target.checked)} />
+        <Checkbox label={t('revisionsCard.splitByCostHeading')} checked={split} onChange={(e) => setSplit(e.target.checked)} />
       )}
       {kind === 'budget' && split && (
         <div className="grid gap-2 sm:grid-cols-2">
@@ -180,8 +180,7 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
             </Field>
           ))}
           <div className={`text-sm sm:col-span-2 ${totalPaisa !== null && linesSum !== totalPaisa ? 'font-medium text-warn-ink' : 'text-subtle'}`}>
-            Headings total {formatNPR(linesSum)}
-            {totalPaisa !== null && linesSum !== totalPaisa && ` — differs from the total budget by ${formatNPR(totalPaisa - linesSum)}`}
+            {t('revisionsCard.headingsTotalLinessum', { linesSum: formatNPR(linesSum) })}{totalPaisa !== null && linesSum !== totalPaisa && t('revisionsCard.differsBy', { amount: formatNPR(totalPaisa - linesSum) })}
           </div>
         </div>
       )}

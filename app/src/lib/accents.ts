@@ -4,12 +4,12 @@
 // The default ("teal") matches the values in index.css, so nothing changes until one is chosen.
 
 export const ACCENTS = {
-  teal: { label: 'Teal', brand: '#2a6a6e', dark: '#1d4f52', soft: '#e3efef', tint: '#d3e6e6' },
-  ocean: { label: 'Ocean blue', brand: '#25609a', dark: '#1a4673', soft: '#e3edf7', tint: '#d0e1f1' },
-  indigo: { label: 'Indigo', brand: '#45509a', dark: '#323a75', soft: '#e8eaf6', tint: '#d8dcef' },
-  plum: { label: 'Plum', brand: '#7a3f78', dark: '#5c2e5a', soft: '#f3e8f2', tint: '#e8d6e6' },
-  pine: { label: 'Pine', brand: '#2f6650', dark: '#224b3b', soft: '#e3efe9', tint: '#d1e5db' },
-  charcoal: { label: 'Charcoal', brand: '#44403c', dark: '#292524', soft: '#eeecea', tint: '#e0dcd8' },
+  teal: { label: 'accent.teal', brand: '#2a6a6e', dark: '#1d4f52', soft: '#e3efef', tint: '#d3e6e6' },
+  ocean: { label: 'accent.ocean', brand: '#25609a', dark: '#1a4673', soft: '#e3edf7', tint: '#d0e1f1' },
+  indigo: { label: 'accent.indigo', brand: '#45509a', dark: '#323a75', soft: '#e8eaf6', tint: '#d8dcef' },
+  plum: { label: 'accent.plum', brand: '#7a3f78', dark: '#5c2e5a', soft: '#f3e8f2', tint: '#e8d6e6' },
+  pine: { label: 'accent.pine', brand: '#2f6650', dark: '#224b3b', soft: '#e3efe9', tint: '#d1e5db' },
+  charcoal: { label: 'accent.charcoal', brand: '#44403c', dark: '#292524', soft: '#eeecea', tint: '#e0dcd8' },
 } as const
 
 export type AccentKey = keyof typeof ACCENTS

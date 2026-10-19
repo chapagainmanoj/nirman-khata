@@ -6,8 +6,9 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { addDays, adToBs, todayKathmandu, type DateDisplay, type IsoDate } from '../lib/dates'
 import { monthDays, monthInRange, monthLabel, monthOf, shiftMonth, type MonthRef } from '../lib/months'
 import { ChevronLeftIcon, ChevronRightIcon } from './icons'
+import { t } from '../lib/i18n'
 
-const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEKDAYS = ['date.weekday.sun', 'date.weekday.mon', 'date.weekday.tue', 'date.weekday.wed', 'date.weekday.thu', 'date.weekday.fri', 'date.weekday.sat'] as const
 const weekday = (iso: IsoDate) => new Date(`${iso}T00:00:00Z`).getUTCDay()
 const dayNumber = (iso: IsoDate, display: DateDisplay) => (display === 'bs' ? adToBs(iso).day : Number(iso.slice(8, 10)))
 
@@ -63,21 +64,21 @@ export function MonthGrid({ month, onMonth, selected, onSelect, renderDay, dayLa
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
-        <button type="button" aria-label="Previous month" onClick={() => onMonth(shiftMonth(month, -1))}
+        <button type="button" aria-label={t('monthGrid.previousMonth')} onClick={() => onMonth(shiftMonth(month, -1))}
           disabled={!monthInRange(shiftMonth(month, -1))}
           className="inline-flex size-11 items-center justify-center rounded-lg text-subtle hover:bg-muted hover:text-ink disabled:opacity-30"><ChevronLeftIcon size={20} /></button>
         <div className="text-center">
           <div className="font-semibold text-ink" aria-live="polite">{monthLabel(month)}</div>
           <div className="text-xs text-subtle">{monthLabel(monthOf(days[0], other))} – {monthLabel(monthOf(days[days.length - 1], other))}</div>
         </div>
-        <button type="button" aria-label="Next month" onClick={() => onMonth(shiftMonth(month, 1))}
+        <button type="button" aria-label={t('monthGrid.nextMonth')} onClick={() => onMonth(shiftMonth(month, 1))}
           disabled={!monthInRange(shiftMonth(month, 1))}
           className="inline-flex size-11 items-center justify-center rounded-lg text-subtle hover:bg-muted hover:text-ink disabled:opacity-30"><ChevronRightIcon size={20} /></button>
       </div>
       <div ref={grid} role="group" aria-label={monthLabel(month)} className="grid grid-cols-7 gap-px overflow-hidden rounded-lg border border-line bg-line">
         <div aria-hidden className="contents">
-          {WEEKDAYS.map((w) => (
-            <div key={w} className={`bg-muted py-1 text-center text-xs font-medium ${w === 'Sat' ? 'text-danger' : 'text-subtle'}`}>{w}</div>
+          {WEEKDAYS.map((w, i) => (
+            <div key={w} className={`bg-muted py-1 text-center text-xs font-medium ${i === 6 ? 'text-danger' : 'text-subtle'}`}>{t(w)}</div>
           ))}
         </div>
         <div className="contents">

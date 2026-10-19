@@ -118,45 +118,44 @@ export function ExpenseNewPage() {
     const vals = getValues()
     const forCompany = vals.scope === 'company'
     const problem =
-      !forCompany && !vals.project_id ? 'Choose the project.'
-      : !(parseNPR(vals.amount) ?? 0) ? 'Enter the amount.'
-      : !vals.description.trim() ? 'Say what it was for, e.g. JCB 4 hours.'
-      : !forCompany && !vals.payee_name.trim() && !(mayPay && vals.pay_now) ? 'Choose or type who is owed it.'
-      : !headingId ? 'Choose a cost heading.'
-      : vals.expense_date > todayKathmandu() ? 'The date cannot be in the future.'
+      !forCompany && !vals.project_id ? t('expenseNew.chooseTheProject')
+      : !(parseNPR(vals.amount) ?? 0) ? t('expenseNew.enterTheAmount')
+      : !vals.description.trim() ? t('expenseNew.sayWhatItWas')
+      : !forCompany && !vals.payee_name.trim() && !(mayPay && vals.pay_now) ? t('expenseNew.chooseOrTypeWho')
+      : !headingId ? t('expenseNew.chooseACostHeading')
+      : vals.expense_date > todayKathmandu() ? t('expenseNew.theDateCannotBe')
       : ''
     setError(problem)
-    if (problem === 'Choose a cost heading.') revealField('ex-heading')
+    if (problem === t('expenseNew.chooseACostHeading')) revealField('ex-heading')
     if (!problem) save.mutate(vals)
   }
 
   if (saved) {
     return (
       <>
-        <PageHeader title={saved.company ? 'Company expense saved' : 'Other expense saved'}
+        <PageHeader title={saved.company ? t('expenseNew.companyExpenseSaved') : t('expenseNew.otherExpenseSaved')}
           crumbs={saved.company ? [{ to: '/expenses', label: t('nav.expenses') }] : projectCrumbs(projects.data, saved.project_id)} />
         <Card>
           <p className="text-sm">
-            {formatNPR(saved.amount)} for {v.description}.{' '}
-            {saved.company ? 'Kept as a company record; it is not a project cost.'
-              : saved.payment ? `Paid now (${saved.payment.number}).` : 'Not paid yet; it shows as owed to them.'}
+            {t('expenseNew.amountForDescriptionValue', { amount: formatNPR(saved.amount), description: v.description, value: ' ' })}{saved.company ? t('expenseNew.keptAsACompany')
+              : saved.payment ? t('expenseNew.paidNowNumber', { number: saved.payment.number }) : t('expenseNew.notPaidYetIt')}
           </p>
-          <div className="mt-3"><Attachments owner={{ expense_id: saved.expense_id }} canAdd label="Add receipt photo" /></div>
+          <div className="mt-3"><Attachments owner={{ expense_id: saved.expense_id }} canAdd label={t('expenseNew.addReceiptPhoto')} /></div>
         </Card>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => { form.reset({ ...fresh(), scope: saved.company ? 'company' : 'project', project_id: saved.project_id }); setSaved(null) }}>Enter another</Button>
+          <Button onClick={() => { form.reset({ ...fresh(), scope: saved.company ? 'company' : 'project', project_id: saved.project_id }); setSaved(null) }}>{t('expenseNew.enterAnother')}</Button>
           {saved.company
             ? <ButtonLink variant="secondary" to="/expenses">{t('nav.expenses')}</ButtonLink>
-            : <ButtonLink variant="secondary" to={`/projects/${saved.project_id}`}>Back to project</ButtonLink>}
+            : <ButtonLink variant="secondary" to={`/projects/${saved.project_id}`}>{t('expenseNew.backToProject')}</ButtonLink>}
         </div>
       </>
     )
   }
 
   const headingField = (
-    <Field label="Cost heading" htmlFor="ex-heading">
+    <Field label={t('expenseNew.costHeading')} htmlFor="ex-heading">
       <Select id="ex-heading" value={headingId} data-default={!v.heading_id} onChange={(e) => form.setValue('heading_id', e.target.value)}>
-        <option value="">Choose heading</option>
+        <option value="">{t('expenseNew.chooseHeading')}</option>
         {choices.map((h) => <option key={h.id} value={h.id}>{name(h)}</option>)}
       </Select>
     </Field>
@@ -164,9 +163,9 @@ export function ExpenseNewPage() {
 
   return (
     <>
-      <PageHeader title="Enter other expense" crumbs={company ? [{ to: '/expenses', label: t('nav.expenses') }] : projectCrumbs(projects.data, v.project_id)}
-        subtitle="Equipment hire, transport, fuel, khaja, permits, small purchases." />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored an other expense you had not saved. Check it was not already entered.</Notice></div>}
+      <PageHeader title={t('expenseNew.enterOtherExpense')} crumbs={company ? [{ to: '/expenses', label: t('nav.expenses') }] : projectCrumbs(projects.data, v.project_id)}
+        subtitle={t('expenseNew.equipmentHireTransportFuel')} />
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('expenseNew.restoredAnOtherExpense')}</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -184,28 +183,28 @@ export function ExpenseNewPage() {
               {company && <p className="mt-1 text-sm text-subtle">{t('expenses.for.companyHint')}</p>}
             </fieldset>
             {!company && (
-              <Field label="Project" htmlFor="ex-project">
+              <Field label={t('expenseNew.project')} htmlFor="ex-project">
                 <Select id="ex-project" value={watch('project_id')} onChange={(e) => form.setValue('project_id', e.target.value, { shouldDirty: true })}>
-                  <option value="">Choose project</option>
+                  <option value="">{t('common.project.choose')}</option>
                   {projectChoices(projects.data, 'money').map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
                 </Select>
               </Field>
             )}
-            <Field label="Amount" htmlFor="ex-amount">
+            <Field label={t('expenseNew.amount')} htmlFor="ex-amount">
               <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="ex-amount" value={field.value} onChange={field.onChange} />} />
             </Field>
-            <Field label="What for" htmlFor="ex-desc" hint="e.g. JCB 4 hours, diesel 20 L, khaja for crew">
+            <Field label={t('expenseNew.whatFor')} htmlFor="ex-desc" hint={t('expenseNew.eg.jcb4Hours')}>
               <Input id="ex-desc" {...register('description')} />
             </Field>
             {!foldHeading && headingField}
-            <Field label="Date" htmlFor="ex-date">
+            <Field label={t('expenseNew.date')} htmlFor="ex-date">
               <Controller control={control} name="expense_date" render={({ field }) => (
                 <DateInput id="ex-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
               )} />
             </Field>
             {!company && (
-              <Field label="Paid to" htmlFor="ex-payee"
-                hint={v.payee_name.trim() && !known ? 'New name; it will be added.' : payeeOptional ? t('expenses.payee.optional') : 'Pick from the list or type a new name'}>
+              <Field label={t('expenseNew.paidTo')} htmlFor="ex-payee"
+                hint={v.payee_name.trim() && !known ? t('expenseNew.newNameItWill') : payeeOptional ? t('expenses.payee.optional') : t('expenseNew.pickFromTheList')}>
                 <Input id="ex-payee" list={listId} autoComplete="off" {...register('payee_name')} />
                 <datalist id={listId}>
                   {payees.data?.filter((p) => p.active && !p.is_cash).map((p) => <option key={p.id} value={p.name}>{p.kind ?? ''}</option>)}
@@ -215,18 +214,18 @@ export function ExpenseNewPage() {
             <More className="sm:col-span-2" summary={[foldHeading && headingName, v.bill_no && `bill ${v.bill_no}`].filter(Boolean).join(', ') || undefined}>
               {foldHeading && headingField}
               {!company && v.payee_name.trim() && !known && (
-                <Field label="Type of service" htmlFor="ex-payee-kind" hint="Optional, e.g. JCB owner, tanker, transporter">
+                <Field label={t('expenseNew.typeOfService')} htmlFor="ex-payee-kind" hint={t('expenseNew.optionalEGJcb')}>
                   <Input id="ex-payee-kind" {...register('payee_kind')} />
                 </Field>
               )}
-              <Field label="Bill number" htmlFor="ex-bill" hint="Optional"><Input id="ex-bill" {...register('bill_no')} /></Field>
+              <Field label={t('expenseNew.billNumber')} htmlFor="ex-bill" hint={t('common.optional')}><Input id="ex-bill" {...register('bill_no')} /></Field>
             </More>
           </div>
         </Card>
 
         {company ? (
           <Card>
-            <Field label="How it was paid" htmlFor="ex-method">
+            <Field label={t('expenseNew.howItWasPaid')} htmlFor="ex-method">
               <Select id="ex-method" {...register('method')}>
                 {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
               </Select>
@@ -234,15 +233,15 @@ export function ExpenseNewPage() {
           </Card>
         ) : mayPay && (
           <Card>
-            <Checkbox label="Paid now" hint="Records the payment too. The cost is counted once." {...register('pay_now')} />
+            <Checkbox label={t('expenseNew.paidNow')} hint={t('expenseNew.recordsThePaymentToo')} {...register('pay_now')} />
             {v.pay_now && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Field label="How" htmlFor="ex-method">
+                <Field label={t('expenseNew.how')} htmlFor="ex-method">
                   <Select id="ex-method" {...register('method')}>
                     {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                   </Select>
                 </Field>
-                {v.method !== 'cash' && <Field label="Reference" htmlFor="ex-ref" hint="Optional"><Input id="ex-ref" {...register('reference')} /></Field>}
+                {v.method !== 'cash' && <Field label={t('expenseNew.reference')} htmlFor="ex-ref" hint={t('common.optional')}><Input id="ex-ref" {...register('reference')} /></Field>}
               </div>
             )}
           </Card>
@@ -250,8 +249,8 @@ export function ExpenseNewPage() {
 
         <ErrorBanner>{error || (save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
-          <Button type="submit" busy={save.isPending}>{company ? 'Save company expense' : 'Save other expense'}</Button>
-          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+          <Button type="submit" busy={save.isPending}>{company ? t('expenseNew.saveCompanyExpense') : t('expenseNew.saveOtherExpense')}</Button>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>{t('common.cancel')}</Button>
         </FormActions>
       </form>
     </>

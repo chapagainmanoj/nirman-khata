@@ -1,6 +1,8 @@
 // Money is integer paisa everywhere (design §4.1). Rs. 1,234.50 === 123450.
 // Never use floats for amounts; parse user input straight to paisa.
 
+import { t } from './i18n'
+
 const PAISA_PER_RUPEE = 100
 
 // Indian/Nepali digit grouping: 12,34,567
@@ -15,7 +17,7 @@ function groupLakh(rupees: bigint): string {
 /** "Rs. 12,34,567" or "Rs. 12,34,567.50". Negative: "-Rs. 500". */
 /** `whole`: rounded to the rupee (half up), for summaries where paisa are noise. */
 export function formatNPR(paisa: number | null | undefined, opts: { symbol?: boolean; whole?: boolean } = {}): string {
-  if (paisa === null || paisa === undefined) return 'Not available'
+  if (paisa === null || paisa === undefined) return t('common.notAvailable')
   assertPaisa(paisa)
   if (opts.whole) paisa = Math.sign(paisa) * Math.round(Math.abs(paisa) / 100) * 100
   const symbol = opts.symbol === false ? '' : 'Rs. '
@@ -29,7 +31,7 @@ export function formatNPR(paisa: number | null | undefined, opts: { symbol?: boo
 
 /** Short form for summaries: "45,000", "12.35 lakh", "1.2 crore". */
 export function formatNPRShort(paisa: number | null | undefined): string {
-  if (paisa === null || paisa === undefined) return 'Not available'
+  if (paisa === null || paisa === undefined) return t('common.notAvailable')
   assertPaisa(paisa)
   const rupees = Math.abs(paisa) / PAISA_PER_RUPEE
   const sign = paisa < 0 ? '-' : ''
@@ -106,7 +108,7 @@ export function splitProRata(totalPaisa: number, weights: number[]): number[] {
 
 /** Percentage with "Not available" for a missing or zero denominator (req §19). */
 export function percent(numerator: number, denominator: number | null | undefined): string {
-  if (!denominator) return 'Not available'
+  if (!denominator) return t('common.notAvailable')
   return `${((numerator / denominator) * 100).toFixed(1).replace(/\.0$/, '')}%`
 }
 

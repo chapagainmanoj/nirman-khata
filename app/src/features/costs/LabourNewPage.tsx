@@ -23,6 +23,7 @@ import { projectChoices, useWorkingOnDefault } from '../projects/current'
 import { rpc, useRefreshMoney } from '../supply/api'
 import { canRecordPayments } from '../supply/permissions'
 import { useCrews } from './api'
+import { t } from '../../lib/i18n'
 
 type Values = {
   id: string
@@ -64,7 +65,7 @@ export function LabourNewPage() {
 
   const fresh = (): Values => ({
     id: newId(), op_key: newId(), mode: 'day', project_id: params.get('project') ?? '', crew_id: params.get('crew') ?? '',
-    work_date: today, from_date: addDays(today, -6), to_date: today, work_type: 'Mixed', description: '',
+    work_date: today, from_date: addDays(today, -6), to_date: today, work_type: t('labourNew.mixed'), description: '',
     headcount: '', person_days: '', rate: '', amount: '', total: '', each: false, day_amounts: {},
     pay_now: mayPay, method: 'cash', reference: '',
   })
@@ -130,14 +131,14 @@ export function LabourNewPage() {
   function submit(confirm = false) {
     const vals = getValues()
     const problem =
-      !vals.project_id ? 'Choose the project.'
-      : !vals.crew_id ? 'Choose the crew.'
-      : vals.mode === 'day' && !(parseNPR(vals.amount) ?? 0) ? 'Enter the labour cost for the day.'
-      : vals.mode === 'day' && vals.work_date > today ? 'Labour cannot be entered for a future date.'
-      : vals.mode === 'week' && days.length === 0 ? 'The last day is before the first day.'
-      : vals.mode === 'week' && days.length > 31 ? 'Enter up to 31 days at a time.'
-      : vals.mode === 'week' && vals.to_date > today ? 'Labour cannot be entered for a future date.'
-      : vals.mode === 'week' && weekTotal <= 0 ? 'Enter the total for these days.'
+      !vals.project_id ? t('labourNew.chooseTheProject')
+      : !vals.crew_id ? t('labourNew.chooseTheCrew')
+      : vals.mode === 'day' && !(parseNPR(vals.amount) ?? 0) ? t('labourNew.enterTheLabourCost')
+      : vals.mode === 'day' && vals.work_date > today ? t('labourNew.labourCannotBeEntered')
+      : vals.mode === 'week' && days.length === 0 ? t('labourNew.theLastDayIs')
+      : vals.mode === 'week' && days.length > 31 ? t('labourNew.enterUpTo31')
+      : vals.mode === 'week' && vals.to_date > today ? t('labourNew.labourCannotBeEntered')
+      : vals.mode === 'week' && weekTotal <= 0 ? t('labourNew.enterTheTotalFor')
       : ''
     setError(problem)
     if (!problem) save.mutate({ vals, confirm })
@@ -146,21 +147,20 @@ export function LabourNewPage() {
   if (saved) {
     return (
       <>
-        <PageHeader title="Labour saved" crumbs={projectCrumbs(projects.data, v.project_id)} />
+        <PageHeader title={t('labourNew.labourSaved')} crumbs={projectCrumbs(projects.data, v.project_id)} />
         <Card>
           <p className="text-sm">
-            {saved.days === 1 ? 'One day' : `${saved.labour_cost_ids.length} days`} of labour, {formatNPR(saved.total_paisa)}.{' '}
-            {saved.payment ? `Paid now (${saved.payment.number}).` : 'Not paid yet; it shows as owed to the crew.'}
+            {saved.days === 1 ? t('labourNew.oneDay') : t('labourNew.lengthDays', { length: saved.labour_cost_ids.length })} {t('labourNew.ofLabourTotalValue', { total: formatNPR(saved.total_paisa), value: ' ' })}{saved.payment ? t('labourNew.paidNowNumber', { number: saved.payment.number }) : t('labourNew.notPaidYetIt')}
           </p>
           {saved.labour_cost_ids.length === 1 && (
             <div className="mt-3">
-              <Attachments owner={{ labour_cost_id: saved.labour_cost_ids[0] }} canAdd label="Add photo (attendance sheet, receipt)" />
+              <Attachments owner={{ labour_cost_id: saved.labour_cost_ids[0] }} canAdd label={t('labourNew.addPhotoAttendanceSheet')} />
             </div>
           )}
         </Card>
         <div className="mt-4 flex flex-wrap gap-2">
-          <Button onClick={() => { form.reset({ ...fresh(), project_id: v.project_id, crew_id: v.crew_id }); setSaved(null) }}>Enter more</Button>
-          {v.project_id && <ButtonLink variant="secondary" to={`/projects/${v.project_id}`}>Back to project</ButtonLink>}
+          <Button onClick={() => { form.reset({ ...fresh(), project_id: v.project_id, crew_id: v.crew_id }); setSaved(null) }}>{t('labourNew.enterMore')}</Button>
+          {v.project_id && <ButtonLink variant="secondary" to={`/projects/${v.project_id}`}>{t('labourNew.backToProject')}</ButtonLink>}
         </div>
       </>
     )
@@ -168,35 +168,35 @@ export function LabourNewPage() {
 
   return (
     <>
-      <PageHeader title="Enter labour" crumbs={projectCrumbs(projects.data, v.project_id)} subtitle="Daily cost for a crew. No worker names needed." />
-      {draft.restoredAt && <div className="mb-4"><Notice>Restored labour you had not saved. Check it was not already entered.</Notice></div>}
+      <PageHeader title={t('labourNew.enterLabour')} crumbs={projectCrumbs(projects.data, v.project_id)} subtitle={t('labourNew.dailyCostForA')} />
+      {draft.restoredAt && <div className="mb-4"><Notice>{t('labourNew.restoredLabourYouHad')}</Notice></div>}
       <form onSubmit={(e) => { e.preventDefault(); submit() }} className="flex flex-col gap-4">
         <Card>
           <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Project" htmlFor="lb-project">
+            <Field label={t('labourNew.project')} htmlFor="lb-project">
               <Select id="lb-project" value={watch('project_id')} onChange={(e) => form.setValue('project_id', e.target.value, { shouldDirty: true })}>
-                <option value="">Choose project</option>
+                <option value="">{t('common.project.choose')}</option>
                 {projectChoices(projects.data, 'money').map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
               </Select>
             </Field>
-            <Field label="Crew" htmlFor="lb-crew">
+            <Field label={t('labourNew.crew')} htmlFor="lb-crew">
               <Select id="lb-crew" value={watch('crew_id')} onChange={(e) => form.setValue('crew_id', e.target.value, { shouldDirty: true })}>
-                <option value="">Choose crew</option>
+                <option value="">{t('labourNew.chooseCrew')}</option>
                 {crewOptions.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </Select>
             </Field>
-            <Field label="Work" htmlFor="lb-type">
+            <Field label={t('labourNew.work')} htmlFor="lb-type">
               <Select id="lb-type" {...register('work_type')}>
                 {WORK_TYPES.map((w) => <option key={w} value={w}>{w}</option>)}
               </Select>
             </Field>
-            <Field label="What was done" htmlFor="lb-desc" hint="Optional, e.g. slab casting, brick work"><Input id="lb-desc" {...register('description')} /></Field>
+            <Field label={t('labourNew.whatWasDone')} htmlFor="lb-desc" hint={t('labourNew.optionalEGSlab')}><Input id="lb-desc" {...register('description')} /></Field>
           </div>
         </Card>
 
         <Card>
-          <div className="mb-3 flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="One day or several days">
-            {([['day', 'One day'], ['week', 'Several days']] as const).map(([k, label]) => (
+          <div className="mb-3 flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label={t('labourNew.oneDayOrSeveral')}>
+            {([['day', t('labourNew.oneDay')], ['week', t('labourNew.severalDays')]] as const).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={v.mode === k} onClick={() => setValue('mode', k)}
                 className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${v.mode === k ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>
                 {label}
@@ -205,22 +205,22 @@ export function LabourNewPage() {
           </div>
           {v.mode === 'day' ? (
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Work date" htmlFor="lb-date">
+              <Field label={t('labourNew.workDate')} htmlFor="lb-date">
                 <Controller control={control} name="work_date" render={({ field }) => (
                   <DateInput id="lb-date" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
                 )} />
               </Field>
-              <Field label="Labour cost for the day" htmlFor="lb-amount">
+              <Field label={t('labourNew.labourCostForThe')} htmlFor="lb-amount">
                 <Controller control={control} name="amount" render={({ field }) => <MoneyInput id="lb-amount" value={field.value} onChange={field.onChange} />} />
               </Field>
-              <Field label="People" htmlFor="lb-head" hint="Optional"><Input id="lb-head" inputMode="numeric" {...register('headcount')} /></Field>
+              <Field label={t('labourNew.people')} htmlFor="lb-head" hint={t('common.optional')}><Input id="lb-head" inputMode="numeric" {...register('headcount')} /></Field>
               <div className="sm:col-span-2">
-                <MoreDetails summary="Person-days and rate, to work out the cost" open={!!(v.person_days || v.rate)}>
+                <MoreDetails summary={t('labourNew.personDaysAndRate')} open={!!(v.person_days || v.rate)}>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Person-days" htmlFor="lb-pd" hint="e.g. 6.5">
+                    <Field label={t('labourNew.personDays')} htmlFor="lb-pd" hint={t('labourNew.eg.65')}>
                       <Input id="lb-pd" inputMode="decimal" {...register('person_days', { onChange: (e) => recalc(e.target.value, getValues('rate')) })} />
                     </Field>
-                    <Field label="Rate per day" htmlFor="lb-rate">
+                    <Field label={t('labourNew.ratePerDay')} htmlFor="lb-rate">
                       <Controller control={control} name="rate" render={({ field }) => (
                         <MoneyInput id="lb-rate" value={field.value} onChange={(e) => { field.onChange(e); recalc(getValues('person_days'), e.target.value) }} />
                       )} />
@@ -232,25 +232,25 @@ export function LabourNewPage() {
           ) : (
             <>
               <div className="grid gap-3 sm:grid-cols-2">
-                <Field label="First day" htmlFor="lb-from">
+                <Field label={t('labourNew.firstDay')} htmlFor="lb-from">
                   <Controller control={control} name="from_date" render={({ field }) => (
                     <DateInput id="lb-from" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
                   )} />
                 </Field>
-                <Field label="Last day" htmlFor="lb-to">
+                <Field label={t('labourNew.lastDay')} htmlFor="lb-to">
                   <Controller control={control} name="to_date" render={({ field }) => (
                     <DateInput id="lb-to" value={field.value} onChange={field.onChange} display={auth.dateDisplay} />
                   )} />
                 </Field>
-                <Field label="People each day" htmlFor="lb-head-w" hint="Optional"><Input id="lb-head-w" inputMode="numeric" {...register('headcount')} /></Field>
+                <Field label={t('labourNew.peopleEachDay')} htmlFor="lb-head-w" hint={t('common.optional')}><Input id="lb-head-w" inputMode="numeric" {...register('headcount')} /></Field>
                 {!v.each && (
-                  <Field label="Total for these days" htmlFor="lb-total" hint="Split equally over the days">
+                  <Field label={t('labourNew.totalForTheseDays')} htmlFor="lb-total" hint={t('labourNew.splitEquallyOverThe')}>
                     <Controller control={control} name="total" render={({ field }) => <MoneyInput id="lb-total" value={field.value} onChange={field.onChange} />} />
                   </Field>
                 )}
               </div>
               <div className="mt-3">
-                <Checkbox label="Different amount on some days" hint="e.g. a day off or a half day" checked={v.each}
+                <Checkbox label={t('labourNew.differentAmountOnSome')} hint={t('labourNew.eg.aDayOff')} checked={v.each}
                   onChange={(e) => {
                     if (e.target.checked) setValue('day_amounts', Object.fromEntries(days.map((d, i) => [d, paisaToInput(split[i])])))
                     setValue('each', e.target.checked)
@@ -263,7 +263,7 @@ export function LabourNewPage() {
                       <span><DateText value={d} display={auth.dateDisplay} /></span>
                       {v.each ? (
                         <span className="w-36">
-                          <MoneyInput aria-label={`Amount on ${d}`} value={v.day_amounts[d] ?? ''}
+                          <MoneyInput aria-label={t('labourNew.amountOnD', { d })} value={v.day_amounts[d] ?? ''}
                             onChange={(e) => setValue('day_amounts', { ...getValues('day_amounts'), [d]: e.target.value })} />
                         </span>
                       ) : (
@@ -274,23 +274,22 @@ export function LabourNewPage() {
                 </ul>
               )}
               <p className="mt-2 text-sm text-subtle">
-                {days.length} day{days.length === 1 ? '' : 's'}, {formatNPR(weekTotal)} in all. Each day is saved on its own date.
-              </p>
+                {t('labourNew.lengthDay', { length: days.length })}{days.length === 1 ? '' : 's'}{t('labourNew.weektotalInAllEach', { weekTotal: formatNPR(weekTotal) })}</p>
             </>
           )}
         </Card>
 
         {mayPay && (
           <Card>
-            <Checkbox label="Paid now" hint="Records the payment too. The cost is counted once." {...register('pay_now')} />
+            <Checkbox label={t('labourNew.paidNow')} hint={t('labourNew.recordsThePaymentToo')} {...register('pay_now')} />
             {v.pay_now && (
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                <Field label="How" htmlFor="lb-method">
+                <Field label={t('labourNew.how')} htmlFor="lb-method">
                   <Select id="lb-method" {...register('method')}>
                     {Object.entries(PAYMENT_METHODS).map(([k, label]) => <option key={k} value={k}>{label}</option>)}
                   </Select>
                 </Field>
-                {v.method !== 'cash' && <Field label="Reference" htmlFor="lb-ref" hint="Optional"><Input id="lb-ref" {...register('reference')} /></Field>}
+                {v.method !== 'cash' && <Field label={t('labourNew.reference')} htmlFor="lb-ref" hint={t('common.optional')}><Input id="lb-ref" {...register('reference')} /></Field>}
               </div>
             )}
           </Card>
@@ -298,17 +297,17 @@ export function LabourNewPage() {
 
         {duplicate && (
           <Notice>
-            <span className="block">{duplicate.charAt(0).toUpperCase() + duplicate.slice(1)}. Is this a second entry for the same day?</span>
+            <span className="block">{t('labourNew.valueIsThisA', { value: duplicate.charAt(0).toUpperCase() + duplicate.slice(1) })}</span>
             <span className="mt-2 flex flex-wrap gap-2">
-              <Button type="button" busy={save.isPending} onClick={() => submit(true)}>Yes, save it too</Button>
-              <Button type="button" variant="secondary" onClick={() => setDuplicate('')}>No, check first</Button>
+              <Button type="button" busy={save.isPending} onClick={() => submit(true)}>{t('labourNew.yesSaveItToo')}</Button>
+              <Button type="button" variant="secondary" onClick={() => setDuplicate('')}>{t('labourNew.noCheckFirst')}</Button>
             </span>
           </Notice>
         )}
         <ErrorBanner>{error || (!duplicate && save.error && friendlyError(save.error))}</ErrorBanner>
         <FormActions>
-          <Button type="submit" busy={save.isPending}>Save labour</Button>
-          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>Cancel</Button>
+          <Button type="submit" busy={save.isPending}>{t('labourNew.saveLabour')}</Button>
+          <Button type="button" variant="ghost" onClick={async () => { await draft.clear(); navigate(-1) }}>{t('common.cancel')}</Button>
         </FormActions>
       </form>
     </>

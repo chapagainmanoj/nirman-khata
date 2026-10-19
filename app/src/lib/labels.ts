@@ -1,23 +1,24 @@
 import type { Database } from './database.types'
+import { type MessageKey, t, translated } from './i18n'
 import type { AppRole, ProjectStatus } from './supabase'
 
-export const ROLE_LABELS: Record<AppRole, string> = {
-  admin: 'Owner / Admin',
-  project_manager: 'Project Manager / Engineer',
-  site_staff: 'Site Staff / Supervisor',
-  accounts: 'Accounts',
-  viewer: 'Viewer',
-}
+export const ROLE_LABELS: Record<AppRole, string> = translated({
+  admin: 'label.role.admin',
+  project_manager: 'label.role.project_manager',
+  site_staff: 'label.role.site_staff',
+  accounts: 'label.role.accounts',
+  viewer: 'label.role.viewer',
+})
 
 // Planned is retired (new projects start Active); its label stays for old audit rows.
-export const STATUS_LABELS: Record<ProjectStatus, string> = {
-  planned: 'Planned',
-  active: 'Active',
-  on_hold: 'On Hold',
-  completed: 'Completed',
-  closed: 'Books closed',
-  cancelled: 'Cancelled',
-}
+export const STATUS_LABELS: Record<ProjectStatus, string> = translated({
+  planned: 'label.status.planned',
+  active: 'label.status.active',
+  on_hold: 'label.status.on_hold',
+  completed: 'label.status.completed',
+  closed: 'label.status.closed',
+  cancelled: 'label.status.cancelled',
+})
 
 /**
  * The statuses a person picks (GLOSSARY: Project status). Books closed and Cancelled are set by
@@ -43,74 +44,83 @@ type PackageStatus = Database['public']['Enums']['package_status']
 type ChargeStatus = Database['public']['Enums']['charge_status']
 type ClientReceiptKind = Database['public']['Enums']['client_receipt_kind']
 
-export const SLIP_STATUS: Record<SlipStatus, [string, Tone]> = {
-  draft: ['Draft', 'neutral'],
-  pending: ['Pending approval', 'warn'],
-  approved: ['Approved', 'good'],
-  rejected: ['Rejected', 'bad'],
-  cancelled: ['Cancelled', 'neutral'],
+/** Like translated(), for [label, tone] pairs: the label is read through t() each time. */
+function withTone<K extends string>(pairs: Record<K, [MessageKey, Tone]>): Record<K, [string, Tone]> {
+  const out = {} as Record<K, [string, Tone]>
+  for (const k of Object.keys(pairs) as K[]) {
+    Object.defineProperty(out, k, { get: () => [t(pairs[k][0]), pairs[k][1]], enumerable: true })
+  }
+  return out
 }
 
-export const FULFILMENT: Record<string, [string, Tone]> = {
-  not_received: ['Not received', 'neutral'],
-  partially_received: ['Partly received', 'warn'],
-  fully_received: ['Fully received', 'good'],
-  closed_short: ['Closed short', 'neutral'],
-}
+export const SLIP_STATUS: Record<SlipStatus, [string, Tone]> = withTone({
+  draft: ['label.slip.draft', 'neutral'],
+  pending: ['label.slip.pending', 'warn'],
+  approved: ['label.slip.approved', 'good'],
+  rejected: ['label.slip.rejected', 'bad'],
+  cancelled: ['label.slip.cancelled', 'neutral'],
+})
+
+export const FULFILMENT: Record<string, [string, Tone]> = withTone({
+  not_received: ['label.fulfilment.not_received', 'neutral'],
+  partially_received: ['label.fulfilment.partially_received', 'warn'],
+  fully_received: ['label.fulfilment.fully_received', 'good'],
+  closed_short: ['label.fulfilment.closed_short', 'neutral'],
+})
 
 /** A bill photographed but not typed yet has no number. */
-export const billTitle = (billNo: string | null | undefined) => (billNo ? `Bill ${billNo}` : 'Bill (not typed yet)')
+export const billTitle = (billNo: string | null | undefined) => (billNo ? t('label.billNo', { billNo }) : t('label.billNotTyped'))
 
-export const BILL_STATUS: Record<BillStatus, [string, Tone]> = {
-  draft: ['Draft', 'neutral'],
-  under_review: ['Under review', 'warn'],
-  posted: ['Posted', 'good'],
-  reversed: ['Reversed', 'bad'],
-}
+export const BILL_STATUS: Record<BillStatus, [string, Tone]> = withTone({
+  draft: ['label.bill.draft', 'neutral'],
+  under_review: ['label.bill.under_review', 'warn'],
+  posted: ['label.bill.posted', 'good'],
+  reversed: ['label.bill.reversed', 'bad'],
+})
 
-export const PAYMENT_METHODS: Record<PaymentMethod, string> = {
-  cash: 'Cash',
-  bank_transfer: 'Bank transfer',
-  cheque: 'Cheque',
-  wallet: 'eSewa / Khalti / wallet',
-  other: 'Other',
-}
+export const PAYMENT_METHODS: Record<PaymentMethod, string> = translated({
+  cash: 'label.method.cash',
+  bank_transfer: 'label.method.bank_transfer',
+  cheque: 'label.method.cheque',
+  wallet: 'label.method.wallet',
+  other: 'label.method.other',
+})
 
 /** What a client payment was for. Kept short: no running-bill documents yet, just the reason. */
-export const CLIENT_RECEIPT_KINDS: Record<ClientReceiptKind, string> = {
-  advance: 'Advance (mobilization)',
-  running_bill: 'Running bill',
-  final: 'Final payment',
-  other: 'Other',
-}
+export const CLIENT_RECEIPT_KINDS: Record<ClientReceiptKind, string> = translated({
+  advance: 'label.receiptKind.advance',
+  running_bill: 'label.receiptKind.running_bill',
+  final: 'label.receiptKind.final',
+  other: 'label.receiptKind.other',
+})
 
-export const DELIVERY_ISSUES: Record<DeliveryIssue, string> = {
-  shortage: 'Shortage',
-  damage: 'Damaged',
-  rejected: 'Rejected at site',
-  spec_difference: 'Different spec',
-  other: 'Other',
-}
+export const DELIVERY_ISSUES: Record<DeliveryIssue, string> = translated({
+  shortage: 'label.issue.shortage',
+  damage: 'label.issue.damage',
+  rejected: 'label.issue.rejected',
+  spec_difference: 'label.issue.spec_difference',
+  other: 'label.issue.other',
+})
 
 /** Settlement state of a posted bill (derived, req §12.2). */
 export function settlementLabel(outstanding: number, settled: number): [string, Tone] {
-  if (outstanding <= 0) return ['Paid', 'good']
-  if (settled > 0) return ['Part paid', 'warn']
-  return ['Unpaid', 'bad']
+  if (outstanding <= 0) return [t('label.settle.paid'), 'good']
+  if (settled > 0) return [t('label.settle.partPaid'), 'warn']
+  return [t('label.settle.unpaid'), 'bad']
 }
 
-export const PACKAGE_STATUS: Record<PackageStatus, [string, Tone]> = {
-  active: ['Active', 'info'],
-  completed: ['Completed', 'good'],
-  cancelled: ['Cancelled', 'neutral'],
-}
+export const PACKAGE_STATUS: Record<PackageStatus, [string, Tone]> = withTone({
+  active: ['label.package.active', 'info'],
+  completed: ['label.package.completed', 'good'],
+  cancelled: ['label.package.cancelled', 'neutral'],
+})
 
-export const CHARGE_STATUS: Record<ChargeStatus, [string, Tone]> = {
-  draft: ['Waiting for approval', 'warn'],
-  approved: ['Approved', 'good'],
-  rejected: ['Rejected', 'neutral'],
-  reversed: ['Reversed', 'bad'],
-}
+export const CHARGE_STATUS: Record<ChargeStatus, [string, Tone]> = withTone({
+  draft: ['label.charge.draft', 'warn'],
+  approved: ['label.charge.approved', 'good'],
+  rejected: ['label.charge.rejected', 'neutral'],
+  reversed: ['label.charge.reversed', 'bad'],
+})
 
 /** Common crew work types (req §14); free text is allowed too. */
 export const WORK_TYPES = ['Dakarmi', 'Jyami', 'Mixed']

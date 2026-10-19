@@ -1,6 +1,7 @@
 import { lazy, type ComponentType } from 'react'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 import { Layout } from './components/Layout'
+import { PageBoundary } from './components/PageBoundary'
 import { LoginPage } from './features/auth/LoginPage'
 import { EMAIL_RESET, ForgotPasswordPage, ResetPasswordPage } from './features/auth/PasswordResetPages'
 import { RegisterPage } from './features/auth/RegisterPage'
@@ -66,6 +67,8 @@ const PlatformPage = page(() => import('./features/platform/PlatformPage'), 'Pla
 export function App() {
   return (
     <BrowserRouter>
+      {/* Screens outside the frame (sign-in, /platform); inside it Layout keeps the menu on screen. */}
+      <PageBoundary>
       <Routes>
         <Route path="/login" element={<RedirectIfSignedIn><LoginPage /></RedirectIfSignedIn>} />
         <Route path="/register" element={<RedirectIfSignedIn><RegisterPage /></RedirectIfSignedIn>} />
@@ -141,6 +144,7 @@ export function App() {
         </Route>
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </PageBoundary>
     </BrowserRouter>
   )
 }

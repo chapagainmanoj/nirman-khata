@@ -16,6 +16,7 @@ import { memberName, useMembers } from '../projects/api'
 import { rpc, usePosting } from '../supply/api'
 import { canPost, canRecordPayments } from '../supply/permissions'
 import { useRefreshClientMoney } from './api'
+import { t } from '../../lib/i18n'
 
 export function ClientReceiptDetailPage() {
   const { receiptId = '' } = useParams()
@@ -42,57 +43,55 @@ export function ClientReceiptDetailPage() {
   if (receipt.isPending) return <Spinner />
   if (receipt.error) return <ErrorBanner onRetry={() => void receipt.refetch()}>{friendlyError(receipt.error)}</ErrorBanner>
   const r = receipt.data
-  if (!r) return <EmptyState title="Payment not found">It does not exist, or it is for a project you cannot see.</EmptyState>
+  if (!r) return <EmptyState title={t('clientReceiptDetail.paymentNotFound')}>{t('clientReceiptDetail.itDoesNotExist')}</EmptyState>
   const project = r.projects
   const reversal = r.client_receipt_reversals
 
   return (
     <>
       <PageHeader
-        title={`Client payment ${r.number}`}
-        crumbs={project ? [{ to: '/projects', label: 'Projects' }, { to: `/projects/${project.id}?tab=client`, label: project.name }] : []}
+        title={t('clientReceiptDetail.clientPaymentNumber', { number: r.number })}
+        crumbs={project ? [{ to: '/projects', label: t('clientReceiptDetail.projects') }, { to: `/projects/${project.id}?tab=client`, label: project.name }] : []}
         subtitle={
           <span className="flex flex-wrap items-center gap-2">
-            Received{project?.client_name ? ` from ${project.client_name}` : ' from the client'}
-            {r.status === 'reversed' && <Badge tone="bad">Reversed</Badge>}
+            {project?.client_name ? t('clientReceiptDetail.receivedFrom', { name: project.client_name }) : t('clientReceiptDetail.receivedFromClient')}
+            {r.status === 'reversed' && <Badge tone="bad">{t('clientReceiptDetail.reversed')}</Badge>}
           </span>
         }
       />
       {photoFailed > 0 && (
-        <div className="mb-4"><Notice>The payment is saved, but {photoFailed === 1 ? 'a photo' : `${photoFailed} photos`} did not upload. {photoFailed === 1 ? 'It is' : 'They are'} kept on this phone; upload {photoFailed === 1 ? 'it' : 'them'} again below.</Notice></div>
+        <div className="mb-4"><Notice>{t('clientReceiptDetail.thePaymentIsSaved')}{' '}{photoFailed === 1 ? 'a photo' : t('clientReceiptDetail.photofailedPhotos', { photoFailed })} {t('clientReceiptDetail.didNotUpload')}{' '}{photoFailed === 1 ? t('clientReceiptDetail.itIs') : t('clientReceiptDetail.theyAre')} {t('clientReceiptDetail.keptOnThisPhone')}{' '}{photoFailed === 1 ? 'it' : 'them'} {t('clientReceiptDetail.againBelow')}</Notice></div>
       )}
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Card title="Payment">
+        <Card title={t('clientReceiptDetail.payment')}>
           <div className="mb-2 text-lg font-semibold text-ink tabular-nums">{formatNPR(r.amount_paisa)}</div>
-          <Detail label="Received on"><DateText value={r.receipt_date} display={auth.dateDisplay} dual /></Detail>
-          <Detail label="Project">
+          <Detail label={t('clientReceiptDetail.receivedOn')}><DateText value={r.receipt_date} display={auth.dateDisplay} dual /></Detail>
+          <Detail label={t('clientReceiptDetail.project')}>
             {project && <Link className="text-brand" to={`/projects/${project.id}?tab=client`}>{project.code} · {project.name}</Link>}
           </Detail>
-          <Detail label="For">{CLIENT_RECEIPT_KINDS[r.kind]}</Detail>
-          <Detail label="How">{PAYMENT_METHODS[r.method]}</Detail>
-          <Detail label="Reference">{r.reference}</Detail>
-          <Detail label="Recorded by">{memberName(members.data, r.created_by)}</Detail>
-          <Detail label="Notes">{r.notes}</Detail>
+          <Detail label={t('clientReceiptDetail.for')}>{CLIENT_RECEIPT_KINDS[r.kind]}</Detail>
+          <Detail label={t('clientReceiptDetail.how')}>{PAYMENT_METHODS[r.method]}</Detail>
+          <Detail label={t('clientReceiptDetail.reference')}>{r.reference}</Detail>
+          <Detail label={t('clientReceiptDetail.recordedBy')}>{memberName(members.data, r.created_by)}</Detail>
+          <Detail label={t('clientReceiptDetail.notes')}>{r.notes}</Detail>
           {reversal && (
-            <Detail label="Reversed on"><DateText value={reversal.reversal_date} display={auth.dateDisplay} /> · {reversal.reason}</Detail>
+            <Detail label={t('clientReceiptDetail.reversedOn')}><DateText value={reversal.reversal_date} display={auth.dateDisplay} /> · {reversal.reason}</Detail>
           )}
         </Card>
-        <Card title="Cheque or voucher">
+        <Card title={t('clientReceiptDetail.chequeOrVoucher')}>
           <Attachments owner={{ client_receipt_id: r.id }} canAdd={r.status === 'posted' && canRecordPayments(auth)}
-            label="Add cheque or voucher photo" />
+            label={t('clientReceiptDetail.addChequeOrVoucher')} />
           <p className="mt-3 text-sm text-subtle">
-            This counts toward what the client has paid on the contract. It does not change your costs or what you owe anyone.
-          </p>
+            {t('clientReceiptDetail.thisCountsTowardWhat')}</p>
         </Card>
       </div>
       {r.status === 'posted' && canPost(auth) && (
         <div className="mt-6">
-          <ReasonButton variant="danger" title="Reverse this payment" hint="e.g. The cheque bounced, or the amount was typed wrong."
-            confirmLabel="Reverse payment" busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
-            withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: 'Reversal date' }}
+          <ReasonButton variant="danger" title={t('clientReceiptDetail.reverseThisPayment')} hint={t('clientReceiptDetail.eg.theChequeBounced')}
+            confirmLabel={t('clientReceiptDetail.reversePayment')} busy={reverse.isPending} error={reverse.error && friendlyError(reverse.error)}
+            withDate={{ value: todayKathmandu(), display: auth.dateDisplay, label: t('clientReceiptDetail.reversalDate') }}
             onConfirm={(reason, date) => reverse.mutate({ reason, date })}>
-            Reverse payment
-          </ReasonButton>
+            {t('clientReceiptDetail.reversePayment')}</ReasonButton>
         </div>
       )}
     </>

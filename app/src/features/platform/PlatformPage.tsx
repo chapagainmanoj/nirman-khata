@@ -27,7 +27,7 @@ function ago(ts: string | null): string {
   const days = Math.floor((Date.now() - new Date(ts).getTime()) / 86_400_000)
   if (days <= 0) return 'today'
   if (days === 1) return 'yesterday'
-  if (days < 60) return `${days} days ago`
+  if (days < 60) return t('platform.daysDaysAgo', { days })
   return new Date(ts).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
@@ -92,22 +92,21 @@ function Companies() {
   const [open, setOpen] = useState<string | null>(null)
 
   return (
-    <Card title={usage.total == null ? 'Companies' : `Companies (${usage.total})`}>
+    <Card title={usage.total == null ? t('platform.companies') : t('platform.companiesTotal', { total: usage.total })}>
       <p className="mb-3 text-sm text-subtle">
-        Most recently active first. “Changes” counts entries people saved (bills, payments, attendance, edits); opening a page is not counted.
-      </p>
+        {t('platform.mostRecentlyActiveFirst')}</p>
       <div className="mb-3 max-w-sm">
-        <Field label="Search" htmlFor="company-search" hint="Company, owner, mobile number or email">
+        <Field label={t('platform.search')} htmlFor="company-search" hint={t('platform.companyOwnerMobileNumber')}>
           <Input id="company-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} autoComplete="off" />
         </Field>
       </div>
       {usage.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void usage.refetch()}>{usage.error && friendlyError(usage.error)}</ErrorBanner>
-      {usage.data?.length === 0 && <EmptyState title={settled ? 'No company matches' : 'No companies yet'} />}
+      {usage.data?.length === 0 && <EmptyState title={settled ? t('platform.noCompanyMatches') : t('platform.noCompaniesYet')} />}
       {!!usage.data?.length && (
         <Table head={<>
-          <Th>Company</Th><Th>Last activity</Th><Th right>Changes, 7 days</Th><Th right>Changes, 30 days</Th>
-          <Th right>Users</Th><Th right>Projects</Th><Th>Registered</Th>
+          <Th>{t('platform.company')}</Th><Th>{t('platform.lastActivity')}</Th><Th right>{t('platform.changes7Days')}</Th><Th right>{t('platform.changes30Days')}</Th>
+          <Th right>{t('platform.users')}</Th><Th right>{t('platform.projects')}</Th><Th>{t('platform.registered')}</Th>
         </>}>
           {usage.data.map((c) => (
             <Fragment key={c.company_id}>
@@ -119,8 +118,8 @@ function Companies() {
                     className="text-left font-medium text-ink underline underline-offset-2 after:absolute after:inset-0">
                     {c.name}
                   </button>
-                  {c.changes_30d === 0 && <> <Badge tone="warn">Idle</Badge></>}
-                  <div className="text-xs text-subtle">{c.owner_name || 'Owner'} · <span className="whitespace-nowrap">{showLogin(c.owner_login)}</span></div>
+                  {c.changes_30d === 0 && <> <Badge tone="warn">{t('platform.idle')}</Badge></>}
+                  <div className="text-xs text-subtle">{c.owner_name || t('platform.owner')} · <span className="whitespace-nowrap">{showLogin(c.owner_login)}</span></div>
                 </td>
                 <td className={`${td} whitespace-nowrap`}>{ago(c.last_activity)}</td>
                 <td className={num}>{c.changes_7d}</td>
@@ -148,14 +147,14 @@ function CompanyUsers({ companyId }: { companyId: string }) {
   return (
     <table className="w-full text-sm">
       <thead className="text-left text-xs text-subtle">
-        <tr><Th>User</Th><Th>Role</Th><Th>Last change</Th><Th right>Changes, 30 days</Th><Th>Signed in</Th></tr>
+        <tr><Th>{t('platform.user')}</Th><Th>{t('platform.role')}</Th><Th>{t('platform.lastChange')}</Th><Th right>{t('platform.changes30Days')}</Th><Th>{t('platform.signedIn')}</Th></tr>
       </thead>
       <tbody className="divide-y divide-line">
         {users.data.map((u) => (
           <tr key={u.user_id}>
             <td className={td}>
               <span className="font-medium text-ink">{u.full_name || showLogin(u.login)}</span>
-              {!u.active && <> <Badge>Inactive</Badge></>}
+              {!u.active && <> <Badge>{t('platform.inactive')}</Badge></>}
               <div className="text-xs whitespace-nowrap text-subtle">{showLogin(u.login)}</div>
             </td>
             <td className={td}>{u.roles.map((r) => ROLE_LABELS[r]).join(', ')}</td>
@@ -188,7 +187,7 @@ function AllowList() {
     if (!id) return
     approve.mutate({ login_email: id.email, note: note.trim() || null }, {
       onSuccess: () => {
-        setAdded(`${showLogin(id.email)} can now register.`)
+        setAdded(t('platform.emailCanNowRegister', { email: showLogin(id.email) }))
         setLogin('')
         setNote('')
       },
@@ -197,43 +196,41 @@ function AllowList() {
 
   return (
     <Card
-      title="Who can register"
+      title={t('platform.whoCanRegister')}
       actions={approval.data !== undefined && (
-        <Badge tone={approval.data ? 'good' : 'warn'}>{approval.data ? 'Approval required' : 'Approval off (anyone can register)'}</Badge>
+        <Badge tone={approval.data ? 'good' : 'warn'}>{approval.data ? t('platform.approvalRequired') : t('platform.approvalOffAnyoneCan')}</Badge>
       )}>
       <p className="mb-3 text-sm text-subtle">
         {approval.data === false
-          ? 'Approval is off here, so anyone can register. Where it is on (the live app), only an approved mobile number or email can register a new company.'
-          : 'A new company can only be registered from an approved mobile number or email.'}
-        {' '}Each approval works once. Staff that a company adds never need approval.
-      </p>
+          ? t('platform.approvalIsOffHere')
+          : t('platform.aNewCompanyCan')}
+        {t('platform.valueEachApprovalWorks', { value: ' ' })}</p>
       <form onSubmit={submit} className="grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end" noValidate>
-        <Field label={t('auth.loginId')} htmlFor="approve-login" error={invalid ? 'Enter a valid Nepali mobile number (98XXXXXXXX) or email' : undefined}>
+        <Field label={t('auth.loginId')} htmlFor="approve-login" error={invalid ? t('platform.enterAValidNepali') : undefined}>
           <Input id="approve-login" value={login} onChange={(e) => setLogin(e.target.value)} autoComplete="off" inputMode="email" />
         </Field>
-        <Field label="Note (optional)" htmlFor="approve-note">
-          <Input id="approve-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder="Who is this?" />
+        <Field label={t('platform.noteOptional')} htmlFor="approve-note">
+          <Input id="approve-note" value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('platform.whoIsThis')} />
         </Field>
-        <Button type="submit" busy={approve.isPending}>Approve</Button>
+        <Button type="submit" busy={approve.isPending}>{t('platform.approve')}</Button>
       </form>
       <ErrorBanner>{approve.error && friendlyError(approve.error)}</ErrorBanner>
       <Status className="mt-2 text-sm text-good-ink">{added}</Status>
 
-      <h3 className="mt-5 mb-1 text-sm font-semibold text-ink">Waiting to register{pending.data ? ` (${pending.data.length})` : ''}</h3>
+      <h3 className="mt-5 mb-1 text-sm font-semibold text-ink">{t('platform.waitingToRegisterValue', { value: pending.data ? ` (${pending.data.length})` : '' })}</h3>
       {pending.isPending && <Spinner />}
       <ErrorBanner onRetry={() => void pending.refetch()}>{(pending.error || remove.error) && friendlyError(pending.error ?? remove.error)}</ErrorBanner>
-      {pending.data?.length === 0 && <p className="text-sm text-subtle">Nobody is waiting.</p>}
+      {pending.data?.length === 0 && <p className="text-sm text-subtle">{t('platform.nobodyIsWaiting')}</p>}
       {!!pending.data?.length && (
-        <Table minWidth="min-w-[32rem]" head={<><Th>Mobile number or email</Th><Th>Note</Th><Th>Approved</Th><Th><span className="sr-only">Actions</span></Th></>}>
+        <Table minWidth="min-w-[32rem]" head={<><Th>{t('platform.mobileNumberOrEmail')}</Th><Th>{t('common.note')}</Th><Th>{t('platform.approved')}</Th><Th><span className="sr-only">{t('platform.actions')}</span></Th></>}>
           {pending.data.map((a) => (
             <tr key={a.id}>
               <td className={`${td} font-medium text-ink`}>{showLogin(a.login_email)}</td>
               <td className={td}>{a.note}</td>
               <td className={`${td} whitespace-nowrap`}>{ago(a.created_at)}</td>
               <td className="py-1 text-right">
-                <ConfirmButton confirmLabel="Remove" label={`Remove ${showLogin(a.login_email)}`} onConfirm={() => remove.mutate(a.id)}>
-                  Remove
-                </ConfirmButton>
+                <ConfirmButton confirmLabel={t('common.remove')} label={t('platform.removeLoginemail', { loginEmail: showLogin(a.login_email) })} onConfirm={() => remove.mutate(a.id)}>
+                  {t('common.remove')}</ConfirmButton>
               </td>
             </tr>
           ))}
@@ -243,12 +240,11 @@ function AllowList() {
       <details className="group mt-4">
         <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 text-sm font-semibold text-ink [&::-webkit-details-marker]:hidden">
           <ChevronRightIcon size={16} className="shrink-0 text-subtle transition-transform group-open:rotate-90" />
-          Already registered{used.total != null ? ` (${used.total})` : ''}
-        </summary>
+          {t('platform.alreadyRegisteredValue', { value: used.total != null ? ` (${used.total})` : '' })}</summary>
         {used.isPending && <Spinner />}
         <ErrorBanner onRetry={() => void used.refetch()}>{used.error && friendlyError(used.error)}</ErrorBanner>
         {!!used.data?.length && (
-          <Table minWidth="min-w-[32rem]" head={<><Th>Mobile number or email</Th><Th>Company</Th><Th>Registered</Th><Th>Note</Th></>}>
+          <Table minWidth="min-w-[32rem]" head={<><Th>{t('platform.mobileNumberOrEmail')}</Th><Th>{t('platform.company')}</Th><Th>{t('platform.registered')}</Th><Th>{t('common.note')}</Th></>}>
             {used.data.map((a) => (
               <tr key={a.id}>
                 <td className={`${td} font-medium text-ink`}>{showLogin(a.login_email)}</td>

@@ -1,9 +1,11 @@
 // The kinds of party money is owed to (req §12.3: "the same rules apply to subcontractor and
 // labour payments"). Each has its own table; payments, ledger rows and khata are shared. A worker
 // is owed for their days when the company works by attendance (GLOSSARY: Worker).
+import { t, translated } from '../../lib/i18n'
+
 export type PartyKind = 'supplier' | 'subcontractor' | 'crew' | 'payee' | 'worker'
 
-export const PARTY: Record<PartyKind, {
+type PartyInfo = {
   one: string
   many: string
   path: string
@@ -11,16 +13,25 @@ export const PARTY: Record<PartyKind, {
   table: 'suppliers' | 'subcontractors' | 'crews' | 'payees' | 'workers'
   /** What raises the balance, for the khata legend. */
   charges: string
-}> = {
-  supplier: { one: 'Supplier', many: 'Suppliers', path: '/suppliers', column: 'supplier_id', table: 'suppliers', charges: 'bills' },
-  subcontractor: {
-    one: 'Subcontractor', many: 'Subcontractors', path: '/subcontractors', column: 'subcontractor_id', table: 'subcontractors',
-    charges: 'approved work charges',
-  },
-  crew: { one: 'Crew', many: 'Labour crews', path: '/crews', column: 'crew_id', table: 'crews', charges: 'labour costs' },
+}
+
+/** The words come from t() each time they are read (lib/i18n translated). */
+function party(kind: PartyKind, where: Pick<PartyInfo, 'path' | 'column' | 'table'>): PartyInfo {
+  return {
+    ...where,
+    get one() { return t(`party.${kind}.one`) },
+    get many() { return t(`party.${kind}.many`) },
+    get charges() { return t(`party.${kind}.charges`) },
+  }
+}
+
+export const PARTY: Record<PartyKind, PartyInfo> = {
+  supplier: party('supplier', { path: '/suppliers', column: 'supplier_id', table: 'suppliers' }),
+  subcontractor: party('subcontractor', { path: '/subcontractors', column: 'subcontractor_id', table: 'subcontractors' }),
+  crew: party('crew', { path: '/crews', column: 'crew_id', table: 'crews' }),
   // "Payee" in code and SQL; people see "Other service" (GLOSSARY: Payee).
-  payee: { one: 'Other service', many: 'Other services', path: '/payees', column: 'payee_id', table: 'payees', charges: 'expenses' },
-  worker: { one: 'Worker', many: 'Workers', path: '/workers', column: 'worker_id', table: 'workers', charges: 'days worked' },
+  payee: party('payee', { path: '/payees', column: 'payee_id', table: 'payees' }),
+  worker: party('worker', { path: '/workers', column: 'worker_id', table: 'workers' }),
 }
 
 export const PARTY_KINDS = Object.keys(PARTY) as PartyKind[]
@@ -29,7 +40,7 @@ export const PARTY_KINDS = Object.keys(PARTY) as PartyKind[]
 export function partyCrumbs(kind: PartyKind): Array<{ to: string; label: string }> {
   return kind === 'payee'
     ? [{ to: '/suppliers', label: PARTY.supplier.many }, { to: PARTY.payee.path, label: PARTY.payee.many }]
-    : [{ to: '/parties', label: 'Parties' }, { to: PARTY[kind].path, label: PARTY[kind].many }]
+    : [{ to: '/parties', label: t('party.parties') }, { to: PARTY[kind].path, label: PARTY[kind].many }]
 }
 
 /** The party named in a URL like /payments/new?crew=<id>. */
@@ -52,10 +63,10 @@ export function docPath(kind: string | null, id: string | null, extra?: { projec
   return null
 }
 
-export const DOC_WORD: Record<string, string> = {
-  bill: 'Bill',
-  charge: 'Work charge',
-  labour: 'Labour',
-  expense: 'Expense',
-  refund: 'Refund',
-}
+export const DOC_WORD: Record<string, string> = translated({
+  bill: 'doc.bill',
+  charge: 'doc.charge',
+  labour: 'doc.labour',
+  expense: 'doc.expense',
+  refund: 'doc.refund',
+})

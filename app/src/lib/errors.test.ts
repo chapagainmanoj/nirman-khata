@@ -13,6 +13,10 @@ describe('friendlyError', () => {
     expect(friendlyError({ message: 'TypeError: Failed to fetch' })).toBe('No connection. Check your network and try again.')
   })
 
+  it('reports a request that got no answer in time as a slow connection', () => {
+    expect(friendlyError({ message: 'AbortError: request_timeout' })).toMatch(/^The server did not answer in time/)
+  })
+
   it('explains a reused request key instead of showing it raw', () => {
     const reused = { code: 'P0001', message: 'op_key_reused: this request key was already used for a different request' }
     expect(friendlyError(reused)).toMatch(/^This may already be saved/)

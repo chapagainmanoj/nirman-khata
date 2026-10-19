@@ -7,18 +7,19 @@ import { Link, useLocation } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { listQueuedOwners, photoQueueKey, QueuedPhotos, type AttachmentOwner } from '../../components/Attachments'
 import { Card, EmptyState, Notice, PageHeader, Spinner } from '../../components/ui'
+import { t, type MessageKey } from '../../lib/i18n'
 
-const RECORD: Record<string, { label: string; path?: (id: string) => string }> = {
-  bill_id: { label: 'Bill', path: (id) => `/bills/${id}` },
-  delivery_id: { label: 'Delivery' },
-  payment_id: { label: 'Payment', path: (id) => `/payments/${id}` },
-  client_receipt_id: { label: 'Client payment', path: (id) => `/receipts/${id}` },
-  daily_report_id: { label: 'Daily report', path: (id) => `/daily/${id}` },
-  progress_update_id: { label: 'Progress update' },
-  work_package_id: { label: 'Work package', path: (id) => `/work/${id}` },
-  charge_id: { label: 'Work claim' },
-  labour_cost_id: { label: 'Labour cost' },
-  expense_id: { label: 'Expense' },
+const RECORD: Record<string, { label: MessageKey; path?: (id: string) => string }> = {
+  bill_id: { label: 'waitingPhotos.kind.bill', path: (id) => `/bills/${id}` },
+  delivery_id: { label: 'waitingPhotos.kind.delivery' },
+  payment_id: { label: 'waitingPhotos.kind.payment', path: (id) => `/payments/${id}` },
+  client_receipt_id: { label: 'waitingPhotos.kind.clientReceipt', path: (id) => `/receipts/${id}` },
+  daily_report_id: { label: 'waitingPhotos.kind.dailyReport', path: (id) => `/daily/${id}` },
+  progress_update_id: { label: 'waitingPhotos.kind.progressUpdate' },
+  work_package_id: { label: 'waitingPhotos.kind.workPackage', path: (id) => `/work/${id}` },
+  charge_id: { label: 'waitingPhotos.kind.charge' },
+  labour_cost_id: { label: 'waitingPhotos.kind.labourCost' },
+  expense_id: { label: 'waitingPhotos.kind.expense' },
 }
 
 function useQueuedOwners() {
@@ -31,9 +32,9 @@ export function WaitingPhotosPage() {
   const queued = useQueuedOwners()
   return (
     <>
-      <PageHeader title="Photos waiting" subtitle="Photos that did not upload. They are kept on this phone until they do." />
+      <PageHeader title={t('waitingPhotos.photosWaiting')} subtitle={t('waitingPhotos.photosThatDidNot')} />
       {queued.isPending ? <Spinner /> : !queued.data?.length ? (
-        <EmptyState title="Nothing waiting">Every photo taken on this phone has uploaded.</EmptyState>
+        <EmptyState title={t('waitingPhotos.nothingWaiting')}>{t('waitingPhotos.everyPhotoTakenOn')}</EmptyState>
       ) : (
         <div className="flex flex-col gap-4">
           {queued.data.map(({ owner }) => <OwnerCard key={Object.values(owner)[0]} owner={owner} />)}
@@ -45,10 +46,10 @@ export function WaitingPhotosPage() {
 
 function OwnerCard({ owner }: { owner: AttachmentOwner }) {
   const [column, id] = Object.entries(owner)[0]
-  const record = RECORD[column] ?? { label: 'Record' }
+  const record = RECORD[column] ?? { label: 'waitingPhotos.record' as const }
   return (
-    <Card title={record.label}>
-      {record.path && <Link className="mb-2 block text-sm text-slate" to={record.path(id)}>Open the {record.label.toLowerCase()}</Link>}
+    <Card title={t(record.label)}>
+      {record.path && <Link className="mb-2 block text-sm text-slate" to={record.path(id)}>{t('waitingPhotos.openTheValue', { value: t(record.label).toLowerCase() })}</Link>}
       <QueuedPhotos owner={owner} />
     </Card>
   )
@@ -66,7 +67,7 @@ export function PhotosWaitingNotice() {
   return (
     <div className="mb-4">
       <Notice>
-        {n === 1 ? 'A photo has' : `${n} photos have`} not uploaded yet. <Link className="font-semibold text-slate" to="/photos-waiting">See {n === 1 ? 'it' : 'them'}</Link>
+        {n === 1 ? t('waitingPhotos.aPhotoHas') : t('waitingPhotos.nPhotosHave', { n })} {t('waitingPhotos.notUploadedYet')}{' '}<Link className="font-semibold text-slate" to="/photos-waiting">{t('waitingPhotos.see')}{' '}{n === 1 ? 'it' : 'them'}</Link>
       </Notice>
     </div>
   )

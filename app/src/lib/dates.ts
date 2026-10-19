@@ -2,6 +2,7 @@
 // display and input only (design §7). All conversions go through this module
 // so the BS library can be replaced.
 import NepaliDate from 'nepali-date-converter'
+import { t } from './i18n'
 
 export type DateDisplay = 'bs' | 'ad'
 export type IsoDate = string // "YYYY-MM-DD" in AD
@@ -138,10 +139,10 @@ export function addDays(iso: IsoDate, n: number): IsoDate {
 /** "today", "in 2 days", "3 days ago": how far a date is from today (Kathmandu). */
 export function relativeDay(iso: IsoDate, today: IsoDate = todayKathmandu()): string {
   const n = Math.round((Date.parse(`${iso}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86_400_000)
-  if (n === 0) return 'today'
-  if (n === 1) return 'tomorrow'
-  if (n === -1) return 'yesterday'
-  return n > 0 ? `in ${n} days` : `${-n} days ago`
+  if (n === 0) return t('date.rel.today')
+  if (n === 1) return t('date.rel.tomorrow')
+  if (n === -1) return t('date.rel.yesterday')
+  return n > 0 ? t('date.rel.inDays', { n }) : t('date.rel.daysAgo', { n: -n })
 }
 
 /** Every AD date from `from` to `to`, inclusive; empty when `to` is before `from`. */

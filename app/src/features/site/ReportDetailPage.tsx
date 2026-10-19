@@ -9,7 +9,8 @@ import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
 import { memberName, useMembers } from '../projects/api'
 import { canEnter } from '../supply/permissions'
-import { useDailyReport, useReportLabour } from './api'
+import { useDailyReport, useReportLabour, weatherLabel } from './api'
+import { t } from '../../lib/i18n'
 
 export function ReportDetailPage() {
   const { reportId = '' } = useParams()
@@ -21,7 +22,7 @@ export function ReportDetailPage() {
   if (report.isPending) return <Spinner />
   if (report.error) return <ErrorBanner onRetry={() => void report.refetch()}>{friendlyError(report.error)}</ErrorBanner>
   if (!report.data) {
-    return <EmptyState title="Report not found">It does not exist or you are not assigned to its project. <Link className="text-slate" to="/projects">Back to projects</Link></EmptyState>
+    return <EmptyState title={t('reportDetail.reportNotFound')}>{t('reportDetail.itDoesNotExist')}{' '}<Link className="text-slate" to="/projects">{t('reportDetail.backToProjects')}</Link></EmptyState>
   }
   const r = report.data
   const d = auth.dateDisplay
@@ -30,12 +31,12 @@ export function ReportDetailPage() {
   return (
     <>
       <PageHeader
-        title="Daily report"
-        crumbs={[{ to: '/projects', label: 'Projects' }, { to: `/projects/${r.project_id}?tab=site`, label: r.projects?.name ?? 'Project' }]}
+        title={t('reportDetail.dailyReport')}
+        crumbs={[{ to: '/projects', label: t('reportDetail.projects') }, { to: `/projects/${r.project_id}?tab=site`, label: r.projects?.name ?? t('reportDetail.project') }]}
         subtitle={<DateText value={r.work_date} display={d} dual />}
       />
       <div className="grid items-start gap-4 lg:grid-cols-2">
-        <Card title="Work done">
+        <Card title={t('reportDetail.workDone')}>
           <p className="text-sm whitespace-pre-line text-ink">{r.work_done}</p>
           {lines.length > 0 && (
             <ul className="mt-3">
@@ -48,23 +49,23 @@ export function ReportDetailPage() {
             </ul>
           )}
           <div className="mt-3">
-            <Detail label="Stage">{r.stages?.name}</Detail>
-            <Detail label="Area or floor">{r.area}</Detail>
-            <Detail label="People on site">{r.headcount}</Detail>
-            <Detail label="Labour note">{r.labour_note}</Detail>
-            <Detail label="Equipment">{r.equipment}</Detail>
-            <Detail label="Issues or delays">{r.issues}</Detail>
-            <Detail label="Weather">{r.weather}</Detail>
+            <Detail label={t('reportDetail.stage')}>{r.stages?.name}</Detail>
+            <Detail label={t('reportDetail.areaOrFloor')}>{r.area}</Detail>
+            <Detail label={t('reportDetail.peopleOnSite')}>{r.headcount}</Detail>
+            <Detail label={t('reportDetail.labourNote')}>{r.labour_note}</Detail>
+            <Detail label={t('reportDetail.equipment')}>{r.equipment}</Detail>
+            <Detail label={t('reportDetail.issuesOrDelays')}>{r.issues}</Detail>
+            <Detail label={t('reportDetail.weather')}>{r.weather && weatherLabel(r.weather)}</Detail>
             {labour.data && (
-              <Detail label="Labour cost">
+              <Detail label={t('reportDetail.labourCost')}>
                 {formatNPR(labour.data.amount_paisa)}{labour.data.crews?.name && ` · ${labour.data.crews.name}`}
               </Detail>
             )}
-            <Detail label="Sent by">{memberName(members.data, r.created_by)}, {formatDateTime(r.submitted_at, d)}</Detail>
+            <Detail label={t('reportDetail.sentBy')}>{memberName(members.data, r.created_by)}, {formatDateTime(r.submitted_at, d)}</Detail>
           </div>
         </Card>
-        <Card title="Photos">
-          <Attachments owner={{ daily_report_id: r.id }} canAdd={canEnter(auth)} label="Add site photo" />
+        <Card title={t('reportDetail.photos')}>
+          <Attachments owner={{ daily_report_id: r.id }} canAdd={canEnter(auth)} label={t('reportDetail.addSitePhoto')} />
         </Card>
       </div>
     </>

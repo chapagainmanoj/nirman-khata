@@ -18,6 +18,7 @@ import { useParties } from '../parties/api'
 import { memberName, useMembers, useProjects } from '../projects/api'
 import { useCurrentProject } from '../projects/current'
 import { reportByKey, type Col, type Filters, visibleReports } from './defs'
+import { t } from '../../lib/i18n'
 
 const qtyText = (n: number) => n.toLocaleString('en-IN', { maximumFractionDigits: 3 })
 
@@ -25,7 +26,7 @@ export function ReportPage() {
   const { reportKey = '' } = useParams()
   const auth = useCompany()
   const def = reportByKey(reportKey)
-  const allowed = def && visibleReports(auth).includes(def)
+  const allowed = def && visibleReports(auth).some((r) => r.key === def.key)
   const [params, setParams] = useSearchParams()
   const current = useCurrentProject()
   const projects = useProjects(auth.companyId)
@@ -58,7 +59,7 @@ export function ReportPage() {
     queryFn: () => def!.load(f, ctx),
   })
 
-  if (!def || !allowed) return <EmptyState title="Report not found">It does not exist or needs finance access. <Link className="text-slate" to="/reports">All reports</Link></EmptyState>
+  if (!def || !allowed) return <EmptyState title={t('report.reportNotFound')}>{t('report.itDoesNotExist')}{' '}<Link className="text-slate" to="/reports">{t('report.allReports')}</Link></EmptyState>
 
   // With one project chosen, the project column says the same thing on every row.
   const columns = def.columns.filter((c) => !(c.key === 'project' && f.project && def.key !== 'project-cost'))
@@ -74,12 +75,12 @@ export function ReportPage() {
     if (c.kind === 'date') return formatDate(String(v), auth.dateDisplay)
     return String(v)
   }
-  const projectLabel = f.project ? ctx.projects.find((p) => p.id === f.project)?.name ?? '' : 'All projects'
+  const projectLabel = f.project ? ctx.projects.find((p) => p.id === f.project)?.name ?? '' : t('report.allProjects')
   const partyLabel = f.party ? parties.data?.find((p) => p.id === f.party)?.name : null
   const notes = [
     def.period === 'range'
-      ? `${formatDate(f.from, auth.dateDisplay)} to ${formatDate(f.to, auth.dateDisplay)}`
-      : `As of ${formatDate(f.asOf, auth.dateDisplay)}${def.asKnown ? (f.asKnown ? ', as it was known on that date' : ', current view') : ''}`,
+      ? t('report.fromToTo', { from: formatDate(f.from, auth.dateDisplay), to: formatDate(f.to, auth.dateDisplay) })
+      : t(def.asKnown ? (f.asKnown ? 'report.asOfKnown' : 'report.asOfCurrent') : 'report.asOfDate', { date: formatDate(f.asOf, auth.dateDisplay) }),
     projectLabel,
     ...(partyLabel ? [partyLabel] : []),
     ...(data.data?.note ? [data.data.note] : []),
@@ -90,7 +91,7 @@ export function ReportPage() {
     try {
       const value = (c: Col, v: string | number | null | undefined) =>
         v === undefined || v === null ? null : c.kind === 'date' ? formatDate(String(v), auth.dateDisplay) : v
-      await downloadXlsx(`${def!.key}-${f.asOf || f.to}.xlsx`, def!.title, [...notes, `Printed ${formatDateTime(new Date().toISOString(), auth.dateDisplay)}`],
+      await downloadXlsx(`${def!.key}-${f.asOf || f.to}.xlsx`, def!.title, [...notes, t('report.printedDate', { date: formatDateTime(new Date().toISOString(), auth.dateDisplay) })],
         columns, rows.map((r) => columns.map((c) => value(c, r.values[c.key]))), totals ?? undefined)
     } finally {
       setExporting(false)
@@ -101,49 +102,50 @@ export function ReportPage() {
     <>
       {/* On paper the report's own heading (company and title) replaces the screen header. */}
       <div className="print:hidden">
-        <PageHeader title={def.title} crumbs={[{ to: '/reports', label: 'Reports' }]} subtitle={def.description}
+        <PageHeader title={def.title} crumbs={[{ to: '/reports', label: t('report.reports') }]} subtitle={def.description}
           actions={
             <div className="flex gap-2">
-              <Button variant="secondary" busy={exporting} disabled={!rows.length} onClick={() => void exportXlsx()}>Excel</Button>
-              <Button variant="secondary" disabled={!rows.length} onClick={() => window.print()}>Print / PDF</Button>
+              <Button variant="secondary" busy={exporting} disabled={!rows.length} onClick={() => void exportXlsx()}>{t('report.excel')}</Button>
+              <Button variant="secondary" disabled={!rows.length} onClick={() => window.print()}>{t('report.printPdf')}</Button>
             </div>
           } />
       </div>
 
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4 print:hidden">
+      {/* Columns as wide as a date with both calendars and the longest View choice, so neither is cut off. */}
+      <div className="mb-4 grid gap-3 sm:grid-cols-[repeat(auto-fill,minmax(19rem,1fr))] print:hidden">
         {def.period === 'range' ? (
           <>
-            <Field label="From" htmlFor="rp-from"><DateInput id="rp-from" value={f.from} onChange={(v) => set({ from: v })} display={auth.dateDisplay} quick="none" /></Field>
-            <Field label="To" htmlFor="rp-to"><DateInput id="rp-to" value={f.to} onChange={(v) => set({ to: v })} display={auth.dateDisplay} /></Field>
+            <Field label={t('report.from')} htmlFor="rp-from"><DateInput id="rp-from" value={f.from} onChange={(v) => set({ from: v })} display={auth.dateDisplay} quick="none" /></Field>
+            <Field label={t('report.to')} htmlFor="rp-to"><DateInput id="rp-to" value={f.to} onChange={(v) => set({ to: v })} display={auth.dateDisplay} /></Field>
           </>
         ) : (
-          <Field label="As of" htmlFor="rp-asof"><DateInput id="rp-asof" value={f.asOf} onChange={(v) => set({ asOf: v })} display={auth.dateDisplay} /></Field>
+          <Field label={t('report.asOf')} htmlFor="rp-asof"><DateInput id="rp-asof" value={f.asOf} onChange={(v) => set({ asOf: v })} display={auth.dateDisplay} /></Field>
         )}
-        <Field label="Project" htmlFor="rp-project">
+        <Field label={t('report.project')} htmlFor="rp-project">
           <Select id="rp-project" value={f.project} onChange={(e) => set({ project: e.target.value })}>
-            <option value="">All projects</option>
+            <option value="">{t('report.allProjects')}</option>
             {ctx.projects.map((p) => <option key={p.id} value={p.id}>{p.code} · {p.name}</option>)}
           </Select>
         </Field>
         {def.party && (
           <Field label={PARTY[def.party].one} htmlFor="rp-party">
             <Select id="rp-party" value={f.party} onChange={(e) => set({ party: e.target.value })}>
-              <option value="">{def.key.endsWith('ledger') ? `Choose ${PARTY[def.party].one.toLowerCase()}` : 'Any'}</option>
+              <option value="">{def.key.endsWith('ledger') ? t('report.chooseValue', { value: PARTY[def.party].one.toLowerCase() }) : t('report.any')}</option>
               {parties.data?.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </Select>
           </Field>
         )}
         {def.asKnown && (
-          <Field label="View" htmlFor="rp-view" hint="'As known' leaves out anything entered after the date">
+          <Field label={t('report.view')} htmlFor="rp-view" hint={t('report.asKnownLeavesOut')}>
             <Select id="rp-view" value={f.asKnown ? 'known' : 'current'} onChange={(e) => set({ view: e.target.value })}>
-              <option value="current">Current (all entries dated up to then)</option>
-              <option value="known">As known on that date</option>
+              <option value="current">{t('report.currentAllEntriesDated')}</option>
+              <option value="known">{t('report.asKnownOnThat')}</option>
             </Select>
           </Field>
         )}
       </div>
 
-      <section aria-label="Report" className="rounded-xl border border-line bg-surface p-3 print:border-0 print:p-0">
+      <section aria-label={t('report.report')} className="rounded-xl border border-line bg-surface p-3 print:border-0 print:p-0">
         <div className="mb-2 hidden items-center gap-3 print:flex">
           {auth.company.logo_path && <CompanyMark logoPath={auth.company.logo_path} size={40} />}
           <h2 className="text-lg font-bold">{auth.company.name}: {def.title}</h2>
@@ -151,7 +153,7 @@ export function ReportPage() {
         <p className="mb-2 text-sm text-subtle">{notes.join(' · ')}</p>
         {data.isPending && <Spinner />}
         <ErrorBanner onRetry={() => void data.refetch()}>{data.error && friendlyError(data.error)}</ErrorBanner>
-        {data.data && rows.length === 0 && <p className="py-6 text-center text-sm text-subtle">Nothing for these filters.</p>}
+        {data.data && rows.length === 0 && <p className="py-6 text-center text-sm text-subtle">{t('report.nothingForTheseFilters')}</p>}
         {rows.length > 0 && (
           <div className="-mx-3 overflow-x-auto px-3 print:overflow-visible">
             <table className="w-full min-w-[36rem] text-sm print:min-w-0">
@@ -170,7 +172,7 @@ export function ReportPage() {
                       const right = !(c.kind === 'text' || c.kind === 'date')
                       return (
                         <td key={c.key} className={`py-2 pr-3 ${right ? 'text-right tabular-nums' : ''} ${c.kind === 'date' ? 'whitespace-nowrap' : ''}`}>
-                          {j === 0 && r.link ? <Link className="font-medium text-slate hover:underline print:text-ink" to={r.link}>{text || 'Open'}</Link> : text}
+                          {j === 0 && r.link ? <Link className="font-medium text-slate hover:underline print:text-ink" to={r.link}>{text || t('report.open')}</Link> : text}
                         </td>
                       )
                     })}
@@ -182,7 +184,7 @@ export function ReportPage() {
                   <tr className="border-t-2 border-ink font-semibold">
                     {columns.map((c, j) => (
                       <td key={c.key} className={`py-2 pr-3 ${c.total ? 'text-right tabular-nums' : ''}`}>
-                        {j === 0 ? 'Total' : c.total ? show(c, totals[j]) : ''}
+                        {j === 0 ? t('report.total') : c.total ? show(c, totals[j]) : ''}
                       </td>
                     ))}
                   </tr>
@@ -191,7 +193,7 @@ export function ReportPage() {
             </table>
           </div>
         )}
-        <p className="mt-3 hidden text-xs print:block">Printed {formatDateTime(openedAt, auth.dateDisplay)} from NirmanKhata.</p>
+        <p className="mt-3 hidden text-xs print:block">{t('report.printedOpenedatFromNirmankhata', { openedAt: formatDateTime(openedAt, auth.dateDisplay) })}</p>
       </section>
     </>
   )

@@ -18,4 +18,6 @@ export interface Platform {
   storage: DeviceStorage
   /** Ask the OS not to clear device storage under pressure (drafts). */
   requestPersistentStorage(): Promise<boolean>
+  /** Start the app again with its current files (a screen that failed to load). */
+  reload(): void
 }

@@ -12,6 +12,7 @@ import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { resizeLogo } from '../../lib/images'
 import { supabase } from '../../lib/supabase'
+import { t } from '../../lib/i18n'
 
 export function LogoField() {
   const auth = useCompany()
@@ -37,27 +38,26 @@ export function LogoField() {
     },
     onSuccess: async (_, picked) => {
       await queryClient.invalidateQueries({ queryKey: ['me'] })
-      setNote(picked ? 'Logo saved.' : 'Logo removed.')
+      setNote(picked ? t('branding.logoSaved') : t('branding.logoRemoved'))
     },
   })
 
   return (
-    <section aria-label="Logo" className="flex items-center gap-4">
+    <section aria-label={t('branding.logo')} className="flex items-center gap-4">
       <CompanyMark logoPath={company.logo_path} size={56} />
       <div className="flex min-w-0 flex-col gap-2">
         <p className="text-sm text-subtle">
-          {company.logo_path ? 'Shown in the menu and on printed reports.' : 'No logo yet. The NirmanKhata mark is shown instead.'}
+          {company.logo_path ? t('branding.shownInTheMenu') : t('branding.noLogoYetThe')}
         </p>
         <div className="flex flex-wrap gap-2">
-          <input ref={file} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" aria-label="Logo file"
+          <input ref={file} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" aria-label={t('branding.logoFile')}
             onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) { setNote(''); setLogo.mutate(f) } }} />
           <Button type="button" variant="secondary" busy={setLogo.isPending} onClick={() => file.current?.click()}>
-            {company.logo_path ? 'Change logo' : 'Upload logo'}
+            {company.logo_path ? t('branding.changeLogo') : t('branding.uploadLogo')}
           </Button>
           {company.logo_path && (
             <Button type="button" variant="ghost" disabled={setLogo.isPending} onClick={() => { setNote(''); setLogo.mutate(null) }}>
-              <TrashIcon size={16} />Remove logo
-            </Button>
+              <TrashIcon size={16} />{t('branding.removeLogo')}</Button>
           )}
         </div>
         <ErrorBanner>{setLogo.error && friendlyError(setLogo.error)}</ErrorBanner>
@@ -71,7 +71,7 @@ export function LogoField() {
 export function ColourField({ value, onChange }: { value: AccentKey; onChange: (k: AccentKey) => void }) {
   return (
     <fieldset className="flex flex-col gap-2">
-      <legend className="float-left mb-1 text-sm font-medium text-ink">Colour</legend>
+      <legend className="float-left mb-1 text-sm font-medium text-ink">{t('branding.colour')}</legend>
       <div className="clear-left grid grid-cols-2 gap-2 sm:grid-cols-3">
         {ACCENT_KEYS.map((k) => {
           const a = ACCENTS[k]
@@ -82,15 +82,13 @@ export function ColourField({ value, onChange }: { value: AccentKey; onChange: (
               <input type="radio" name="accent" value={k} checked={on} className="sr-only"
                 onChange={() => { onChange(k); applyAccent(k) }} />
               <span aria-hidden className="size-5 shrink-0 rounded-full" style={{ background: a.brand }} />
-              {a.label}
+              {t(a.label)}
             </label>
           )
         })}
       </div>
       <p className="text-sm text-subtle">
-        Buttons, links, counts and the selected menu item use this colour. Red, yellow and green are kept for
-        errors, pending and paid, so they are not offered.
-      </p>
+        {t('branding.buttonsLinksCountsAnd')}</p>
     </fieldset>
   )
 }
