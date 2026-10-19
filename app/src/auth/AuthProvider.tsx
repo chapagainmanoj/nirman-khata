@@ -65,20 +65,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Coming back to the app picks up rights an admin changed meanwhile (see access.ts).
     refetchOnWindowFocus: true,
     queryFn: async () => {
-      const [profile, membership] = await Promise.all([
+      const [profile, membership, assigned] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId!).single(),
         supabase.from('memberships').select('*, companies(*)').eq('user_id', userId!).eq('active', true).maybeSingle(),
+        // Only to notice a project taken away (access.ts); screens read projects through their own queries.
+        supabase.from('project_assignments').select('project_id').eq('user_id', userId!),
       ])
       if (profile.error) throw profile.error
       if (membership.error) throw membership.error
-      return { profile: profile.data, membership: membership.data as Membership | null }
+      if (assigned.error) throw assigned.error
+      return {
+        profile: profile.data,
+        membership: membership.data as Membership | null,
+        projects: assigned.data.map((a) => a.project_id),
+      }
     },
   })
 
   const refetchMe = me.refetch
 
   // Rights changed while signed in: drop every answer fetched under the old ones (auth/access.ts).
-  const access = me.data ? accessFingerprint(userId, me.data.membership) : undefined
+  const access = me.data ? accessFingerprint(userId, me.data.membership, me.data.projects) : undefined
   const lastAccess = useRef<string | null | undefined>(undefined)
   useEffect(() => {
     if (access === undefined) return

@@ -1,4 +1,5 @@
 // Turn database and network errors into messages a site engineer can act on.
+import { TooManyRows } from './allPages'
 import { FunctionError } from './functions'
 import { type MessageKey, t } from './i18n'
 
@@ -48,7 +49,7 @@ export function serverAnswered(error: unknown): boolean {
 const FUNCTION_CODES = new Set([
   'not_signed_in', 'invalid_request', 'forbidden', 'platform_admin', 'name_required', 'company_name_required', 'invalid_login',
   'password_short', 'roles_required', 'login_taken', 'not_approved', 'half_registered', 'not_found', 'service_down',
-  'export_too_big', 'server_error',
+  'export_too_big', 'file_forbidden', 'server_error',
 ])
 
 /** A request lib/supabase stopped waiting for: retrying it at once only makes the wait longer. */
@@ -59,6 +60,7 @@ export function isTimeout(error: unknown): boolean {
 export function friendlyError(error: unknown): string {
   const e = error as ErrorLike
   if (!e) return t('error.generic')
+  if (error instanceof TooManyRows) return t('error.tooManyRows', { limit: error.limit.toLocaleString('en-IN') })
   if (error instanceof FunctionError) {
     if (error.code === 'offline') return t('error.offline')
     if (error.code && FUNCTION_CODES.has(error.code)) return t(`function.${error.code}` as MessageKey)

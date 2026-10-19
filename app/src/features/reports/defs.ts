@@ -6,7 +6,7 @@ import { type MessageKey, t } from '../../lib/i18n'
 import { PAYMENT_METHODS } from '../../lib/labels'
 import type { XlsxColumn } from '../../lib/xlsx'
 import { docPath, type PartyKind } from '../parties/kinds'
-import { rpc } from '../../data/rpc'
+import { rpc, rpcAll } from '../../data/rpc'
 import { quantityText } from './quantities'
 
 export type Filters = { from: string; to: string; asOf: string; project: string; party: string; asKnown: boolean }
@@ -48,7 +48,7 @@ const pct = (part: number, whole: number | null) => (whole ? (part / whole) * 10
 
 const khata = (kind: PartyKind): ReportDef['load'] => async (f, ctx) => {
   if (!f.party) return { rows: [], note: t(kind === 'supplier' ? 'report.chooseParty.supplier' : 'report.chooseParty.subcontractor') }
-  const rows = await rpc('party_khata', { p_party: f.party, p_from: f.from, p_to: f.to, ...proj(f) })
+  const rows = await rpcAll('party_khata', { p_party: f.party, p_from: f.from, p_to: f.to, ...proj(f) }, ['business_date.nullsfirst', 'posted_at.nullsfirst', 'event_id.nullsfirst'])
   return {
     rows: rows.map((r) => ({
       link: r.doc_kind === 'credit' ? null : docPath(r.doc_kind, r.doc_id, { projectId: r.project_id }),
@@ -104,7 +104,7 @@ const REPORTS: ReportSource[] = [
     ],
     load: async (f, ctx) => {
       const args = { p_company: ctx.companyId, p_as_of: f.asOf, p_as_known: f.asKnown, ...proj(f) }
-      const [rows, quantities] = await Promise.all([rpc('report_cost_by_heading', args), rpc('report_heading_quantities', args)])
+      const [rows, quantities] = await Promise.all([rpcAll('report_cost_by_heading', args, ['row_order']), rpcAll('report_heading_quantities', args, ['project_id', 'heading_id', 'kind', 'unit'])])
       const qty = quantityText(quantities)
       return {
         rows: rows.filter((r) => r.cost_paisa !== 0).map((r) => ({
@@ -126,7 +126,7 @@ const REPORTS: ReportSource[] = [
       { key: 'used', label: 'report.col.used', kind: 'pct' },
     ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_cost_by_heading', { p_company: ctx.companyId, p_as_of: f.asOf, p_as_known: f.asKnown, ...proj(f) })
+      const rows = await rpcAll('report_cost_by_heading', { p_company: ctx.companyId, p_as_of: f.asOf, p_as_known: f.asKnown, ...proj(f) }, ['row_order'])
       const revisions = [...new Set(rows.map((r) => t('report.budgetRevisionOf', { code: code(ctx, r.project_id), date: formatDate(r.budget_effective_date, ctx.dateDisplay) })))]
       return {
         note: revisions.length ? revisions.join('; ') : undefined,
@@ -161,7 +161,7 @@ const REPORTS: ReportSource[] = [
       { key: 'reversed', label: 'report.col.reversedOn', kind: 'date' },
     ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_payments', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f), ...(f.party ? { p_party: f.party } : {}) })
+      const rows = await rpcAll('report_payments', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f), ...(f.party ? { p_party: f.party } : {}) }, ['payment_date', 'number', 'payment_id', 'kind'])
       return {
         rows: rows.map((r) => ({
           link: r.kind === 'refund' ? `/refunds/${r.payment_id}` : `/payments/${r.payment_id}`,
@@ -184,9 +184,9 @@ const REPORTS: ReportSource[] = [
       { key: 'avg', label: 'report.col.averageRate', kind: 'money' }, { key: 'suppliers', label: 'report.col.suppliers', kind: 'text' },
     ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_material_purchases', {
+      const rows = await rpcAll('report_material_purchases', {
         p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f), ...(f.party ? { p_supplier: f.party } : {}),
-      })
+      }, ['project_id', 'material', 'unit', 'material_id'])
       return {
         rows: rows.map((r) => ({
           values: {
@@ -207,7 +207,7 @@ const REPORTS: ReportSource[] = [
       { key: 'age', label: 'report.col.days', kind: 'qty' },
     ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_pending_orders', { p_company: ctx.companyId, ...proj(f) })
+      const rows = await rpcAll('report_pending_orders', { p_company: ctx.companyId, ...proj(f) }, ['kind', 'doc_date', 'line_id'])
       return {
         rows: rows.map((r) => ({
           link: r.kind === 'to_receive' ? `/slips/${r.doc_id}` : `/projects/${r.project_id}?tab=deliveries`,
@@ -228,7 +228,7 @@ const REPORTS: ReportSource[] = [
       { key: 'issues', label: 'report.col.issues', kind: 'text' }, { key: 'by', label: 'report.col.sentBy', kind: 'text' },
     ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_daily_activity', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f) })
+      const rows = await rpcAll('report_daily_activity', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f) }, ['work_date', 'report_id'])
       return {
         rows: rows.map((r) => ({
           link: `/daily/${r.report_id}`,
@@ -249,7 +249,7 @@ const REPORTS: ReportSource[] = [
       { key: 'why', label: 'report.col.reasonOrNote', kind: 'text' }, { key: 'by', label: 'report.col.by', kind: 'text' },
     ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_progress_history', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f) })
+      const rows = await rpcAll('report_progress_history', { p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f) }, ['effective_date', 'created_at', 'update_id'])
       return {
         rows: rows.filter((r) => r.effective_date >= f.from).map((r) => ({
           link: `/projects/${r.project_id}?tab=site`,
@@ -272,9 +272,9 @@ const REPORTS: ReportSource[] = [
       { key: 'reversed', label: 'report.col.reversedOn', kind: 'date' },
     ],
     load: async (f, ctx) => {
-      const rows = await rpc('report_labour', {
+      const rows = await rpcAll('report_labour', {
         p_company: ctx.companyId, p_from: f.from, p_to: f.to, ...proj(f), ...(f.party ? { p_crew: f.party } : {}),
-      })
+      }, ['work_date', 'crew', 'worker', 'labour_cost_id'])
       return {
         rows: rows.map((r) => ({
           link: r.daily_report_id ? `/daily/${r.daily_report_id}` : `/projects/${r.project_id}?tab=labour`,

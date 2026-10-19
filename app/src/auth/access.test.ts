@@ -15,8 +15,14 @@ describe('accessFingerprint', () => {
     expect(accessFingerprint('u2', m)).not.toBe(before)
     expect(accessFingerprint('u1', null)).not.toBe(before)
   })
-  it('ignores the order roles come back in', () => {
+  it('changes when a project is taken away or given', () => {
+    const before = accessFingerprint('u1', m, ['p1', 'p2'])
+    expect(accessFingerprint('u1', m, ['p1'])).not.toBe(before)
+    expect(accessFingerprint('u1', m, ['p1', 'p2', 'p3'])).not.toBe(before)
+  })
+  it('ignores the order roles and projects come back in', () => {
     expect(accessFingerprint('u1', { ...m, roles: ['a', 'b'] })).toBe(accessFingerprint('u1', { ...m, roles: ['b', 'a'] }))
+    expect(accessFingerprint('u1', m, ['p1', 'p2'])).toBe(accessFingerprint('u1', m, ['p2', 'p1']))
   })
 })
 

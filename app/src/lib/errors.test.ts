@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { friendlyError, serverAnswered } from './errors'
+import { TooManyRows } from './allPages'
 import { FunctionError } from './functions'
 
 describe('friendlyError', () => {
@@ -47,10 +48,18 @@ describe('friendlyError', () => {
     expect(friendlyError(new FunctionError('This phone or email is already registered', 'login_taken', 409)))
       .toBe('This mobile number or email already has a login.')
     expect(friendlyError(new FunctionError('', 'offline', 0))).toBe('No connection. Check your network and try again.')
+    expect(friendlyError(new FunctionError('You cannot do this with this file', 'file_forbidden', 403)))
+      .toBe('You cannot change this file. Ask an admin if it needs changing.')
   })
 
   it('an Edge Function refusal without a known code keeps its message', () => {
     expect(friendlyError(new FunctionError('Attachment not found or already uploaded', undefined, 409))).toBe('Attachment not found or already uploaded')
+  })
+})
+
+describe('too many rows', () => {
+  it('asks to narrow the filters instead of showing part of the result', () => {
+    expect(friendlyError(new TooManyRows(50000))).toBe('More than 50,000 rows. Choose a shorter period or one project.')
   })
 })
 

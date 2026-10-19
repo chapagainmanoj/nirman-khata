@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../../data/rpc'
+import { rpc, rpcAll } from '../../data/rpc'
 import { PARTY, type PartyKind, type PaysBy } from './kinds'
 
 export function usePartyBalances(companyId: string, kind: PartyKind, enabled: boolean) {
@@ -28,7 +28,7 @@ export function usePartyKhata(partyId: string, projectId: string | null, enabled
   return useQuery({
     queryKey: ['khata', partyId, projectId],
     enabled,
-    queryFn: () => rpc('party_khata', { p_party: partyId, ...(projectId ? { p_project: projectId } : {}) }),
+    queryFn: () => rpcAll('party_khata', { p_party: partyId, ...(projectId ? { p_project: projectId } : {}) }, ['business_date.nullsfirst', 'posted_at.nullsfirst', 'event_id.nullsfirst']),
   })
 }
 
@@ -36,7 +36,7 @@ export function usePartyOpenItems(partyId: string, enabled: boolean) {
   return useQuery({
     queryKey: ['open-items', partyId],
     enabled,
-    queryFn: () => rpc('party_open_items', { p_party: partyId }),
+    queryFn: () => rpcAll('party_open_items', { p_party: partyId }, ['doc_date', 'label', 'kind', 'doc_id', 'project_id']),
   })
 }
 

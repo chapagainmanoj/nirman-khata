@@ -3,6 +3,7 @@
 import { useMutation } from '@tanstack/react-query'
 import { useRef } from 'react'
 import type { Database } from '../lib/database.types'
+import { fetchAllPages } from '../lib/allPages'
 import { newId } from '../lib/ids'
 import { supabase } from '../lib/supabase'
 
@@ -13,6 +14,34 @@ export async function rpc<N extends keyof Fns>(name: N, args: Fns[N]['Args']): P
   const { data, error } = await supabase.rpc(name, args as never)
   if (error) throw error
   return data as Fns[N]['Returns']
+}
+
+/** Rows per request; must not exceed the API's max_rows (1000 here and on the hosted project). */
+export const MAX_ROWS = 1000
+
+type Ordered = {
+  order(column: string, o: { ascending: boolean; nullsFirst: boolean }): Ordered
+  range(from: number, to: number): PromiseLike<{ data: unknown; error: unknown }>
+}
+
+/**
+ * A function that returns rows, all of them (lib/allPages): a long report or khata is not cut at
+ * MAX_ROWS. `order` repeats the function's own order and ends in a column that makes it unique
+ * ("col" or "col.nullsfirst"), so pages meet exactly when there is more than one.
+ */
+export async function rpcAll<N extends keyof Fns>(name: N, args: Fns[N]['Args'], order: string[]): Promise<Fns[N]['Returns']> {
+  return (await fetchAllPages(async (from, to, ordered) => {
+    let q = supabase.rpc(name, args as never) as unknown as Ordered
+    if (ordered) {
+      for (const o of order) {
+        const [column, nulls] = o.split('.')
+        q = q.order(column, { ascending: true, nullsFirst: nulls === 'nullsfirst' })
+      }
+    }
+    const { data, error } = await q.range(from, to)
+    if (error) throw error
+    return data as unknown[]
+  }, { size: MAX_ROWS })) as Fns[N]['Returns']
 }
 
 /**

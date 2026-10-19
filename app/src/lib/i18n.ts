@@ -2385,6 +2385,7 @@ const en = {
   'error.generic': 'Something went wrong.',
   'error.offline': 'No connection. Check your network and try again.',
   'error.session': 'You were signed out. Sign in again to continue.',
+  'error.tooManyRows': 'More than {limit} rows. Choose a shorter period or one project.',
   // Edge Function refusals, by code (lib/errors, supabase/functions/_shared/http.ts)
   'function.not_signed_in': 'You were signed out. Sign in again to continue.',
   'function.invalid_request': 'Something went wrong with this request. Reload the app and try again.',
@@ -2400,6 +2401,7 @@ const en = {
   'function.half_registered': 'The login was made but the company was not. Contact us to finish it; do not register again.',
   'function.not_found': 'Not found. It may have been removed.',
   'function.service_down': 'The file service did not answer. Try again.',
+  'function.file_forbidden': 'You cannot change this file. Ask an admin if it needs changing.',
   'function.export_too_big': 'This company has too many photos to export in one file. Ask us for a full export.',
   'function.server_error': 'The server could not do this just now. Try again in a moment.',
   'error.opKeyReused': 'This may already be saved. Check the supplier\'s bills and payments before entering it again.',

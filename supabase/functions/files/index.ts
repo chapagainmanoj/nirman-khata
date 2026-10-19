@@ -14,6 +14,17 @@ const MAX_READ = 50
 
 type Body = { action?: string; attachment_id?: string; attachment_ids?: string[] }
 
+// The attachment functions raise these codes with words written for people; anything else (a
+// row-security refusal, a broken query) is internal: logged here, a plain message for the app.
+const OWN_CODES = ['P0001', 'P0002', '22023']
+
+function refused(error: { code?: string; message: string }, status: number): Response {
+  if (error.code === '42501') return fail('You cannot do this with this file', 403, 'file_forbidden')
+  if (error.code && OWN_CODES.includes(error.code)) return fail(error.message, status)
+  console.error('files:', error.code, error.message)
+  return fail('Could not do this just now', 500, 'server_error')
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return fail('Method not allowed', 405)
@@ -52,7 +63,7 @@ Deno.serve(async (req) => {
 
     if (body.action === 'upload') {
       const { data, error } = await caller.rpc('attachment_upload_target', { p_attachment: id }).single()
-      if (error) return fail(error.message, error.code === '42501' ? 403 : 400)
+      if (error) return refused(error, 400)
       const t = data as { company_id: string; content_type: string; size_bytes: number }
       return json({ url: await uploadUrl(stagingKey(t.company_id, id), t.content_type, Number(t.size_bytes)) })
     }
@@ -71,7 +82,7 @@ Deno.serve(async (req) => {
         return fail('The file changed while it was being checked. Try again.', 409)
       }
       const { error } = await admin.rpc('mark_attachment_uploaded', { p_attachment: id, p_user: user.id, p_size: file.size })
-      if (error) return fail(error.code === 'P0002' ? 'Attachment not found or already uploaded' : error.message, 409)
+      if (error) return refused(error, 409)
       await deleteFile(staged)
       return json({ ok: true })
     }
@@ -80,7 +91,7 @@ Deno.serve(async (req) => {
       const { data: a } = await admin.from('attachments').select('company_id').eq('id', id).maybeSingle()
       // The database decides: delete (drafts, unfinished uploads), hide, or refuse.
       const { data: deleted, error } = await caller.rpc('remove_attachment', { p_attachment: id })
-      if (error) return fail(error.message, error.code === '42501' ? 403 : 400)
+      if (error) return refused(error, 400)
       if (deleted && a) {
         await deleteFile(fileKey(a.company_id, id))
         await deleteFile(stagingKey(a.company_id, id))

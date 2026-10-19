@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { type MessageKey, t } from '../../lib/i18n'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../../data/rpc'
+import { rpc, rpcAll } from '../../data/rpc'
 import { useRefresh } from '../../data/refresh'
 
 /** Common stages of a building job; a project can also copy another project's list. */
@@ -88,7 +88,7 @@ export function useReportDay(projectId: string, date: string) {
 export function useCalendarEvents(companyId: string, from: string, to: string, projectId: string | null) {
   return useQuery({
     queryKey: ['calendar', companyId, from, to, projectId],
-    queryFn: () => rpc('calendar_events', { p_company: companyId, p_from: from, p_to: to, ...(projectId ? { p_project: projectId } : {}) }),
+    queryFn: () => rpcAll('calendar_events', { p_company: companyId, p_from: from, p_to: to, ...(projectId ? { p_project: projectId } : {}) }, ['event_date', 'kind', 'at', 'link_id', 'label', 'project_id.nullsfirst', 'party_name.nullsfirst']),
   })
 }
 

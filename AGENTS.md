@@ -71,6 +71,10 @@ Demo logins: mobile `9800000001`–`9800000005`, password `password123` (roles i
   SQL messages are shown only for our own codes (`P0001`, `P0002`, `22023` via `raise exception ... using errcode`);
   other database/PostgREST errors show a generic message. Edge Functions answer with `fail(message, status, code)`;
   give a new code words in `i18n.ts` as `function.<code>` and add it to `FUNCTION_CODES` in `lib/errors.ts`.
+- The API answers at most 1,000 rows (`max_rows`), for functions too, and cuts the rest without saying so.
+  A list or report that can grow past that reads through `rpcAll(name, args, order)` (`data/rpc.ts`):
+  `order` is the function's own order, ending in a column unique per row (return one, e.g. `line_id`,
+  `row_order`, if the function has none). Volume timings: `supabase/perf/volume.sql` (rolls back).
 - Edge Functions check their body at run time with `_shared/validate.ts` (`text`, `flag`, `isUuid`, `uuidList`):
   a type annotation does not validate JSON, and `!!"false"` is true.
 - After a mutation, `refresh(queryClient, ...changed)` from `data/refresh.ts` with every kind of data it changed

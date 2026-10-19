@@ -3047,7 +3047,7 @@ isOneToOne: false
                            },
 "report_cost_by_heading":
 { Args: { "p_as_known"?: boolean,"p_as_of"?: string,"p_company": string,"p_project"?: string }; Returns: {
-              "budget_effective_date": string,"budget_paisa": number,"budget_revision_id": string,"cost_paisa": number,"heading": string,"heading_id": string,"parent_heading": string,"project_id": string
+              "budget_effective_date": string,"budget_paisa": number,"budget_revision_id": string,"cost_paisa": number,"heading": string,"heading_id": string,"parent_heading": string,"project_id": string,"row_order": number
             }[]
                            },
 "report_daily_activity":
@@ -3082,7 +3082,7 @@ isOneToOne: false
                            },
 "report_pending_orders":
 { Args: { "p_company": string,"p_project"?: string }; Returns: {
-              "age_days": number,"doc_date": string,"doc_id": string,"doc_number": string,"item": string,"kind": string,"project_id": string,"qty": number,"supplier_name": string,"unit": string
+              "age_days": number,"doc_date": string,"doc_id": string,"doc_number": string,"item": string,"kind": string,"line_id": string,"project_id": string,"qty": number,"supplier_name": string,"unit": string
             }[]
                            },
 "report_progress_history":
