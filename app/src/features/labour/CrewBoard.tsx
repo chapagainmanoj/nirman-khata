@@ -34,7 +34,7 @@ import { newId } from '../../lib/ids'
 import { useRefreshMoney } from '../../data/refresh'
 import { rpc } from '../../data/rpc'
 import { canRecordPayments } from '../../data/permissions'
-import { Tabs } from '../parties/PartyParts'
+import { Tabs } from '../../components/Tabs'
 import { useCurrentProject } from '../projects/current'
 import {
   ABSENT, clock, type CrewMonth, type CrewWorker, fullDayOf, halfDayOf, hhmm, toMin, hoursText, markRow, type MonthRow, rateText,

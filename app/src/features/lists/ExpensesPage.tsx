@@ -9,10 +9,10 @@ import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { ExpenseTable } from '../costs/CostLists'
 import { useExpenseCount, useExpenses } from '../costs/api'
-import { Tabs } from '../parties/PartyParts'
+import { Tabs } from '../../components/Tabs'
 import { useProjects } from '../projects/api'
 import { canEnter } from '../../data/permissions'
-import { useProjectFilter } from './ProjectFilter'
+import { useProjectFilter } from '../projects/ProjectFilter'
 
 type Tab = 'project' | 'company'
 

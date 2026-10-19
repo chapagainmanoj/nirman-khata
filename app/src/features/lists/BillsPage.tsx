@@ -6,11 +6,11 @@ import { ButtonLink, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../
 import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
 import { ShowMore } from '../../components/ShowMore'
-import { Tabs } from '../parties/PartyParts'
+import { Tabs } from '../../components/Tabs'
 import { useBillCount, useBills, useBillsOwed } from '../supply/api'
 import { BillTable } from '../supply/BillRow'
 import { canEnter, canPost } from '../../data/permissions'
-import { useProjectFilter } from './ProjectFilter'
+import { useProjectFilter } from '../projects/ProjectFilter'
 import { t, type MessageKey } from '../../lib/i18n'
 
 type Tab = 'to_post' | 'drafts' | 'posted' | 'all'

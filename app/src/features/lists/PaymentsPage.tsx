@@ -17,7 +17,7 @@ import { canRecordPayments } from '../../data/permissions'
 import { useParties } from '../parties/api'
 import { useProjects } from '../projects/api'
 import { useListFilters, type ListSearch } from './ListFilters'
-import { useProjectFilter } from './ProjectFilter'
+import { useProjectFilter } from '../projects/ProjectFilter'
 
 type PaymentFilter = { companyId: string; projectId: string | null; paidTo: string | null; partyMatch?: string[] } & ListSearch
 

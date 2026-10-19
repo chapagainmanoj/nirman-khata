@@ -7,7 +7,7 @@
 import { Suspense, useEffect, useRef, type ComponentType } from 'react'
 import { Link, Outlet, useLocation } from 'react-router'
 import { useCompany } from '../auth/AuthProvider'
-import { PhotosWaitingNotice } from '../features/photos/WaitingPhotosPage'
+import { PhotosWaitingNotice } from '../features/photos/PhotosWaitingNotice'
 import { CurrentProjectProvider } from '../features/projects/current'
 import { t } from '../lib/i18n'
 import { useOnline } from '../lib/online'

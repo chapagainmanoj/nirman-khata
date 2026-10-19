@@ -5,7 +5,7 @@
 import { useState, type ReactNode } from 'react'
 import { useSearchParams } from 'react-router'
 import { t } from '../../lib/i18n'
-import { useCurrentProject } from '../projects/current'
+import { useCurrentProject } from './current'
 
 const option = (on: boolean) =>
   `min-h-11 [@media(pointer:fine)]:min-h-10 min-w-0 rounded-md px-3 text-sm font-medium ${on ? 'bg-surface text-ink shadow-sm' : 'text-subtle hover:text-ink'}`

@@ -12,6 +12,8 @@ deliveries, bills, payments, labour, site reports). Read before changing anythin
 ## Layout
 - `app/`: React 19 + Vite + TypeScript PWA. Tailwind 4, TanStack Query, React Router, react-hook-form + zod.
   - `src/features/<module>/`: pages plus `api.ts` (queries, mutations). Database calls go in `api.ts`, not in pages.
+    Other features import only a feature's public files, listed in `PUBLIC` in `src/architecture.test.ts`
+    (its `api.ts` and parts other screens show). Generic UI goes in `src/components/`, not inside a feature.
   - `src/data/`: shared data plumbing: `rpc()`, `usePosting`, `saveUnlessSent` (`rpc.ts`), what may be shown
     (`permissions.ts`), what to fetch again after a change (`refresh.ts`).
   - `src/lib/`: money, dates (BS/AD), i18n, drafts, ids, errors. Pure, unit-tested.

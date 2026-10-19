@@ -5,7 +5,7 @@ import { ButtonLink, PageHeader } from '../../components/ui'
 import { DeliveryList } from '../supply/DeliveryList'
 import { canEnter } from '../../data/permissions'
 import { useListFilters } from './ListFilters'
-import { useProjectFilter } from './ProjectFilter'
+import { useProjectFilter } from '../projects/ProjectFilter'
 import { t } from '../../lib/i18n'
 
 export function DeliveriesPage() {
