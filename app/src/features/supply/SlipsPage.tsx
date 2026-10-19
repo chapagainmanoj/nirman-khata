@@ -49,7 +49,7 @@ export function SlipsPage() {
       <PageHeader title="Order slips" actions={canEnter(auth) && <ButtonLink variant="tonal" to={recordProject ? `/slips/new?project=${recordProject}` : '/slips/new'}>New order slip</ButtonLink>} />
       {chip}
       {search.bar}
-      <div className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1" role="group" aria-label="Show order slips">
+      <div className="mb-4 flex gap-1 overflow-x-auto rounded-lg bg-track p-1" role="group" aria-label="Show order slips">
         {FILTERS.map(([key, label]) => {
           const n = key === 'pending' || key === 'draft' ? count(key) : 0
           return (

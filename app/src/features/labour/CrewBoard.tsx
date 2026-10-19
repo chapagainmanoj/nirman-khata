@@ -244,7 +244,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
                     <li key={w.id} className="shrink-0">
                       <button type="button" aria-current={on ? 'true' : undefined} onClick={() => go({ worker: w.id })}
                         className={`flex min-h-11 w-full items-center gap-2 rounded-full border px-3 text-left text-sm lg:rounded-lg lg:border-0 lg:py-1.5
-                          ${on ? 'border-brand bg-brand-soft font-semibold text-brand-dark' : 'border-line bg-surface font-medium text-ink hover:bg-muted lg:bg-transparent'}`}>
+                          ${on ? 'border-brand bg-brand-soft font-semibold text-brand-dark' : 'border-line bg-surface font-medium text-ink hover:bg-muted lg:bg-transparent lg:hover:bg-surface'}`}>
                         <span className="min-w-0 flex-1 truncate">{w.name}</span>
                         <span className={`shrink-0 text-xs tabular-nums ${on ? 'text-brand-dark' : 'text-subtle'}`}>{hours ? hoursText(hours) : '—'}</span>
                       </button>
@@ -264,7 +264,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
               {!chosen ? (
                 !adding && <EmptyState title="No workers on this crew yet">Add each worker with their daily or hourly rate, then mark their days here.</EmptyState>
               ) : (
-                <div className="flex flex-col gap-4 rounded-t-xl border border-b-0 border-line px-3 pt-3 pb-4 sm:px-4 sm:pt-4">
+                <div className="flex flex-col gap-4 rounded-t-xl border border-b-0 border-line bg-surface px-3 pt-3 pb-4 sm:px-4 sm:pt-4">
                   <WorkerHeader w={chosen} crewId={crewId} membership={membership} month={params.get('month')} />
                   {/* The worker above, their month below: a line edge to edge. */}
                   <hr className="-mx-3 border-line sm:-mx-4" />
@@ -274,7 +274,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
             </div>
             {chosen && (
               <div className="-mt-4 flex min-w-0 flex-col gap-4 lg:col-start-2 lg:row-start-2 lg:mt-0">
-                <div className="rounded-b-xl border border-t-0 border-line px-3 pb-3 sm:px-4 sm:pb-4">
+                <div className="rounded-b-xl border border-t-0 border-line bg-surface px-3 pb-3 sm:px-4 sm:pb-4">
                   <DayGrid name={chosen.name} days={days} today={today} display={auth.dateDisplay} selected={day}
                     onPick={(d) => { setDay(d); if (!d) setDayError(null) }}
                     entries={(d) => chosen.rows.filter((r) => r.work_date === d)}

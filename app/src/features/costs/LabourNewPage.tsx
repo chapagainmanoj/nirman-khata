@@ -195,7 +195,7 @@ export function LabourNewPage() {
         </Card>
 
         <Card>
-          <div className="mb-3 flex gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="One day or several days">
+          <div className="mb-3 flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="One day or several days">
             {([['day', 'One day'], ['week', 'Several days']] as const).map(([k, label]) => (
               <button key={k} type="button" role="radio" aria-checked={v.mode === k} onClick={() => setValue('mode', k)}
                 className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${v.mode === k ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>

@@ -292,7 +292,7 @@ function HowYouWorkCard({ company }: { company: Tables<'companies'> }) {
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-2">
           <span className="text-sm font-medium text-ink">Forms</span>
-          <div className="flex gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="How forms look">
+          <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="How forms look">
             {([[false, 'Detailed'], [true, 'Simple']] as const).map(([k, label]) => (
               <button key={label} type="button" role="radio" aria-checked={v.simple_forms === k} disabled={save.isPending}
                 onClick={() => v.simple_forms !== k && set({ simple_forms: k })}
@@ -329,7 +329,7 @@ function LabourMode({ v, set, busy }: { v: WorkValues; set: (change: Partial<Wor
   return (
     <div className="mt-2 flex flex-col gap-2 pl-8">
       <span className="text-sm font-medium text-ink">Labour by</span>
-      <div className="flex gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Labour by">
+      <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="Labour by">
         {([['day_total', 'Day total'], ['attendance', 'Attendance']] as const).map(([k, label]) => (
           <button key={k} type="button" role="radio" aria-checked={v.labour_mode === k} disabled={busy}
             onClick={() => v.labour_mode !== k && set({ labour_mode: k })}

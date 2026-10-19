@@ -45,7 +45,10 @@ export async function uploadAttachment(companyId: string, owner: AttachmentOwner
   }
   const { url } = await callFunction<{ url: string }>('files', { action: 'upload', attachment_id: id })
   const put = await fetch(url, { method: 'PUT', body: photo.blob, headers: { 'Content-Type': contentType } }).catch(() => null)
-  if (!put?.ok) throw new Error('The photo did not upload. Check your network and try again.')
+  // No answer at all is the network (or the bucket refusing this site); an answer names its code,
+  // so a refused upload can be told apart from a weak signal.
+  if (!put) throw new Error('The photo did not upload. Check your network and try again.')
+  if (!put.ok) throw new Error(`The photo did not upload (the file store answered ${put.status}). Try again; if it keeps happening, tell your admin.`)
   await callFunction('files', { action: 'confirm', attachment_id: id })
 }
 

@@ -60,7 +60,7 @@ export function WorkerForm({ crewId, member, onDone, onAdded }: {
       </div>
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-ink">Paid by the</span>
-        <div className="flex gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Paid by the">
+        <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="Paid by the">
           {([['daily', 'Day'], ['hourly', 'Hour']] as const).map(([k, label]) => (
             <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)}
               className={`min-h-11 flex-1 rounded-md px-1 text-sm font-medium ${kind === k ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>

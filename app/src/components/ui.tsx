@@ -20,7 +20,7 @@ function buttonClass(variant: Variant, className?: string) {
     // Filled buttons go grey when disabled; a faded oxblood reads as pink, not as unavailable.
     variant === 'primary' && 'bg-brand text-white hover:bg-brand-dark active:bg-brand-dark disabled:bg-line disabled:text-subtle',
     variant === 'secondary' && 'border border-field bg-surface text-ink hover:bg-muted active:bg-line disabled:opacity-50',
-    variant === 'tonal' && 'bg-brand-soft text-brand-dark hover:bg-brand-tint active:bg-brand-tint disabled:bg-muted disabled:text-subtle',
+    variant === 'tonal' && 'border border-brand-edge bg-brand-soft text-brand-dark hover:bg-brand-tint active:bg-brand-tint disabled:border-line disabled:bg-muted disabled:text-subtle',
     variant === 'danger' && 'border-2 border-danger bg-surface text-danger-ink hover:bg-danger-soft active:bg-danger-soft disabled:opacity-50',
     // Row and secondary actions stay neutral; brand colour is kept for the one main action.
     variant === 'ghost' && 'text-ink underline decoration-line underline-offset-4 hover:bg-muted hover:decoration-subtle active:bg-line disabled:opacity-50',

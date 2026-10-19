@@ -184,7 +184,7 @@ function WorkerTable({ rows, balance, showBalance }: {
 /** Labour crews and workers: two lists of one section, a link each so Back works. */
 function LabourLists({ current }: { current: 'crew' | 'worker' }) {
   return (
-    <nav aria-label="Labour" className="mb-4 flex w-fit gap-1 rounded-lg bg-muted p-1">
+    <nav aria-label="Labour" className="mb-4 flex w-fit gap-1 rounded-lg bg-track p-1">
       {(['crew', 'worker'] as const).map((k) => (
         <Link key={k} to={PARTY[k].path} aria-current={current === k ? 'page' : undefined}
           className={`inline-flex min-h-11 items-center rounded-md px-4 text-sm font-medium ${current === k ? 'bg-surface text-ink shadow-sm' : 'text-subtle'}`}>

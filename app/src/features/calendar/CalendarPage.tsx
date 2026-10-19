@@ -92,7 +92,7 @@ export function CalendarPage() {
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Card>
           <div className="mb-2 flex justify-end">
-            <div className="flex gap-1 rounded-lg bg-muted p-1" role="radiogroup" aria-label="Calendar">
+            <div className="flex gap-1 rounded-lg bg-track p-1" role="radiogroup" aria-label="Calendar">
               {(['bs', 'ad'] as const).map((d) => (
                 <button key={d} type="button" role="radio" aria-checked={month.display === d}
                   onClick={() => setMonth(monthOf(selected, d))}

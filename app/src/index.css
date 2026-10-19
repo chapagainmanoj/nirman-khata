@@ -16,6 +16,8 @@
   /* Selection and soft buttons; brand-dark on it 7.8:1. */
   --color-brand-soft: #e3efef;
   --color-brand-tint: #d3e6e6;
+  /* Edge of a tonal button: brand-soft alone barely differs from the page (1.03:1). */
+  --color-brand-edge: #9cc2c3;
   /* Same accent under the name the code uses for links, counts and info. */
   --color-slate: #2a6a6e;
   --color-slate-dark: #1d4f52;
@@ -27,8 +29,13 @@
   /* Form-control edges: >=3.2:1 on paper and white so empty fields are findable outdoors. */
   --color-field: #8f847f;
   --color-muted: #f3f1ec;
+  /* Segmented controls and tab strips: the track behind the white chosen pill. Darker than the
+     page so the choice reads as one control; subtle text 5.3:1 on it. */
+  --color-track: #ddd7cc;
   --color-surface: #ffffff;
-  --color-page: #ffffff;
+  /* Page: a warm grey just under the white cards, so the cards stand out as islands and
+     the space between them recedes. Subtle text 6.7:1, links 5.4:1, field edges 3.2:1 on it. */
+  --color-page: #f3f0ea;
   /* Sidebar: a warm near-white, just off the page. */
   --color-side: #faf9f6;
   /* Progress bars: neutral, so only "over budget" carries colour. */

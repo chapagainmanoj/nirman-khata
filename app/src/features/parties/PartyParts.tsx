@@ -55,8 +55,7 @@ export function BalanceText({ paisa }: { paisa: number }) {
 }
 
 /** What is owed either way. `children` adds detail under the totals (the supplier page's split by project). */
-/** `quietRefund`: "Money given back" only as a small link (see RefundCard). */
-export function BalanceCard({ kind, partyId, children, quietRefund }: { kind: PartyKind; partyId: string; children?: ReactNode; quietRefund?: boolean }) {
+export function BalanceCard({ kind, partyId, children }: { kind: PartyKind; partyId: string; children?: ReactNode }) {
   const auth = useCompany()
   const balances = usePartyBalances(auth.companyId, kind, true)
   const b = balances.data?.find((x) => x.party_id === partyId)
@@ -96,12 +95,13 @@ export function BalanceCard({ kind, partyId, children, quietRefund }: { kind: Pa
         </>
       )}
       {auth.seesAllProjects && opening === 0 && <OpeningBalance kind={kind} partyId={partyId} prompt={fresh} />}
-      <RefundCard kind={kind} partyId={partyId} embedded quiet={quietRefund} />
+      <RefundCard kind={kind} partyId={partyId} embedded />
     </Card>
   )
 }
 
-function OpeningBalance({ kind, partyId, prompt, inStatement }: { kind: PartyKind; partyId: string; prompt?: boolean; inStatement?: boolean }) {
+/** `inStatement`: the note under a balance statement. `plain`: a line on its own, with no rule above. */
+export function OpeningBalance({ kind, partyId, prompt, inStatement, plain }: { kind: PartyKind; partyId: string; prompt?: boolean; inStatement?: boolean; plain?: boolean }) {
   const auth = useCompany()
   const ob = usePartyOpeningBalance(partyId, true)
   const refresh = useRefreshMoney()
@@ -130,7 +130,7 @@ function OpeningBalance({ kind, partyId, prompt, inStatement }: { kind: PartyKin
 
   if (ob.data) {
     return (
-      <div className={`flex flex-wrap items-center justify-between gap-x-2 text-sm ${inStatement ? '' : 'mt-3 border-t border-line pt-3'}`}>
+      <div className={`flex flex-wrap items-center justify-between gap-x-2 text-sm ${inStatement || plain ? '' : 'mt-3 border-t border-line pt-3'}`}>
         {inStatement ? (
           <span className="min-w-0 text-xs text-subtle">Opening balance note: <span className="break-words text-ink">{ob.data.note}</span></span>
         ) : (
@@ -380,7 +380,7 @@ export function Tabs<T extends string>({ tabs, value, onChange, label, children 
   return (
     <>
       {/* Scrolls sideways on narrow phones instead of squeezing the labels. */}
-      <div className="mt-6 mb-3 flex gap-1 overflow-x-auto rounded-lg bg-muted p-1 sm:w-fit" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
+      <div className="mt-6 mb-3 flex gap-1 overflow-x-auto rounded-lg bg-track p-1 sm:w-fit" role="tablist" aria-label={label} onKeyDown={onKeyDown}>
         {tabs.map(([key, text]) => (
           <button key={key} id={tabId(key)} type="button" role="tab" aria-selected={value === key} aria-controls={`${ids}-panel`}
             tabIndex={value === key ? 0 : -1} onClick={() => onChange(key)}

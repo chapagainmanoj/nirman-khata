@@ -34,7 +34,7 @@ export function CatalogPage() {
   return (
     <>
       <PageHeader title={t('catalog.title')} />
-      <div className="mb-4 flex gap-1 rounded-lg bg-muted p-1" role="tablist" aria-label="Catalog sections" onKeyDown={onKeyDown}>
+      <div className="mb-4 flex gap-1 rounded-lg bg-track p-1" role="tablist" aria-label="Catalog sections" onKeyDown={onKeyDown}>
         {TABS.map(([key, label]) => (
           <button key={key} id={tabId(key)} type="button" role="tab" aria-selected={tab === key} aria-controls={`${ids}-panel`}
             tabIndex={tab === key ? 0 : -1} onClick={() => setTab(key)}

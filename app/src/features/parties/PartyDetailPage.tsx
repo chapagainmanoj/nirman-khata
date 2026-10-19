@@ -23,7 +23,7 @@ import { CrewBoard } from '../labour/CrewBoard'
 import { WorkerCrews } from '../labour/WorkerCrews'
 import { WorkerForm } from '../labour/WorkerForm'
 import { formatNPR } from '../../lib/money'
-import { BalanceCard, ContactRow, Khata, MatchCard, PaymentList, Tabs } from './PartyParts'
+import { BalanceCard, ContactRow, Khata, MatchCard, OpeningBalance, PaymentList, Tabs } from './PartyParts'
 import { RefundCard } from '../refunds/RefundCard'
 
 type Tab = 'khata' | 'payments'
@@ -86,8 +86,10 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
         <Tabs tabs={[['khata', 'Khata'], ['payments', 'Payments']]} value={tab} onChange={setTab} label={`${PARTY[kind].one} records`}>
           {tab === 'khata' && byJob && (
             <div className="mb-4 grid items-start gap-4">
-              {/* Money given back is asked on the Contract card once no work is going on; here only a link. */}
-              <BalanceCard kind={kind} partyId={r.id} quietRefund />
+              {/* The Contract card has the money; the khata below adds up to the balance. Here only
+                  the opening balance (to set or correct) and matching. Money given back is asked
+                  on the Contract card once no work is going on. */}
+              {auth.seesAllProjects && <OpeningBalance kind={kind} partyId={r.id} plain />}
               {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
             </div>
           )}

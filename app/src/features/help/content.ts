@@ -6,7 +6,7 @@ import type { NavRole } from '../../components/nav'
 import type { IsoDate } from '../../lib/dates'
 
 /** Change this whenever the text below changes. */
-export const HELP_UPDATED: IsoDate = '2026-10-17'
+export const HELP_UPDATED: IsoDate = '2026-10-18'
 
 type Rule = (r: NavRole) => boolean
 
@@ -57,6 +57,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Naya project banaune (Admin): Thekka Rakam (contract amount) ra Lagat Anuman (spending budget).',
       'Project details: client, thau (district, municipality, ward), manager, planned ra actual dates.',
       'Summary: Thekka Rakam, Lagat Anuman, kharcha, client bata payeko, baki; kunai miti samma ko rakam herne.',
+      'Paid, Due ra They hold: Due ma tapaai le tirnu baki matra; party sanga rahela paisa (peski wa badhi tireko) They hold ma chhuttai.',
       'Where the money went ra Cost by heading: kun heading ma kati kharcha bhayo.',
       'Activity: garna baki kaam (bill haalne, bill post garne, daily report pathaune, miti milaune).',
       'Thekka Rakam wa Lagat Anuman revise garne: karan, lagu hune miti, heading anusar split.',
@@ -80,7 +81,8 @@ export const HELP_SECTIONS: HelpSection[] = [
     show: (r) => r.labourEnabled && canEnter(r),
     items: [
       'Crew ko Jyala haalne: ek din wa dherai din, din ma kati manche, rate, jamma; aahile tirne wa pachhi.',
-      'Hajiri (attendance, Settings ma on gare): Labour crews > Workers ma kaamdar ek patak thapne, din wa ghanta ko rate sanga.',
+      'Kaamdar (worker) haru chahiye bhane Admin le Settings → How you work → Labour by: Attendance chhanne. Tyaspachhi Labour crews ma Crews | Workers dekhinchha.',
+      'Workers ma kaamdar ek patak thapne, din wa ghanta ko rate sanga. Crew pahile wa pachhi, jun pani: crew project ko hunchha, kaamdar company ko.',
       'Project ko crew ma kaamdar thapne. Hajiri crew ko page ma matra: baya kaamdar, daya mahina ko calendar.',
       'Mathi "The crew on Today" ma sabai kaamdar: Full, Half wa Absent ek thichai ma; "Mark everyone in" le baaki sabai lai.',
       'Calendar ko din thichne: Full day, Half day, Absent, ghanta. Ek din dui project ma bhaye, arko project ko crew ma pani thapera tyahan mark garne (samaya na-julne gari).',
@@ -110,6 +112,7 @@ export const HELP_SECTIONS: HelpSection[] = [
       'Rejected saman ra samasya lekhne; saman firta (return) record garne.',
       'Galat delivery hataune (karan sahit).',
       'Bill ko photo khichera Accounts lai pathaune.',
+      'Deliveries ma "Enter bill for this": tyo delivery ko bill khulchha, supplier, project ra saman aafai bharinchha; rate matra haalne.',
     ],
   },
   {
@@ -123,8 +126,11 @@ export const HELP_SECTIONS: HelpSection[] = [
     show: finance,
     items: [
       'Supplier ko bill haalne: saman, parimaan, unit, rate, heading, project.',
+      'Ek bill ek project ko matra: project mathi ek patak chhanne, sabai line tyahi project ma. Ek supplier le dui project ma saman pathaye, project pichhe chhuttai bill.',
+      'Supplier chhane pachhi bill nabhayeko delivery dekhinchha: project chhanera "Add them as lines".',
       'Discount, dhuwani (transport), VAT, tirne miti, bill photo; delivery link garne.',
       'Draft save garne, Accounts lai pathaune, wa save and post garne.',
+      'Bills list table ma: miti, bill, supplier, project, jamma, status (Unpaid, Part paid ra kati due, Paid).',
       'Bill ma kati tireko, kati baki herne; Pay this bill.',
       'Credit note (saman firta wa chhut) haalne; credit wa bill reverse garne.',
     ],
@@ -135,7 +141,11 @@ export const HELP_SECTIONS: HelpSection[] = [
     show: finance,
     items: [
       'Kunai party lai tireko paisa record garne: rakam, kasari (cash, bank, wallet), reference, praman photo.',
-      'Project anusar split garne; kei baki nabhaye Peski bhanera mark garne.',
+      'Bill tirda: "Which bills does it pay?" ma bill tick garnai parchha. Tick nagare paisa kunai bill ma gandaina.',
+      'Bill ko kehi matra (partial) tirna: bill tick garne, ani tyas bill ko "Paying now" ma tirne rakam haalne. Amount paid aafai milchha. (Jastai: 1,200 ko bill ma 1,100 matra.)',
+      'Tick gareko bill bhanda badi tire, baki bill (purano pahile) tirna "Pay … with it" thichne. Sabai bill tiresi pani bachyo bhane matra overpaid: arko bill bata katchha.',
+      'Kunai bill tick nagari tireko paisa: khata ko baki ghatchha tara bill Unpaid nai dekhinchha. Pachhi Match payments to bills ma milaune.',
+      'Bill nabhayeko party lai: project anusar split garne; kei baki nabhaye Peski bhanera mark garne.',
       'Payment ma What it paid herne; project split badalne; bill bata unmatch garne; reverse garne.',
     ],
   },
@@ -162,7 +172,10 @@ export const HELP_SECTIONS: HelpSection[] = [
     key: 'refunds',
     title: 'Refund ra Peski firta',
     show: finance,
-    items: ['Party le firta gareko paisa (Refund wa Peski Returned) record garne; galat bhaye reverse garne.'],
+    items: [
+      'Party le firta gareko paisa (Refund wa Peski Returned) record garne; galat bhaye reverse garne.',
+      'Subcontractor sanga peski baki ra kunai kaam nachalda matra unko page ma "Did they give it back?" sodhchha.',
+    ],
   },
   {
     key: 'parties',
@@ -191,8 +204,11 @@ export const HELP_SECTIONS: HelpSection[] = [
     show: canEnter,
     items: [
       'Naya work package: Thekka Rakam wa rate, anumaanit parimaan, heading, planned dates, progress.',
-      'Claim (bill) thapne photo sanga; approve garne (cost banchha), reject garne, approved kaam reverse garne.',
-      'Agreed value, approved, tireko, baki herne; Peski wa bill tirne.',
+      'Status: Active (suru ma), Completed, wa Cancelled.',
+      'Work done (bills): bill thapne photo sanga. Accounts/Admin le "Save and pay" (approve ra tirne ek patak) wa "Save, pay later"; arule save garchhan, approve pachhi.',
+      'Bill tirda subcontractor sanga rahela paisa (peski, agadi tireko, opening balance) aafai pahile katchha; baki matra cash. Sabai katiye cash tirnu pardaina.',
+      'Subcontractor ko page ma Contract: kati agreed, kati tiriyo, contract ma kati baki, kaam kati bhayo, aahile kati due wa unle kati rakhechhan.',
+      'Reject garne, approved kaam reverse garne.',
     ],
   },
   {

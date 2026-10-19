@@ -125,6 +125,9 @@ test('labour, expenses and subcontract work: cost and balances add up', async ({
   await expect(contract).toContainText('Rs. 1,00,000')
   await expect(contract.getByText('Left to pay on the contract').locator('xpath=following-sibling::dd[1]')).toContainText('Rs. 80,000')
   await expect(contract.getByText('Due now').locator('xpath=following-sibling::dd[1]')).toContainText('Rs. 10,000')
+  // No second balance card on the Khata tab: just the opening balance (none yet) and the entries.
+  await expect(page.getByRole('heading', { name: 'Balance', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Set opening balance' })).toBeVisible()
 
   // Project: cost 6,000 + 7,000 + 4,500 + 30,000; cash 6,000 + 4,500 + 20,000;
   // still owed 7,000 to the crew and 10,000 to the subcontractor.

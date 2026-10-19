@@ -23,7 +23,7 @@ export function useProjectFilter() {
   const projectId = p && !all ? p.id : null
 
   const chip = p && (
-    <div role="group" aria-label="Projects shown" className="mb-3 inline-flex max-w-full gap-1 rounded-lg bg-muted p-1">
+    <div role="group" aria-label="Projects shown" className="mb-3 inline-flex max-w-full gap-1 rounded-lg bg-track p-1">
       <button type="button" aria-pressed={!all} onClick={() => setAllFor(null)} className={`${option(!all)} truncate`}>
         {p.code} · {p.name}
       </button>
