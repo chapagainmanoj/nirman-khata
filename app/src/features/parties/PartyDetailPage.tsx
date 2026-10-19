@@ -3,7 +3,7 @@
 // becoming a supplier) are on their own page (PartyInfoPage), linked under the name. When the
 // company works by attendance, a crew's page is its workers' calendar (CrewBoard); each worker
 // has their own page: the crews they are on (attendance is marked there, and only there), then
-// their khata. A subcontractor's page follows the sidebar's project like the lists do: the jobs,
+// their khata (Overview: crews and balance; then Khata, Payments). A subcontractor's page follows the sidebar's project like the lists do: the jobs,
 // contract figures and khata on that project, with "All projects" a tap away.
 import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
@@ -48,8 +48,10 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
   const byJob = kind === 'subcontractor'
   const byProject = useProjectFilter()
   const onProject = byJob ? byProject.projectId : null
-  // A subcontractor opens on Overview (contract and jobs); the khata and payments are a tap away.
-  const [tab, setTab] = useState<Tab>(byJob ? 'overview' : 'khata')
+  // A subcontractor opens on Overview (contract and jobs), a worker on Overview (crews and balance);
+  // the khata and payments are a tap away.
+  const overview = byJob || kind === 'worker'
+  const [tab, setTab] = useState<Tab>(overview ? 'overview' : 'khata')
 
   if (rows.isPending) return <Spinner />
   if (rows.error) return <ErrorBanner onRetry={() => void rows.refetch()}>{friendlyError(rows.error)}</ErrorBanner>
@@ -88,8 +90,8 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
       {byJob && byProject.chip}
       {byJob && !(auth.canSeeFinance && crewHasMoney) && <PackageList subcontractorId={r.id} projectId={onProject} />}
       {board && <CrewBoard crewId={r.id} projectId={r.project_id ?? null} />}
-      {kind === 'worker' && byAttendance && canEnter(auth) && <WorkerCrews workerId={r.id} />}
-      {auth.canSeeFinance && crewHasMoney && !byJob && (
+      {kind === 'worker' && byAttendance && canEnter(auth) && !auth.canSeeFinance && <WorkerCrews workerId={r.id} />}
+      {auth.canSeeFinance && crewHasMoney && !overview && (
         <div className={`grid items-start gap-4 ${board ? 'mt-6' : ''}`}>
           {board && <h2 className="text-base font-semibold text-ink">{t('partyDetail.paidToTheCrew')}</h2>}
           <BalanceCard kind={kind} partyId={r.id} />
@@ -98,12 +100,21 @@ export function PartyDetailPage({ kind }: { kind: PartyKind }) {
       )}
 
       {auth.canSeeFinance && crewHasMoney && (
-        <Tabs tabs={[...(byJob ? [['overview', t('partyDetail.overview')] as [Tab, string]] : []), ['khata', t('partyDetail.khata')], ['payments', t('partyDetail.payments')]]}
+        <Tabs tabs={[...(overview ? [['overview', t('partyDetail.overview')] as [Tab, string]] : []), ['khata', t('partyDetail.khata')], ['payments', t('partyDetail.payments')]]}
           value={tab} onChange={setTab} label={t('partyDetail.oneRecords', { one: PARTY[kind].one })}>
           {tab === 'overview' && byJob && (
             <>
               <ContractCard subcontractorId={r.id} name={r.name} projectId={onProject} />
               <PackageList subcontractorId={r.id} projectId={onProject} />
+            </>
+          )}
+          {tab === 'overview' && kind === 'worker' && (
+            <>
+              {byAttendance && canEnter(auth) && <WorkerCrews workerId={r.id} />}
+              <div className="mb-4 grid items-start gap-4">
+                <BalanceCard kind={kind} partyId={r.id} />
+                {canRecordPayments(auth) && <MatchCard kind={kind} partyId={r.id} />}
+              </div>
             </>
           )}
           {tab === 'khata' && byJob && (
