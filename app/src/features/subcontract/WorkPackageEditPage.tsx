@@ -15,10 +15,11 @@ import { formatNPR, lineAmount, paisaToInput, parseNPR } from '../../lib/money'
 import { useUnits } from '../catalog/api'
 import { useHeadings, useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnDefault } from '../projects/current'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
 import { PARTY } from '../parties/kinds'
 import { useSubcontractors, useWorkPackage } from './api'
 import { t } from '../../lib/i18n'
+import { refresh as refreshData } from '../../data/refresh'
 
 type Pkg = NonNullable<ReturnType<typeof useWorkPackage>['data']>
 
@@ -81,9 +82,7 @@ function PackageForm({ initial }: { initial: Pkg | null }) {
         : {}),
     } }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['work-packages'] })
-      await queryClient.invalidateQueries({ queryKey: ['work-package', v.id] })
-      await queryClient.invalidateQueries({ queryKey: ['package-figures'] })
+      await refreshData(queryClient, 'work')
       navigate(`/work/${v.id}`, { replace: true })
     },
   })

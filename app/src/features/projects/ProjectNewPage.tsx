@@ -18,6 +18,7 @@ import { supabase } from '../../lib/supabase'
 import { useMembers } from './api'
 import { ProjectDetailsFields } from './ProjectDetailsFields'
 import { detailsSchema, detailsToRow, emptyDetails } from './projectDetails'
+import { refresh } from '../../data/refresh'
 
 const amount = z.string().refine((s) => parseNPR(s) !== null && parseNPR(s)! >= 0, { error: () => t('projectNew.validAmount') })
 
@@ -72,7 +73,7 @@ export function ProjectNewPage() {
     },
     onSuccess: async (projectId) => {
       await draft.clear()
-      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      await refresh(queryClient, 'projects')
       navigate(`/projects/${projectId}`, { replace: true })
     },
   })

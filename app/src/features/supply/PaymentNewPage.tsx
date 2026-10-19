@@ -39,10 +39,16 @@ import { useProjects } from '../projects/api'
 import { projectChoices, useCurrentProject } from '../projects/current'
 import { useCharges, useUsableHeld, useWorkPackage, useWorkPackages } from '../subcontract/api'
 import { useWorkerAdvance } from '../labour/api'
-import { rpc, useRefreshMoney } from './api'
-import { canManageSuppliers, canPost } from './permissions'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc } from '../../data/rpc'
+import { canManageSuppliers, canPost } from '../../data/permissions'
 import { TrashIcon } from '../../components/icons'
 import { t } from '../../lib/i18n'
+import { refresh as refreshData } from '../../data/refresh'
+import {
+  docKey, fillOldestFirst, hasUnpaid, heldAndCash, payableDocs, projectSplit, tickedEntries, untickedOldestFirst, workerDays,
+  type DayRow,
+} from './paymentMath'
 
 type Values = {
   id: string
@@ -69,10 +75,6 @@ type Values = {
   sent: boolean // a save was tried: the draft is then always restored (its id and op_key)
 }
 
-/** One of a worker's verified days not yet paid. */
-type DayRow = { key: string; project_id: string; date: IsoDate; amount: number; doc_id: string }
-
-const OWED = new Set(['bill', 'charge', 'labour', 'expense'])
 const WITH_REFERENCE = new Set(['bank_transfer', 'cheque', 'wallet'])
 
 export function PaymentNewPage() {
@@ -110,15 +112,14 @@ export function PaymentNewPage() {
   const openItems = usePartyOpenItems(v.party_id, !!v.party_id)
   const pkgChargeIds = new Set(pkgCharges.data?.map((c) => c.id))
   // A package payment can only clear that package's charges.
-  const openDocs = openItems.data?.filter((i) => OWED.has(i.kind) && (!v.package_id || pkgChargeIds.has(i.doc_id!))) ?? []
+  const openDocs = payableDocs(openItems.data, v.package_id, pkgChargeIds)
   const held = usePartyHeld(v.party_id, !!v.party_id)
   const isWorker = v.party_kind === 'worker'
   const workerAdvance = useWorkerAdvance(v.party_id, isWorker && !!v.party_id)
   // Peski only while nothing at all is unpaid to the party (any package or project).
-  const anyUnpaid = openItems.data?.some((i) => OWED.has(i.kind)) ?? true
+  const anyUnpaid = hasUnpaid(openItems.data)
   const owed = openDocs.reduce((s, d) => s + d.amount_paisa, 0)
   const docLabel = (d: (typeof openDocs)[number]) => (d.kind === 'bill' ? t('paymentNew.billLabel', { label: d.label }) : `${DOC_WORD[d.kind]}: ${d.label}`)
-  const docKey = (d: (typeof openDocs)[number]) => `${d.doc_id}:${d.project_id}`
   const party = parties.data?.find((p) => p.id === v.party_id)
   const kindLabel = PARTY[v.party_kind].one
   const pkgProject = pkg.data?.project_id ?? ''
@@ -157,14 +158,10 @@ export function PaymentNewPage() {
   // What pay_worker takes off: held on any project they see (not netted against other projects).
   const advance = workerAdvance.data ?? 0
   const tickedDays = dayRows.filter((r) => v.days?.includes(r.key))
-  const tickedTotal = tickedDays.reduce((s, r) => s + r.amount, 0)
-  const less = Math.min(advance, tickedTotal)
-  const due = tickedTotal - less
-  const allDays = dayRows.reduce((s, r) => s + r.amount, 0)
+  const { less, due, allDays } = workerDays(dayRows, v.days, advance)
   const setDays = (keys: string[]) => {
-    const total = dayRows.filter((r) => keys.includes(r.key)).reduce((s, r) => s + r.amount, 0)
     setValue('days', keys)
-    setValue('amount', paisaToInput(total - Math.min(advance, total)))
+    setValue('amount', paisaToInput(workerDays(dayRows, keys, advance).due))
   }
   // First ticks: every day, or from a crew page ("Pay Ram" on a project) that project's days only.
   const workerReady = isWorker && !!v.party_id && !!openItems.data && workerAdvance.data != null
@@ -177,7 +174,7 @@ export function PaymentNewPage() {
 
   // Only documents shown now count: ticks left behind by a party change are ignored.
   const shown = new Set(openDocs.map(docKey))
-  const ticked = (vals: Values) => Object.entries(vals.settle).filter(([k, a]) => shown.has(k) && (parseNPR(a) ?? 0) > 0)
+  const ticked = (vals: Values) => tickedEntries(vals.settle, shown)
   const amountPaisa = parseNPR(v.amount)
   const tickedSum = ticked(v).reduce((s, [, a]) => s + (parseNPR(a) ?? 0), 0)
   const extra = (amountPaisa ?? 0) - tickedSum
@@ -193,12 +190,9 @@ export function PaymentNewPage() {
   const direct = forWork && party?.pays_by === 'direct' && !!v.package_id && !(v.advance && !anyUnpaid)
   const usable = useUsableHeld(subMode || direct ? v.party_id : '',
     direct ? (pkgProject ? [pkgProject] : []) : [...new Set(tickedDocs.map((d) => d.project_id!))], v.package_id || null)
-  const heldLess = subMode ? Math.min(usable.paisa, tickedOwed) : direct ? Math.min(usable.paisa, amountPaisa ?? 0) : 0
-  const cashDue = subMode ? tickedOwed - heldLess : direct ? (amountPaisa ?? 0) - heldLess : 0
   // A direct payment already sent shows (and sends again) the cash it was sent with: if it was saved
   // and the reply lost, what they hold is now less, and a new figure would not match its op_key.
-  const directCash = direct ? v.cash_sent ?? cashDue : 0
-  const directHeld = direct && v.cash_sent != null ? Math.max(0, (amountPaisa ?? 0) - v.cash_sent) : heldLess
+  const { heldLess, cashDue, directCash, directHeld } = heldAndCash({ subMode, direct, usable: usable.paisa, tickedOwed, amountPaisa, cashSent: v.cash_sent })
   useEffect(() => {
     if (subMode && usable.ready) setValue('amount', paisaToInput(cashDue))
   }, [subMode, usable.ready, cashDue]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -207,30 +201,15 @@ export function PaymentNewPage() {
   const extraProject = pkgProject || v.extra_project || (visible.length === 1 ? visible[0].id : '')
   // Money beyond the ticked bills while other bills are unpaid: offer to pay those, oldest first,
   // before any of it counts as overpaid.
-  const untickedOpen = billsMode && !subMode && !v.package_id
-    ? openDocs.filter((d) => !(docKey(d) in v.settle)).sort((a, b) => (a.doc_date ?? '').localeCompare(b.doc_date ?? ''))
-    : []
+  const untickedOpen = billsMode && !subMode && !v.package_id ? untickedOldestFirst(openDocs, v.settle) : []
   function extraToBills() {
-    const next = { ...getValues('settle') }
-    let left = extra
-    for (const d of untickedOpen) {
-      if (left <= 0) break
-      const take = Math.min(left, d.amount_paisa)
-      next[docKey(d)] = paisaToInput(take)
-      left -= take
-    }
-    setValue('settle', next)
+    setValue('settle', fillOldestFirst(getValues('settle'), untickedOpen, extra))
   }
 
   /** The project split the server gets: from the ticked bills, the package, or typed in. */
   function splitOf(vals: Values) {
-    const amount = parseNPR(vals.amount) ?? 0
-    if (vals.package_id) return pkgProject ? [{ project_id: pkgProject, amount_paisa: amount }] : []
-    if (!billsMode) return vals.allocations.filter((a) => (parseNPR(a.amount) ?? 0) > 0).map((a) => ({ project_id: a.project_id, amount_paisa: parseNPR(a.amount)! }))
-    const byProject = new Map<string, number>()
-    for (const [k, a] of ticked(vals)) byProject.set(k.split(':')[1], (byProject.get(k.split(':')[1]) ?? 0) + (parseNPR(a) ?? 0))
-    if (amount > tickedSum && extraProject) byProject.set(extraProject, (byProject.get(extraProject) ?? 0) + amount - tickedSum)
-    return [...byProject].map(([project_id, amount_paisa]) => ({ project_id, amount_paisa }))
+    return projectSplit({ amount: parseNPR(vals.amount) ?? 0, packageId: vals.package_id, pkgProject, billsMode,
+      allocations: vals.allocations, ticked: ticked(vals), tickedSum, extraProject })
   }
 
   // A worker: money beyond the ticked days is an advance, on the project chosen (or the latest day's).
@@ -305,8 +284,7 @@ export function PaymentNewPage() {
     onSuccess: async ({ paymentId, held, failed }, vals) => {
       await draft.clear()
       await refresh()
-      await queryClient.invalidateQueries({ queryKey: ['charges', vals.package_id] })
-      await queryClient.invalidateQueries({ queryKey: ['package-figures'] })
+      await refreshData(queryClient, 'work')
       navigate(paymentId ? `/payments/${paymentId}` : `/work/${vals.package_id}`,
         { replace: true, state: paymentId ? (failed ? { photoFailed: failed } : undefined) : { paidFromHeld: held } })
     },
@@ -706,6 +684,8 @@ function WorkCard({ subcontractorId, value, preferProject, onChange, children }:
       id: newWorkId, project_id: project, subcontractor_id: subcontractorId, scope: scope.trim(),
     } }),
     onSuccess: async (id) => {
+      // A new package has no money on it yet: only the list changes. Choose it straight after, so
+      // an amount typed meanwhile is not reset by a slower, wider refresh.
       await queryClient.invalidateQueries({ queryKey: ['work-packages'] })
       setAdding(false)
       onChange(id as string)

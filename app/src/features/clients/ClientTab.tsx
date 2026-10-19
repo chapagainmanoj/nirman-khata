@@ -8,7 +8,7 @@ import { friendlyError } from '../../lib/errors'
 import { CLIENT_RECEIPT_KINDS, PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR } from '../../lib/money'
 import { useAmountsAsOf } from '../projects/api'
-import { canRecordPayments } from '../supply/permissions'
+import { canRecordPayments } from '../../data/permissions'
 import { useClientReceipts, useClientReceived } from './api'
 import { t } from '../../lib/i18n'
 

@@ -1,8 +1,9 @@
 // Client receipts: what the client the project is built for has paid. Kept out of the ledger, so
 // they never change cost, cash paid or party balances; only "Received" and "Contract balance".
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
+import { useRefresh } from '../../data/refresh'
 
 /** A project's receipts, newest first, with the reversal if there is one. */
 export function useClientReceipts(projectId: string) {
@@ -30,7 +31,6 @@ export function useClientReceived(projectId: string, asOf: string, enabled: bool
 
 /** Refresh everything a receipt can change. */
 export function useRefreshClientMoney() {
-  const queryClient = useQueryClient()
-  return () => Promise.all(['client-receipts', 'client-receipt', 'client-received', 'calendar', 'dashboard', 'project-dashboard']
-    .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+  const refresh = useRefresh()
+  return () => refresh('clientMoney')
 }

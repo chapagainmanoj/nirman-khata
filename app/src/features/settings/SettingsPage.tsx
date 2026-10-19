@@ -16,6 +16,7 @@ import { t } from '../../lib/i18n'
 import { ROLE_LABELS } from '../../lib/labels'
 import { formatPhone, parseLoginId } from '../../lib/login-id'
 import { supabase, type Tables } from '../../lib/supabase'
+import { platform } from '../../platform'
 import { ColourField, LogoField } from './Branding'
 
 const SECTIONS = [
@@ -436,36 +437,19 @@ function BillsVatCard({ company }: { company: Tables<'companies'> }) {
 // ---------------------------------------------------------------------------
 const LAST_EXPORT_KEY = (companyId: string) => `nk:last-export:${companyId}`
 
-function readLastExport(companyId: string) {
-  try {
-    return localStorage.getItem(LAST_EXPORT_KEY(companyId))
-  } catch {
-    return null
-  }
-}
-
 /** Full company export (req §22): every record and photo in one zip, for the owner to keep. */
 function ExportCard() {
   const auth = useCompany()
   const [done, setDone] = useState('')
-  const [last, setLast] = useState(() => readLastExport(auth.companyId))
+  const [last, setLast] = useState(() => platform.prefs.get(LAST_EXPORT_KEY(auth.companyId)))
   const run = useMutation({
     mutationFn: () => callFunction<Blob>('company-export', { company_id: auth.companyId }),
     onSuccess: (blob) => {
       const today = todayKathmandu()
       const name = `nirmankhata-export-${today}.zip`
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = name
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      platform.download(blob, name)
       setDone(t('settings.downloadedNameValueMb', { name, value: (blob.size / 1024 / 1024).toFixed(1) }))
-      try {
-        localStorage.setItem(LAST_EXPORT_KEY(auth.companyId), today)
-      } catch {
-        // Private browsing: the reminder is only a convenience.
-      }
+      platform.prefs.set(LAST_EXPORT_KEY(auth.companyId), today)
       setLast(today)
     },
   })

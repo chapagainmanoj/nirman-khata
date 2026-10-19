@@ -9,7 +9,7 @@ import { ShowMore } from '../../components/ShowMore'
 import { Tabs } from '../parties/PartyParts'
 import { useBillCount, useBills, useBillsOwed } from '../supply/api'
 import { BillTable } from '../supply/BillRow'
-import { canEnter, canPost } from '../supply/permissions'
+import { canEnter, canPost } from '../../data/permissions'
 import { useProjectFilter } from './ProjectFilter'
 import { t, type MessageKey } from '../../lib/i18n'
 

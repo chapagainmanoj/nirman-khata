@@ -18,7 +18,7 @@ import { CLIENT_RECEIPT_KINDS, PAYMENT_METHODS } from '../../lib/labels'
 import { parseNPR } from '../../lib/money'
 import { useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnDefault, useWorkingOnId } from '../projects/current'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
 import { useRefreshClientMoney } from './api'
 import { t } from '../../lib/i18n'
 

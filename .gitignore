@@ -6,3 +6,4 @@ supabase/.branches
 .env.local
 docker/.env
 scripts
+.pnpm-store

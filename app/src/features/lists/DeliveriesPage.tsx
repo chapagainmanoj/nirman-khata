@@ -3,7 +3,7 @@
 import { useCompany } from '../../auth/AuthProvider'
 import { ButtonLink, PageHeader } from '../../components/ui'
 import { DeliveryList } from '../supply/DeliveryList'
-import { canEnter } from '../supply/permissions'
+import { canEnter } from '../../data/permissions'
 import { useListFilters } from './ListFilters'
 import { useProjectFilter } from './ProjectFilter'
 import { t } from '../../lib/i18n'

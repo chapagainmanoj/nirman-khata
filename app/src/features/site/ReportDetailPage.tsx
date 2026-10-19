@@ -8,7 +8,7 @@ import { formatDateTime } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
 import { memberName, useMembers } from '../projects/api'
-import { canEnter } from '../supply/permissions'
+import { canEnter } from '../../data/permissions'
 import { useDailyReport, useReportLabour, weatherLabel } from './api'
 import { t } from '../../lib/i18n'
 

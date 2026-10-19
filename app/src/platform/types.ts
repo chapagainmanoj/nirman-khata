@@ -10,12 +10,23 @@ export interface DeviceStorage {
   keys(prefix: string): Promise<string[]>
 }
 
+/**
+ * Small settings read before the first render (current project, accent colour, reminders).
+ * Synchronous, strings only, never fails: blocked storage just forgets. Not for drafts or records.
+ */
+export interface DevicePrefs {
+  get(key: string): string | null
+  /** `null` removes the key. */
+  set(key: string, value: string | null): void
+}
+
 export interface Platform {
   share(data: ShareData): Promise<ShareResult>
   /** Opens the camera on phones, a file picker elsewhere. */
   pickPhoto(): Promise<File | null>
   download(blob: Blob, fileName: string): void
   storage: DeviceStorage
+  prefs: DevicePrefs
   /** Ask the OS not to clear device storage under pressure (drafts). */
   requestPersistentStorage(): Promise<boolean>
   /** Start the app again with its current files (a screen that failed to load). */

@@ -3,6 +3,7 @@
 // Remembered on this device only (per user and company): a convenience, never a permission.
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { useCompany } from '../../auth/AuthProvider'
+import { platform } from '../../platform'
 import { useProjects } from './api'
 
 type Project = { id: string; code: string; name: string; status: string }
@@ -52,28 +53,11 @@ const Ctx = createContext<CurrentProject>({ projectId: null, project: null, choi
 
 const storageKey = (userId: string, companyId: string) => `nk:current-project:${userId}:${companyId}`
 
-function read(key: string): string | null {
-  try {
-    return localStorage.getItem(key)
-  } catch {
-    return null
-  }
-}
-
-function write(key: string, value: string | null) {
-  try {
-    if (value) localStorage.setItem(key, value)
-    else localStorage.removeItem(key)
-  } catch {
-    // Private mode or blocked storage: the choice just is not remembered.
-  }
-}
-
 export function CurrentProjectProvider({ children }: { children: ReactNode }) {
   const auth = useCompany()
   const projects = useProjects(auth.companyId)
   const key = storageKey(auth.userId, auth.companyId)
-  const [stored, setStored] = useState(() => read(key))
+  const [stored, setStored] = useState(() => platform.prefs.get(key))
   const projectId = resolveCurrentProject(stored, projects.data)
   const choices = projects.data?.filter(WORKABLE) ?? []
 
@@ -84,7 +68,7 @@ export function CurrentProjectProvider({ children }: { children: ReactNode }) {
     ready: projects.isSuccess,
     setProjectId: (id) => {
       setStored(id)
-      write(key, id)
+      platform.prefs.set(key, id || null)
     },
   }
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

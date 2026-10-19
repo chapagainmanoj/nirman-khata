@@ -17,10 +17,12 @@ import { newId } from '../../lib/ids'
 import { CHARGE_STATUS, PACKAGE_STATUS, settlementLabel } from '../../lib/labels'
 import { formatNPR, paisaToInput, parseNPR, percent } from '../../lib/money'
 import { BalanceText } from '../parties/PartyParts'
-import { rpc, usePosting, useRefreshMoney } from '../supply/api'
-import { canManageSuppliers, canPost, canRecordPayments } from '../supply/permissions'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc, usePosting } from '../../data/rpc'
+import { canManageSuppliers, canPost, canRecordPayments } from '../../data/permissions'
 import { useCharges, usePackageFigures, useWorkPackage } from './api'
 import { t } from '../../lib/i18n'
+import { refresh as refreshData } from '../../data/refresh'
 
 type Charge = NonNullable<ReturnType<typeof useCharges>['data']>[number]
 
@@ -191,8 +193,7 @@ function BillForm({ packageId, subcontractorId, onDone }: { packageId: string; s
       return pay
     },
     onSuccess: async (pay) => {
-      await queryClient.invalidateQueries({ queryKey: ['charges', packageId] })
-      await queryClient.invalidateQueries({ queryKey: ['package-figures'] })
+      await refreshData(queryClient, 'work')
       if (approveNow) await refresh()
       if (pay) navigate(`/payments/new?subcontractor=${subcontractorId}&package=${packageId}&doc=${id}`)
       else onDone()
@@ -245,8 +246,7 @@ function ChargeItem({ c, subcontractorId }: { c: Charge; subcontractorId: string
   const [open, setOpen] = useState(false)
   const [label, tone] = CHARGE_STATUS[c.status]
   const after = async () => {
-    await queryClient.invalidateQueries({ queryKey: ['charges', c.work_package_id] })
-    await queryClient.invalidateQueries({ queryKey: ['package-figures'] })
+    await refreshData(queryClient, 'work')
     await refresh()
   }
   const reject = useMutation({ mutationFn: (reason: string) => rpc('reject_charge', { p_charge: c.id, p_reason: reason }), onSuccess: after })

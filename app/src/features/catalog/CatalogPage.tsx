@@ -10,6 +10,7 @@ import { supabase, type Tables } from '../../lib/supabase'
 import { useHeadings } from '../projects/api'
 import { useMaterials, useUnits } from './api'
 import { ChevronRightIcon } from '../../components/icons'
+import { refresh } from '../../data/refresh'
 
 type Tab = 'headings' | 'materials' | 'units'
 
@@ -53,7 +54,7 @@ export function CatalogPage() {
 }
 
 /** Insert/update on a catalog table, then refresh its list. */
-function useCatalogWrite(table: 'cost_headings' | 'materials' | 'units', queryKey: string) {
+function useCatalogWrite(table: 'cost_headings' | 'materials' | 'units') {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async (op: { id?: string; values: Record<string, unknown> }) => {
@@ -63,7 +64,7 @@ function useCatalogWrite(table: 'cost_headings' | 'materials' | 'units', queryKe
       const { error } = await q
       if (error) throw error
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [queryKey] }),
+    onSuccess: () => refresh(queryClient, 'catalog'),
   })
 }
 
@@ -72,7 +73,7 @@ function useCatalogWrite(table: 'cost_headings' | 'materials' | 'units', queryKe
 function HeadingsTab() {
   const auth = useCompany()
   const headings = useHeadings(auth.companyId)
-  const write = useCatalogWrite('cost_headings', 'headings')
+  const write = useCatalogWrite('cost_headings')
   const [editing, setEditing] = useState<{ id: string; name: string } | null>(null)
   const [adding, setAdding] = useState<{ parentId: string | null; name: string } | null>(null)
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set())
@@ -173,7 +174,7 @@ function MaterialsTab() {
   const materials = useMaterials(auth.companyId)
   const units = useUnits(auth.companyId)
   const headings = useHeadings(auth.companyId)
-  const write = useCatalogWrite('materials', 'materials')
+  const write = useCatalogWrite('materials')
   const empty = { name: '', local_name: '', spec: '', default_unit_id: '', default_heading_id: '' }
   const [form, setForm] = useState(empty)
   const [editId, setEditId] = useState<string | null>(null)
@@ -278,7 +279,7 @@ function MaterialsTab() {
 function UnitsTab() {
   const auth = useCompany()
   const units = useUnits(auth.companyId)
-  const write = useCatalogWrite('units', 'units')
+  const write = useCatalogWrite('units')
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [needsNote, setNeedsNote] = useState(false)

@@ -21,8 +21,10 @@ import { useMaterials, useUnits } from '../catalog/api'
 import { MaterialOptions } from '../catalog/MaterialOptions'
 import { useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnDefault } from '../projects/current'
-import { rpc, useOpenSlips, useSlip, useSuppliers } from './api'
+import { useOpenSlips, useSlip, useSuppliers } from './api'
+import { rpc } from '../../data/rpc'
 import { ChevronRightIcon, TrashIcon } from '../../components/icons'
+import { refresh } from '../../data/refresh'
 
 type Line = {
   id: string
@@ -125,10 +127,7 @@ function DeliveryForm({ slip, projectParam, supplierParam }: {
       setPhotoFailed(failed)
       await draft.clear()
       setSaved(true)
-      await queryClient.invalidateQueries({ queryKey: ['deliveries'] })
-      await queryClient.invalidateQueries({ queryKey: ['slip'] })
-      await queryClient.invalidateQueries({ queryKey: ['slips'] })
-      await queryClient.invalidateQueries({ queryKey: ['delivery-lines'] })
+      await refresh(queryClient, 'deliveries')
     },
   })
 

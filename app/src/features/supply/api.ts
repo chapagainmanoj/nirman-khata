@@ -1,71 +1,13 @@
 // Data for the supplier loop: suppliers, slips, deliveries, bills, payments, khata.
 // Reads go through RLS, so each list already contains only what the user may see.
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useRef } from 'react'
+import { useQueries, useQuery } from '@tanstack/react-query'
+import { useMemo } from 'react'
 import type { Database, Json } from '../../lib/database.types'
-import { newId } from '../../lib/ids'
 import { PAGE_SIZE, usePaged } from '../../lib/paging'
 import { containsAny } from '../../lib/search'
 import type { ListSearch } from '../lists/ListFilters'
 import { supabase } from '../../lib/supabase'
-
-type Fns = Database['public']['Functions']
-
-/** Call an RPC and throw its error, so react-query sees failures. */
-export async function rpc<N extends keyof Fns>(name: N, args: Fns[N]['Args']): Promise<Fns[N]['Returns']> {
-  const { data, error } = await supabase.rpc(name, args as never)
-  if (error) throw error
-  return data as Fns[N]['Returns']
-}
-
-/**
- * A posting call with an operation key (design §5.1). The key is kept until the server
- * answers with success, so a retry after a lost response returns the first result
- * instead of posting twice.
- */
-export function usePosting<A = void, R = unknown>(fn: (opKey: string, args: A) => Promise<R>, opts: { onSuccess?: (r: R) => unknown; initialKey?: string } = {}) {
-  const key = useRef(opts.initialKey ?? newId())
-  return useMutation({
-    mutationFn: (args: A) => fn(key.current, args),
-    onSuccess: async (r) => {
-      key.current = newId()
-      await opts.onSuccess?.(r)
-    },
-  })
-}
-
-/**
- * Save a draft before submitting it, unless an earlier submit with `submitKey` already went
- * through and only its answer was lost. `cameBack` says whether the record has been sent back to
- * its sender since (a rejected slip), which makes this a new send. Returns the key to submit with.
- */
-export async function saveUnlessSent(
-  submitKey: string,
-  save: () => Promise<unknown>,
-  cameBack?: () => Promise<boolean>,
-): Promise<{ alreadySent: boolean; key: string }> {
-  // Asked before saving: a save would turn a slip rejected since then back into a draft, and the
-  // used key would then "send" it without sending (second review, Codex finding 1).
-  if (await rpc('finished_submit', { p_op_key: submitKey })) {
-    if (!cameBack || !(await cameBack())) return { alreadySent: true, key: submitKey }
-    // Sent, then sent back (a rejected slip): this is a new send, under a new key.
-    submitKey = newId()
-  }
-  await save()
-  return { alreadySent: false, key: submitKey }
-}
-
-/** Refresh everything that a money posting can change. */
-export function useRefreshMoney() {
-  const queryClient = useQueryClient()
-  return () =>
-    Promise.all(
-      ['bills', 'bill', 'payments', 'nav-count', 'payment', 'khata', 'balances', 'open-items', 'project-cost', 'delivery-lines', 'bill-preview',
-        'labour', 'expenses', 'charges', 'package-figures', 'opening-balance', 'payees', 'project-dashboard', 'dashboard', 'report',
-        'calendar', 'attendance']
-        .map((k) => queryClient.invalidateQueries({ queryKey: [k] })),
-    )
-}
+import { rpc } from '../../data/rpc'
 
 // ---------------------------------------------------------------------------
 // Suppliers
@@ -427,3 +369,97 @@ export function useProjectCost(projectId: string, asOf: string, enabled: boolean
 }
 
 export type JsonObject = { [key: string]: Json | undefined }
+
+// ---------------------------------------------------------------------------
+// Supplier page
+// ---------------------------------------------------------------------------
+/** Delivered lines not billed yet, with what they were and when they came. */
+export function useUnbilled(supplierId: string) {
+  return useQuery({
+    queryKey: ['delivery-lines', 'unbilled-detail', supplierId],
+    queryFn: async () => {
+      const st = await supabase.from('delivery_line_status').select('id, billable_qty').eq('supplier_id', supplierId).gt('billable_qty', 0)
+      if (st.error) throw st.error
+      if (!st.data.length) return []
+      // In batches, so a long list of ids does not make the request URL too long.
+      const ids = st.data.map((s) => s.id!)
+      const batches = await Promise.all(Array.from({ length: Math.ceil(ids.length / 100) }, (_, i) => supabase.from('delivery_lines')
+        .select('id, material_text, materials(name), units(code), deliveries(id, receipt_date, project_id, projects(code))')
+        .in('id', ids.slice(i * 100, i * 100 + 100))))
+      const failed = batches.find((b) => b.error)
+      if (failed?.error) throw failed.error
+      const billable = new Map(st.data.map((s) => [s.id!, Number(s.billable_qty)]))
+      return batches.flatMap((b) => b.data ?? [])
+        .map((l) => ({ ...l, billable: billable.get(l.id) ?? 0 }))
+        .sort((a, b) => (a.deliveries?.receipt_date ?? '').localeCompare(b.deliveries?.receipt_date ?? ''))
+    },
+  })
+}
+
+/** The latest posted rate for each material from this supplier. */
+export function useTheirRates(supplierId: string, enabled = true) {
+  return useQuery({
+    queryKey: ['supplier-rates', supplierId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from('bill_lines')
+        .select('material_id, unit_id, rate_paisa, materials(name), units(code), supplier_bills!inner(bill_date, supplier_id, status)')
+        .eq('supplier_bills.supplier_id', supplierId).eq('supplier_bills.status', 'posted')
+        .not('material_id', 'is', null).not('rate_paisa', 'is', null)
+        .order('created_at', { ascending: false }).limit(300)
+      if (error) throw error
+      // Newest bill first; keep one row per material and unit.
+      const rows = [...data].sort((a, b) => b.supplier_bills.bill_date.localeCompare(a.supplier_bills.bill_date))
+      const seen = new Set<string>()
+      return rows.filter((r) => {
+        const k = `${r.material_id}:${r.unit_id}`
+        if (seen.has(k)) return false
+        seen.add(k)
+        return true
+      })
+    },
+    enabled,
+  })
+}
+
+export type SupplierRow = Pick<Database['public']['Tables']['suppliers']['Insert'], 'name' | 'contact_person' | 'phone' | 'address' | 'pan_vat' | 'payment_terms' | 'categories'>
+
+/** Add a supplier under `id`, or change one (`existing`). */
+export async function saveSupplier(companyId: string, id: string, row: SupplierRow, existing: boolean) {
+  const { error } = existing
+    ? await supabase.from('suppliers').update(row).eq('id', id)
+    : await supabase.from('suppliers').insert({ ...row, id, company_id: companyId })
+  if (error) throw error
+}
+
+/** Whether an order slip can be sent again: it is a draft, or was sent back (rejected). */
+export async function slipCanBeSent(slipId: string): Promise<boolean> {
+  const { data } = await supabase.from('order_slips').select('status').eq('id', slipId).maybeSingle()
+  return data?.status === 'draft' || data?.status === 'rejected'
+}
+
+/** Another live bill from this supplier with the same number (any case), that the user can see. */
+export async function hasDuplicateBill(supplierId: string, billNo: string, exceptId: string): Promise<boolean> {
+  const { data } = await supabase.from('supplier_bills').select('id')
+    // Same number, any case; % and _ are matched literally, not as wildcards.
+    .eq('supplier_id', supplierId).ilike('bill_no', billNo.replace(/[\\%_]/g, (c) => `\\${c}`)).neq('id', exceptId).neq('status', 'reversed')
+  return !!data?.length
+}
+
+/** Delivery line details (challan, date, material, unit) for matching. */
+export function useDeliveriesById(deliveryIds: string[]) {
+  const ids = useMemo(() => [...new Set(deliveryIds)].sort(), [deliveryIds])
+  return useQuery({
+    queryKey: ['delivery-lines', 'detail', ids],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('delivery_lines').select('id, material_id, unit_id, unit_note, deliveries(challan_no, receipt_date)')
+        .in('delivery_id', ids)
+      if (error) throw error
+      return new Map(data.map((d) => [d.id, {
+        material_id: d.material_id, unit_id: d.unit_id, unit_note: d.unit_note,
+        challan_no: d.deliveries?.challan_no ?? null, receipt_date: d.deliveries?.receipt_date ?? '',
+      }]))
+    },
+  })
+}

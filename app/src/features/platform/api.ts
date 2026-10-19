@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '../../auth/AuthProvider'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
 
 /** Whether to show the Platform link; false until known. */
 export function useIsPlatformAdmin() {

@@ -13,8 +13,10 @@ import { friendlyError } from '../../lib/errors'
 import { billTitle, PAYMENT_METHODS } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { memberName, useMembers, useProjects } from '../projects/api'
-import { rpc, usePayment, usePosting, useRefreshMoney } from './api'
-import { canPost, canRecordPayments } from './permissions'
+import { usePayment } from './api'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc, usePosting } from '../../data/rpc'
+import { canPost, canRecordPayments } from '../../data/permissions'
 import { t } from '../../lib/i18n'
 
 export function PaymentDetailPage() {

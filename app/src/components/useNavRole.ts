@@ -1,5 +1,5 @@
 import { useCompany } from '../auth/AuthProvider'
-import { canRecordPayments } from '../features/supply/permissions'
+import { canRecordPayments } from '../data/permissions'
 import type { NavRole } from './nav'
 
 /** The nav-relevant facts about the signed-in person. */

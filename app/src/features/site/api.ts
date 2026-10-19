@@ -1,9 +1,10 @@
 // Site work (req §16, §17): stages, progress, daily reports and the calendar.
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { type MessageKey, t } from '../../lib/i18n'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
+import { useRefresh } from '../../data/refresh'
 
 /** Common stages of a building job; a project can also copy another project's list. */
 export const STAGE_LIST = ['Excavation', 'Foundation', 'Structure/Slab', 'Masonry', 'Plaster', 'Electrical', 'Plumbing', 'Finishing']
@@ -94,7 +95,6 @@ export function useCalendarEvents(companyId: string, from: string, to: string, p
 export type CalendarEvent = NonNullable<ReturnType<typeof useCalendarEvents>['data']>[number]
 
 export function useRefreshSite() {
-  const queryClient = useQueryClient()
-  return () => Promise.all(['stages', 'progress', 'daily-reports', 'report-day', 'calendar', 'labour', 'project-cost', 'project-dashboard', 'dashboard', 'report']
-    .map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+  const refresh = useRefresh()
+  return () => refresh('site')
 }

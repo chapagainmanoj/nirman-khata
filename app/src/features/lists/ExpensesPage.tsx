@@ -11,7 +11,7 @@ import { ExpenseTable } from '../costs/CostLists'
 import { useExpenseCount, useExpenses } from '../costs/api'
 import { Tabs } from '../parties/PartyParts'
 import { useProjects } from '../projects/api'
-import { canEnter } from '../supply/permissions'
+import { canEnter } from '../../data/permissions'
 import { useProjectFilter } from './ProjectFilter'
 
 type Tab = 'project' | 'company'

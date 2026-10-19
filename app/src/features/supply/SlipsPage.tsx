@@ -11,7 +11,7 @@ import { useListFilters } from '../lists/ListFilters'
 import { useProjectFilter } from '../lists/ProjectFilter'
 import { useProjects } from '../projects/api'
 import { useSlipCount, useSlips } from './api'
-import { canEnter } from './permissions'
+import { canEnter } from '../../data/permissions'
 import { t, type MessageKey } from '../../lib/i18n'
 
 type Filter = 'open' | 'pending' | 'draft' | 'all'

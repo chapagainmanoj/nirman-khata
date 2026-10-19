@@ -15,8 +15,8 @@ import { PACKAGE_STATUS } from '../../lib/labels'
 import { useProjects } from '../projects/api'
 import { useProjectFilter } from '../lists/ProjectFilter'
 import { packageFiguresQuery, useWorkPackages } from '../subcontract/api'
-import { rpc } from '../supply/api'
-import { canEnter, canManageSuppliers, canRecordPayments } from '../supply/permissions'
+import { rpc } from '../../data/rpc'
+import { canEnter, canManageSuppliers, canRecordPayments } from '../../data/permissions'
 import { PARTY, partyCrumbs, type PartyKind } from './kinds'
 import { PartyForm, subtitleOf, usePartyRows } from './PartiesPage'
 import { usePartyBalances } from './api'
@@ -28,6 +28,7 @@ import { formatNPR } from '../../lib/money'
 import { BalanceCard, ContactRow, Khata, MatchCard, OpeningBalance, PaymentList, Tabs } from './PartyParts'
 import { RefundCard } from '../refunds/RefundCard'
 import { t } from '../../lib/i18n'
+import { refresh } from '../../data/refresh'
 
 type Tab = 'overview' | 'khata' | 'payments'
 
@@ -332,8 +333,8 @@ function PromotePayee({ payeeId, supplierId }: { payeeId: string; supplierId: st
   const promote = useMutation({
     mutationFn: () => rpc('promote_payee', { p_payee: payeeId }),
     onSuccess: async (id) => {
-      await queryClient.invalidateQueries({ queryKey: ['payees'] })
-      await queryClient.invalidateQueries({ queryKey: ['suppliers'] })
+      // Its past expenses move with it: balances and khata change too.
+      await refresh(queryClient, 'parties', 'ledger')
       navigate(`/suppliers/${id}`)
     },
   })

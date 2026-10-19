@@ -31,17 +31,19 @@ import { t } from '../../lib/i18n'
 import { formatNPR } from '../../lib/money'
 import { monthDays, monthLabel, monthOf, monthParam, parseMonth, shiftMonth, type MonthRef } from '../../lib/months'
 import { newId } from '../../lib/ids'
-import { rpc, useRefreshMoney } from '../supply/api'
-import { canRecordPayments } from '../supply/permissions'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc } from '../../data/rpc'
+import { canRecordPayments } from '../../data/permissions'
 import { Tabs } from '../parties/PartyParts'
 import { useCurrentProject } from '../projects/current'
 import {
   ABSENT, clock, type CrewMonth, type CrewWorker, fullDayOf, halfDayOf, hhmm, toMin, hoursText, markRow, type MonthRow, rateText,
-  useAddCrewWorker, useCrewMonth, useProjectWorkers, useSetCrewMember, useWorkerMonth,
+  crewMonthKey, useAddCrewWorker, useCrewMonth, useProjectWorkers, useSetCrewMember, useWorkerMonth,
 } from './api'
 import { DayGrid } from './DayGrid'
 import { DaySheet, type Mark } from './DaySheet'
 import { WorkerForm } from './WorkerForm'
+import { markStale, refresh } from '../../data/refresh'
 
 const money = (p: number | null | undefined) => (p == null ? t('common.notAvailable') : formatNPR(p))
 type Company = { day_start: string; day_end: string; standard_day_minutes: number }
@@ -61,7 +63,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
   const thisMonth = monthOf(today, auth.dateDisplay)
   const month = parseMonth(params.get('month'), thisMonth)
   const days = monthDays(month)
-  const monthKey = ['attendance', 'crew', crewId, days[0], days.at(-1)!]
+  const monthKey = crewMonthKey(crewId, days[0], days.at(-1)!)
   const data = useCrewMonth(crewId, days[0], days.at(-1)!)
   const [day, setDay] = useState<IsoDate | null>(null)
   const [dayError, setDayError] = useState<{ worker: string; date: IsoDate; message: string } | null>(null)
@@ -140,6 +142,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
       else setError(`${w.name}, ${formatDate(date, auth.dateDisplay)}: ${reason(e)}`)
     } finally {
       await queryClient.invalidateQueries({ queryKey: ['attendance'] })
+      void markStale(queryClient, 'attendance')
     }
   }
 
@@ -160,6 +163,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
       setError(t('crew.err.everyone', { reason: friendlyError(e) }))
     } finally {
       await queryClient.invalidateQueries({ queryKey: ['attendance'] })
+      void markStale(queryClient, 'attendance')
     }
   }
 
@@ -181,7 +185,7 @@ export function CrewBoard({ crewId, projectId }: { crewId: string; projectId: st
       return false
     } finally {
       setVerifying(false)
-      await queryClient.invalidateQueries({ queryKey: ['attendance'] })
+      await refresh(queryClient, 'attendance')
       await refreshMoney()
     }
   }

@@ -16,8 +16,10 @@ import { BILL_STATUS, billTitle, settlementLabel } from '../../lib/labels'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { memberName, useHeadings, useMembers, useProjects } from '../projects/api'
-import { rpc, useBill, useBillPreview, useBillProjectStatus, useCredits, usePosting, useRefreshMoney } from './api'
-import { canEnter, canPost, canRecordPayments } from './permissions'
+import { useBill, useBillPreview, useBillProjectStatus, useCredits } from './api'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc, usePosting } from '../../data/rpc'
+import { canEnter, canPost, canRecordPayments } from '../../data/permissions'
 import { t } from '../../lib/i18n'
 
 const qty = (n: number | null) => (n === null ? '' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 }))

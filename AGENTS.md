@@ -11,10 +11,13 @@ deliveries, bills, payments, labour, site reports). Read before changing anythin
 
 ## Layout
 - `app/`: React 19 + Vite + TypeScript PWA. Tailwind 4, TanStack Query, React Router, react-hook-form + zod.
-  - `src/features/<module>/`: pages plus `api.ts` (queries, mutations, `rpc()` from `features/supply/api`).
+  - `src/features/<module>/`: pages plus `api.ts` (queries, mutations). Database calls go in `api.ts`, not in pages.
+  - `src/data/`: shared data plumbing: `rpc()`, `usePosting`, `saveUnlessSent` (`rpc.ts`), what may be shown
+    (`permissions.ts`), what to fetch again after a change (`refresh.ts`).
   - `src/lib/`: money, dates (BS/AD), i18n, drafts, ids, errors. Pure, unit-tested.
   - `src/components/`: shared UI (`ui.tsx`, `MoneyInput`, `DateInput`, nav).
   - `src/platform/`: device APIs (storage, share). Use `platform`, never `window`/IndexedDB directly.
+    Small settings read before first render (current project, accent) go in `platform.prefs`, not `localStorage`.
   - `e2e/`: Playwright on a Pixel 5 screen.
 - `supabase/migrations/`: schema, RLS, RPC functions. The source of truth for the backend.
 - `supabase/tests/`: pgTAP (`NNN_topic.sql`) plus shell tests for concurrency, files, export.
@@ -63,7 +66,9 @@ Demo logins: mobile `9800000001`–`9800000005`, password `password123` (roles i
   success, so retries and double taps are safe.
 - Forms save drafts on the device through `lib/drafts.ts` (keyed by user + company).
 - Show errors with `lib/errors.ts`, which maps constraint names to plain messages; add new ones there.
-- After a mutation, invalidate every query key it can change (see `useRefreshClientMoney`).
+- After a mutation, `refresh(queryClient, ...changed)` from `data/refresh.ts` with every kind of data it changed
+  (`'deliveries'`, `'ledger'`, ...). A new query family needs one line in `SHOWS` (a test fails until it has it).
+  Don't await a wide refresh before the next UI step of a form (it reorders things on a slow phone).
 - Simple by default: small contractors must not need accounting knowledge. Accountant detail goes
   in optional sections, never required fields.
 

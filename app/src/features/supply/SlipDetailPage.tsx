@@ -12,11 +12,13 @@ import { FULFILMENT, SLIP_STATUS } from '../../lib/labels'
 import { formatNPR, lineAmount } from '../../lib/money'
 import { platform } from '../../platform'
 import { memberName, useMembers, useProjects } from '../projects/api'
-import { rpc, useSlip } from './api'
+import { useSlip } from './api'
+import { rpc } from '../../data/rpc'
 import { DeliveryList } from './DeliveryList'
 import { useState } from 'react'
 import { ArrowRightIcon, CheckIcon, ShareIcon } from '../../components/icons'
 import { t } from '../../lib/i18n'
+import { refresh } from '../../data/refresh'
 
 const qty = (n: number | null | undefined) => (n === null || n === undefined ? '—' : Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 }))
 
@@ -36,8 +38,7 @@ export function SlipDetailPage() {
   const act = useMutation({
     mutationFn: async (fn: () => Promise<unknown>) => fn(),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['slip', slipId] })
-      await queryClient.invalidateQueries({ queryKey: ['slips'] })
+      await refresh(queryClient, 'slips')
     },
   })
 

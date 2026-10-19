@@ -6,6 +6,7 @@ import { clearUserDrafts, listUserDrafts } from '../lib/drafts'
 import { applyAccent } from '../lib/accents'
 import { supabase, type AppRole, type Tables } from '../lib/supabase'
 import { t } from '../lib/i18n'
+import { accessChanged, accessFingerprint } from './access'
 
 type Membership = Tables<'memberships'> & { companies: Tables<'companies'> }
 
@@ -61,6 +62,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     enabled: !!userId,
     // supabase-js already retries network failures; a second layer only delays the error screen.
     retry: false,
+    // Coming back to the app picks up rights an admin changed meanwhile (see access.ts).
+    refetchOnWindowFocus: true,
     queryFn: async () => {
       const [profile, membership] = await Promise.all([
         supabase.from('profiles').select('*').eq('id', userId!).single(),
@@ -73,6 +76,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   })
 
   const refetchMe = me.refetch
+
+  // Rights changed while signed in: drop every answer fetched under the old ones (auth/access.ts).
+  const access = me.data ? accessFingerprint(userId, me.data.membership) : undefined
+  const lastAccess = useRef<string | null | undefined>(undefined)
+  useEffect(() => {
+    if (access === undefined) return
+    if (accessChanged(lastAccess.current, access)) void queryClient.resetQueries({ predicate: (q) => q.queryKey[0] !== 'me' })
+    lastAccess.current = access
+  }, [access, queryClient])
+
   // The company's accent colour; signed out (the login page, a shared phone) goes back to the default.
   const accent = me.data?.membership?.companies.accent
   useEffect(() => {

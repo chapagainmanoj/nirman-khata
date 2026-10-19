@@ -22,7 +22,7 @@ cp app/.env.example app/.env.local   # put the PUBLISHABLE_KEY from `pnpm exec s
 pnpm dev                      # http://localhost:5173
 ```
 
-Demo accounts (from `supabase/seed.sql`, recreated by `pnpm db:reset`), password `password123`:
+Demo accounts (from `supabase/seed.sql`, loaded when the local database is first created), password `password123`:
 
 | Mobile | Role | Sees |
 |---|---|---|
@@ -58,4 +58,5 @@ pnpm --dir app test           # money, BS/AD dates, login IDs (Vitest)
 pnpm --dir app e2e            # phone-screen walk-throughs: setup, and order -> deliver -> bill -> pay (Playwright; needs db + dev server)
 ```
 
-After a schema change: `pnpm db:reset` then `pnpm db:types`.
+After a schema change: `pnpm exec supabase migration up` then `pnpm db:types`. The local database is
+shared between sessions: never run `supabase db reset` (see AGENTS.md).

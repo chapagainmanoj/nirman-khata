@@ -13,8 +13,9 @@ import { formatNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { PARTY, PARTY_KINDS } from '../parties/kinds'
 import { memberName, useMembers, useProjects } from '../projects/api'
-import { rpc, usePosting, useRefreshMoney } from '../supply/api'
-import { canPost } from '../supply/permissions'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc, usePosting } from '../../data/rpc'
+import { canPost } from '../../data/permissions'
 import { t } from '../../lib/i18n'
 
 export function RefundDetailPage() {

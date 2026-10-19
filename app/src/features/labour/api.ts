@@ -1,12 +1,13 @@
 // Attendance (req §14, company setting "Labour by: Attendance"): workers with a rate, put on the
 // crews of the projects they work on; each worker's in, out and hours per day, a Draft until it is
 // Verified, which makes it labour cost owed to the worker (GLOSSARY: Worker, Crew Member, Attendance).
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import type { Tables } from '../../lib/database.types'
 import type { IsoDate } from '../../lib/dates'
 import { newId } from '../../lib/ids'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
+import { useRefresh } from '../../data/refresh'
 
 export type RateKind = 'daily' | 'hourly'
 /** A worker who can be marked on a project, with the crew they are on there (or another of theirs, or none yet). */
@@ -25,8 +26,8 @@ export type WorkerValues = Pick<Tables<'workers'>, 'name' | 'work_type' | 'rate_
 
 /** Everything that shows a worker: lists, the crew's month, their khata. */
 function useRefreshWorkers() {
-  const queryClient = useQueryClient()
-  return () => Promise.all(['workers', 'attendance', 'balances'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+  const refresh = useRefresh()
+  return () => refresh('parties', 'attendance')
 }
 
 /** Add a worker to the company (no crew yet) or change one. */
@@ -189,9 +190,12 @@ export type CrewMonth = {
   mark_from: IsoDate | null
 }
 
+/** The crew month's key, shared with CrewBoard's instant updates so both name the same entry. */
+export const crewMonthKey = (crewId: string, from: string, to: string) => ['attendance', 'crew', crewId, from, to]
+
 export function useCrewMonth(crewId: string, from: string, to: string) {
   return useQuery({
-    queryKey: ['attendance', 'crew', crewId, from, to],
+    queryKey: crewMonthKey(crewId, from, to),
     enabled: !!crewId && !!from && !!to,
     queryFn: async () => (await rpc('crew_month', { p_crew: crewId, p_from: from, p_to: to })) as CrewMonth,
   })

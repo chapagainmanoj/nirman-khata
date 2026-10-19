@@ -40,6 +40,12 @@ jobs:
           KEY=$(pnpm exec supabase status -o json | jq -r .PUBLISHABLE_KEY)
           printf 'VITE_SUPABASE_URL=http://127.0.0.1:55321\nVITE_SUPABASE_PUBLISHABLE_KEY=%s\nVITE_EMAIL_RESET=true\n' "$KEY" > app/.env.local
 
+      # The committed types must be what the migrations produce (regenerate with `pnpm db:types`).
+      - name: Database types match the migrations
+        run: |
+          pnpm db:types
+          git diff --exit-code -- app/src/lib/database.types.ts
+
       - name: Database tests (RLS, isolation, ledger invariants)
         run: pnpm exec supabase test db
 
@@ -54,6 +60,9 @@ jobs:
 
       - name: App unit tests
         run: pnpm --dir app test
+
+      - name: Lint
+        run: pnpm --dir app lint
 
       - name: Typecheck and build
         run: pnpm --dir app build

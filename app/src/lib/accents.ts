@@ -2,6 +2,7 @@
 // contrast in accents.test.ts. Red, yellow and green are not offered: they mean error, pending
 // and paid. Only the accent changes; page, text and status colours are the same for everyone.
 // The default ("teal") matches the values in index.css, so nothing changes until one is chosen.
+import { platform } from '../platform'
 
 export const ACCENTS = {
   teal: { label: 'accent.teal', brand: '#2a6a6e', dark: '#1d4f52', soft: '#e3efef', tint: '#d3e6e6' },
@@ -38,10 +39,6 @@ export function applyAccent(key: unknown) {
   const vars = variables(key)
   const s = document.documentElement.style
   for (const [name, value] of vars) s.setProperty(`--color-${name}`, value)
-  try {
-    if (isAccent(key) && key !== DEFAULT_ACCENT) localStorage.setItem(CACHE_KEY, JSON.stringify(vars))
-    else localStorage.removeItem(CACHE_KEY)
-  } catch {
-    // Private mode or blocked storage: the colour still applies once the company loads.
-  }
+  // Blocked storage: the colour still applies once the company loads.
+  platform.prefs.set(CACHE_KEY, isAccent(key) && key !== DEFAULT_ACCENT ? JSON.stringify(vars) : null)
 }

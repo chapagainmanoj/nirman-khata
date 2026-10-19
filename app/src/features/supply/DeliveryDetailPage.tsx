@@ -8,10 +8,12 @@ import { DateText } from '../../components/DateInput'
 import { Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
 import { memberName, useMembers } from '../projects/api'
-import { rpc, useDelivery, useDeliveryStatusFor } from './api'
+import { useDelivery, useDeliveryStatusFor } from './api'
+import { rpc } from '../../data/rpc'
 import { billableQty, DeliveryLines, isLocked, ReturnForm } from './DeliveryList'
-import { canEnter } from './permissions'
+import { canEnter } from '../../data/permissions'
 import { t } from '../../lib/i18n'
+import { refresh } from '../../data/refresh'
 
 export function DeliveryDetailPage() {
   const { deliveryId = '' } = useParams()
@@ -26,7 +28,7 @@ export function DeliveryDetailPage() {
   const remove = useMutation({
     mutationFn: () => rpc('delete_delivery', { p_delivery: deliveryId }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['deliveries'] })
+      await refresh(queryClient, 'deliveries')
       void navigate('/deliveries', { replace: true })
     },
   })

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
 import type { ProjectFigures } from './parts'
 
 /** One project's dashboard figures as of a date (req §18.2). */

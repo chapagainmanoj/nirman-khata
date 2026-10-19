@@ -10,12 +10,12 @@ import { ChevronRightIcon } from '../../components/icons'
 import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { newId } from '../../lib/ids'
-import { supabase } from '../../lib/supabase'
 import { usePartyBalances } from '../parties/api'
 import { BalanceText } from '../parties/PartyParts'
 import { useProjectFilter } from '../lists/ProjectFilter'
-import { useSupplierProjects, useSuppliers } from './api'
-import { canManageSuppliers } from './permissions'
+import { saveSupplier, useSupplierProjects, useSuppliers } from './api'
+import { canManageSuppliers } from '../../data/permissions'
+import { refresh } from '../../data/refresh'
 
 export function SuppliersPage() {
   const auth = useCompany()
@@ -122,14 +122,10 @@ export function SupplierForm({ supplier, onDone }: {
         address: v.address.trim() || null, pan_vat: v.pan_vat.trim() || null, payment_terms: v.payment_terms.trim() || null,
         categories: v.categories.split(',').map((c) => c.trim()).filter(Boolean),
       }
-      const { error } = supplier
-        ? await supabase.from('suppliers').update(row).eq('id', supplier.id)
-        : await supabase.from('suppliers').insert({ ...row, id: newSupplierId, company_id: auth.companyId })
-      if (error) throw error
+      await saveSupplier(auth.companyId, supplier?.id ?? newSupplierId, row, !!supplier)
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['suppliers'] })
-      await queryClient.invalidateQueries({ queryKey: ['balances'] })
+      await refresh(queryClient, 'parties')
       onDone(supplier ? undefined : newSupplierId)
     },
   })

@@ -10,6 +10,7 @@ import { deviceKey } from '../lib/drafts'
 import { callFunction } from '../lib/functions'
 import { newId } from '../lib/ids'
 import { compressImage } from '../lib/images'
+import { photoQueueStore } from '../lib/photoQueue'
 import { supabase } from '../lib/supabase'
 import { platform } from '../platform'
 import { Button, ConfirmButton, ErrorBanner, Status } from './ui'
@@ -64,17 +65,9 @@ function queueKey(ids: DeviceIds, owner: AttachmentOwner) {
   const [column, ownerId] = Object.entries(owner)[0]
   return deviceKey(ids.userId, ids.companyId, `photos:${column}:${ownerId}`)
 }
-async function readQueue(key: string): Promise<QueuedPhoto[]> {
-  try {
-    return (await platform.storage.get<QueuedPhoto[]>(key)) ?? []
-  } catch {
-    return []
-  }
-}
-async function writeQueue(key: string, photos: QueuedPhoto[]) {
-  if (photos.length) await platform.storage.set(key, photos)
-  else await platform.storage.del(key)
-}
+const queue = photoQueueStore<QueuedPhoto>(platform.storage)
+const readQueue = queue.read
+const writeQueue = queue.write
 
 /** Upload photos taken before saving, once the record exists. Returns how many are still waiting. */
 export async function uploadPending(ids: DeviceIds, owner: AttachmentOwner, photos: PendingPhoto[]): Promise<number> {
@@ -82,14 +75,7 @@ export async function uploadPending(ids: DeviceIds, owner: AttachmentOwner, phot
   const key = queueKey(ids, owner)
   const queued = await readQueue(key)
   const added = photos.filter((p) => !queued.some((q) => q.id === p.id)).map((p) => ({ ...p, attachmentId: newId() }))
-  try {
-    await writeQueue(key, [...queued, ...added])
-  } catch {
-    // No device storage (private mode): upload straight away; a failure cannot be kept.
-    let failed = 0
-    for (const p of added) await uploadAttachment(ids.companyId, owner, p, p.attachmentId).catch(() => failed++)
-    return failed
-  }
+  await writeQueue(key, [...queued, ...added])
   return uploadQueued(ids, owner)
 }
 
@@ -116,12 +102,7 @@ async function discardQueued(ids: DeviceIds, owner: AttachmentOwner, photoId: st
 /** Every record with photos waiting on this device, for this user and company. */
 export async function listQueuedOwners(ids: DeviceIds): Promise<{ owner: AttachmentOwner; count: number }[]> {
   const prefix = deviceKey(ids.userId, ids.companyId, 'photos:')
-  let keys: string[]
-  try {
-    keys = await platform.storage.keys(prefix)
-  } catch {
-    return []
-  }
+  const keys = await queue.keys(prefix)
   const found = await Promise.all(keys.map(async (key) => {
     const [column, ownerId] = key.slice(prefix.length).split(':') as [OwnerColumn, string]
     const count = (await readQueue(key)).length

@@ -3,7 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
 import { PARTY, type PartyKind, type PaysBy } from './kinds'
 
 export function usePartyBalances(companyId: string, kind: PartyKind, enabled: boolean) {

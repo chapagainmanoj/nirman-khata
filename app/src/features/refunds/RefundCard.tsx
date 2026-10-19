@@ -17,8 +17,9 @@ import { formatNPR, parseNPR, paisaToInput } from '../../lib/money'
 import type { Database } from '../../lib/database.types'
 import { PARTY, type PartyKind } from '../parties/kinds'
 import { useProjects } from '../projects/api'
-import { rpc, usePosting, useRefreshMoney } from '../supply/api'
-import { canPost, canRecordPayments } from '../supply/permissions'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc, usePosting } from '../../data/rpc'
+import { canPost, canRecordPayments } from '../../data/permissions'
 import { t } from '../../lib/i18n'
 
 type PaymentMethod = Database['public']['Enums']['payment_method']

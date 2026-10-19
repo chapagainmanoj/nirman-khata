@@ -1,7 +1,6 @@
 // What a contractor looks for on a supplier page: which bills are unpaid and on which site, what is
 // on the way or came without a bill, and the supplier's latest rates. Each card stays out of the way
 // when it has nothing to show.
-import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateText } from '../../components/DateInput'
@@ -9,11 +8,10 @@ import { ButtonLink, Card, ErrorBanner, Spinner } from '../../components/ui'
 import { relativeDay } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { formatNPR } from '../../lib/money'
-import { supabase } from '../../lib/supabase'
 import { usePartyBalances, usePartyOpenItems } from '../parties/api'
 import { useProjects } from '../projects/api'
-import { useOpenSlips } from './api'
-import { canEnter, canRecordPayments } from './permissions'
+import { useOpenSlips, useTheirRates, useUnbilled } from './api'
+import { canEnter, canRecordPayments } from '../../data/permissions'
 import { t } from '../../lib/i18n'
 
 const qty = (n: number) => Number(n.toFixed(3)).toLocaleString('en-IN')
@@ -107,29 +105,6 @@ export function UnpaidBills({ supplierId, projectId }: { supplierId: string; pro
   )
 }
 
-/** Delivered lines not billed yet, with what they were and when they came. */
-function useUnbilled(supplierId: string) {
-  return useQuery({
-    queryKey: ['delivery-lines', 'unbilled-detail', supplierId],
-    queryFn: async () => {
-      const st = await supabase.from('delivery_line_status').select('id, billable_qty').eq('supplier_id', supplierId).gt('billable_qty', 0)
-      if (st.error) throw st.error
-      if (!st.data.length) return []
-      // In batches, so a long list of ids does not make the request URL too long.
-      const ids = st.data.map((s) => s.id!)
-      const batches = await Promise.all(Array.from({ length: Math.ceil(ids.length / 100) }, (_, i) => supabase.from('delivery_lines')
-        .select('id, material_text, materials(name), units(code), deliveries(id, receipt_date, project_id, projects(code))')
-        .in('id', ids.slice(i * 100, i * 100 + 100))))
-      const failed = batches.find((b) => b.error)
-      if (failed?.error) throw failed.error
-      const billable = new Map(st.data.map((s) => [s.id!, Number(s.billable_qty)]))
-      return batches.flatMap((b) => b.data ?? [])
-        .map((l) => ({ ...l, billable: billable.get(l.id) ?? 0 }))
-        .sort((a, b) => (a.deliveries?.receipt_date ?? '').localeCompare(b.deliveries?.receipt_date ?? ''))
-    },
-  })
-}
-
 export function ComingFromThem({ supplierId, projectId }: { supplierId: string; projectId?: string | null }) {
   const auth = useCompany()
   const slips = useOpenSlips({ companyId: auth.companyId, supplierId, ...(projectId ? { projectId } : {}) })
@@ -179,31 +154,6 @@ export function ComingFromThem({ supplierId, projectId }: { supplierId: string; 
       )}
     </Card>
   )
-}
-
-/** The latest posted rate for each material from this supplier. */
-export function useTheirRates(supplierId: string, enabled = true) {
-  return useQuery({
-    queryKey: ['supplier-rates', supplierId],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('bill_lines')
-        .select('material_id, unit_id, rate_paisa, materials(name), units(code), supplier_bills!inner(bill_date, supplier_id, status)')
-        .eq('supplier_bills.supplier_id', supplierId).eq('supplier_bills.status', 'posted')
-        .not('material_id', 'is', null).not('rate_paisa', 'is', null)
-        .order('created_at', { ascending: false }).limit(300)
-      if (error) throw error
-      // Newest bill first; keep one row per material and unit.
-      const rows = [...data].sort((a, b) => b.supplier_bills.bill_date.localeCompare(a.supplier_bills.bill_date))
-      const seen = new Set<string>()
-      return rows.filter((r) => {
-        const k = `${r.material_id}:${r.unit_id}`
-        if (seen.has(k)) return false
-        seen.add(k)
-        return true
-      })
-    },
-    enabled,
-  })
 }
 
 export function TheirRates({ supplierId, emptyText }: { supplierId: string; emptyText?: string }) {

@@ -3,11 +3,11 @@
 // the left on wide screens). Lines per project and heading, matched deliveries, header charges.
 // Saved as a draft on the server (and on the device while typing); Accounts can save and post.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, useFieldArray, useForm } from 'react-hook-form'
 import { useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
-import { Attachments, PhotoPicker, uploadPending, type PendingPhoto } from '../../components/Attachments'
+import { Attachments, PhotoPicker, uploadPending } from '../../components/Attachments'
 import { DateInput } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { Button, Card, Checkbox, ErrorBanner, Field, FormActions, Input, Notice, PageHeader, Select, Spinner, type Crumb } from '../../components/ui'
@@ -18,58 +18,19 @@ import { useFormDraft } from '../../lib/drafts'
 import { friendlyError } from '../../lib/errors'
 import { newId } from '../../lib/ids'
 import { formatNPR, lineAmount, paisaToInput, parseNPR } from '../../lib/money'
-import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { MaterialOptions } from '../catalog/MaterialOptions'
 import { useHeadings, useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnId } from '../projects/current'
 import { billTitle } from '../../lib/labels'
-import { rpc, saveUnlessSent, useBill, useDeliveryLineStatus, useRefreshMoney, useSuppliers } from './api'
-import { canEnter, canPost } from './permissions'
+import { hasDuplicateBill, useBill, useDeliveriesById, useDeliveryLineStatus, useSuppliers } from './api'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc, saveUnlessSent } from '../../data/rpc'
+import { canEnter, canPost } from '../../data/permissions'
 import { TrashIcon } from '../../components/icons'
 import { t } from '../../lib/i18n'
-
-type Match = { delivery_line_id: string; billed_qty: string }
-type BillLine = {
-  id: string
-  line_type: 'material' | 'charge'
-  project_id: string
-  heading_id: string
-  material_id: string
-  description: string
-  qty: string
-  unit_id: string
-  unit_note: string
-  rate: string
-  amount: string
-  amount_edited: boolean
-  unmatched_reason: string
-  rate_variance_reason: string
-  matches: Match[]
-}
-type Override = { charge: 'discount' | 'transport' | 'vat'; project_id: string; amount: string }
-export type BillValues = {
-  id: string
-  supplier_id: string
-  project_id: string // the bill's one project, used by every line; '' on an older bill with several
-  bill_no: string
-  bill_date: string
-  cost_date: string
-  due_date: string
-  notes: string
-  discount: string
-  transport: string
-  vat: string
-  vat_rate: string
-  split_charges: boolean
-  overrides: Override[]
-  lines: BillLine[]
-  paper_total: string
-  photos: PendingPhoto[] // taken before the first save
-  post_key: string // operation key for "Save and post", kept until it succeeds
-  submit_key?: string // operation key for "Send to Accounts", kept until it succeeds
-  saved?: boolean // a new bill already saved once: its photos are on the bill now, not in `photos`
-}
+import { refresh } from '../../data/refresh'
+import { autoLineAmount, billTotals, linesFromDeliveries, matchedQty, toPayload, vatOn, type BillLine, type BillValues } from './billForm'
 
 const rupees = (paisa: number | null | undefined) => paisaToInput(paisa ?? null)
 
@@ -157,22 +118,11 @@ function BillForm({ initial }: { initial?: BillValues }) {
   // Start with the supplier's unbilled deliveries as lines, so only rates are added (req §21).
   // Only the bill's project: the first delivery added chooses it when none is chosen yet.
   function addFromDeliveries(onlyDelivery?: string, forProject?: string) {
-    const taken = new Set(getValues('lines').flatMap((l) => l.matches.map((m) => m.delivery_line_id)))
-    let project = forProject || getValues('project_id') || (onlyDelivery ? unbilled.data?.find((u) => u.delivery_id === onlyDelivery)?.project_id : '') || ''
-    for (const u of unbilled.data ?? []) {
-      if (taken.has(u.id!) || (onlyDelivery && u.delivery_id !== onlyDelivery)) continue
-      if (!project) project = u.project_id!
-      if (u.project_id !== project) continue
-      const dl = deliveries.data?.get(u.id!)
-      if (!dl || !dl.material_id) continue
-      const m = materials.data?.find((x) => x.id === dl.material_id)
-      lines.append({
-        id: newId(), line_type: 'material', project_id: project, heading_id: m?.default_heading_id ?? '',
-        material_id: dl.material_id, description: '', qty: String(u.billable_qty), unit_id: dl.unit_id, unit_note: dl.unit_note ?? '',
-        rate: '', amount: '', amount_edited: false, unmatched_reason: '', rate_variance_reason: '',
-        matches: [{ delivery_line_id: u.id!, billed_qty: String(u.billable_qty) }],
-      })
-    }
+    const { lines: added, project } = linesFromDeliveries({
+      lines: getValues('lines'), project: forProject || getValues('project_id'), onlyDelivery,
+      unbilled: unbilled.data, deliveries: deliveries.data, materials: materials.data, newId,
+    })
+    if (added.length) lines.append(added)
     if (project && !getValues('project_id')) setValue('project_id', project)
   }
 
@@ -207,14 +157,11 @@ function BillForm({ initial }: { initial?: BillValues }) {
 
   // Amount follows qty x rate until the user types an amount from the paper bill.
   function recalc(i: number) {
-    const l = getValues(`lines.${i}`)
-    const rate = parseNPR(l.rate)
-    const amount = rate === null ? null : lineAmount(rate, l.qty)
-    if (!l.amount_edited && amount !== null && Number(l.qty) > 0) setValue(`lines.${i}.amount`, paisaToInput(amount))
+    const amount = autoLineAmount(getValues(`lines.${i}`))
+    if (amount !== null) setValue(`lines.${i}.amount`, amount)
   }
 
-  const subtotal = values.lines.reduce((s, l) => s + (parseNPR(l.amount) ?? 0), 0)
-  const total = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0) + (parseNPR(values.vat) ?? 0)
+  const { subtotal, total } = billTotals(values)
   const chargesSummary = ([[t('billEdit.discount'), values.discount], [t('billEdit.transport'), values.transport], ['VAT', values.vat]] as const)
     .filter(([, a]) => parseNPR(a)).map(([k, a]) => `${k} ${formatNPR(parseNPR(a))}`).join(', ') || 'none'
   const paper = parseNPR(values.paper_total)
@@ -252,9 +199,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
     },
     onSuccess: async ({ failedPhotos, postError, alreadySent }, { v, then }) => {
       await draft.clear()
-      await queryClient.invalidateQueries({ queryKey: ['bill', v.id] })
-      await queryClient.invalidateQueries({ queryKey: ['bill-preview', v.id] })
-      await queryClient.invalidateQueries({ queryKey: ['bills'] })
+      await refresh(queryClient, 'bills')
       await queryClient.invalidateQueries({ queryKey: ['attachments', 'bill_id', v.id] })
       // A posted bill changes cost and balances everywhere: dashboards, khata, reports, calendar.
       if (then === 'post' && !postError) await refreshMoney()
@@ -265,10 +210,8 @@ function BillForm({ initial }: { initial?: BillValues }) {
   async function checkDuplicate() {
     const v = getValues()
     if (!v.supplier_id || !v.bill_no.trim()) return setDupWarning('')
-    const { data } = await supabase.from('supplier_bills').select('id')
-      // Same number, any case; % and _ are matched literally, not as wildcards.
-      .eq('supplier_id', v.supplier_id).ilike('bill_no', v.bill_no.trim().replace(/[\\%_]/g, (c) => `\\${c}`)).neq('id', v.id).neq('status', 'reversed')
-    setDupWarning(data?.length ? t('billEdit.youCanSeeAnother', { value: v.bill_no.trim() }) : '')
+    const dup = await hasDuplicateBill(v.supplier_id, v.bill_no.trim(), v.id)
+    setDupWarning(dup ? t('billEdit.youCanSeeAnother', { value: v.bill_no.trim() }) : '')
   }
 
   function validate(v: BillValues, then: Then): string {
@@ -423,7 +366,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
           const available = (unbilled.data ?? []).filter((u) =>
             u.project_id === l.project_id && deliveries.data?.get(u.id!)?.material_id === l.material_id &&
             deliveries.data?.get(u.id!)?.unit_id === l.unit_id && !l.matches.some((m) => m.delivery_line_id === u.id))
-          const matched = l.matches.reduce((s, m) => s + Number(m.billed_qty || 0), 0)
+          const matched = matchedQty(l.matches)
           return (
             <Card key={field.key} title={l.line_type === 'charge' ? t('billEdit.lineValueCharge', { value: i + 1 }) : t('billEdit.lineValue', { value: i + 1 })}
               actions={<Button type="button" variant="ghost" onClick={() => lines.remove(i)}><TrashIcon size={16} />{t('common.remove')}</Button>}>
@@ -555,8 +498,7 @@ function BillForm({ initial }: { initial?: BillValues }) {
               </Field>
               <Field label={t('billEdit.vat')} htmlFor="b-vat" hint={
                 <button type="button" className="inline-flex min-h-11 items-center text-slate underline" onClick={() => {
-                  const base = subtotal - (parseNPR(values.discount) ?? 0) + (parseNPR(values.transport) ?? 0)
-                  setValue('vat', paisaToInput(Math.round((base * Number(values.vat_rate || 13)) / 100)))
+                  setValue('vat', vatOn(subtotal, values.discount, values.transport, values.vat_rate))
                 }}>{t('billEdit.workOutValueVat', { value: values.vat_rate || 13 })}</button>
               }>
                 <Controller control={control} name="vat" render={({ field }) => <MoneyInput id="b-vat" value={field.value} onChange={field.onChange} />} />
@@ -628,26 +570,6 @@ function BillForm({ initial }: { initial?: BillValues }) {
   )
 }
 
-function toPayload(v: BillValues) {
-  const lines = v.lines.map((l) => ({
-    id: l.id, line_type: l.line_type, project_id: v.project_id || l.project_id, heading_id: l.heading_id || null,
-    material_id: l.line_type === 'material' && l.material_id ? l.material_id : null,
-    description: l.description || null, qty: l.line_type === 'material' ? Number(l.qty) : null,
-    unit_id: l.line_type === 'material' ? l.unit_id || null : null, unit_note: l.unit_note || null,
-    rate_paisa: l.rate ? parseNPR(l.rate) : null, amount_paisa: parseNPR(l.amount),
-    unmatched_reason: l.unmatched_reason || null, rate_variance_reason: l.rate_variance_reason || null,
-    matches: l.matches.filter((m) => Number(m.billed_qty) > 0).map((m) => ({ delivery_line_id: m.delivery_line_id, billed_qty: Number(m.billed_qty) })),
-  }))
-  return {
-    id: v.id, supplier_id: v.supplier_id, bill_no: v.bill_no.trim() || null, bill_date: v.bill_date, cost_date: v.cost_date || v.bill_date,
-    paper_total_paisa: parseNPR(v.paper_total),
-    due_date: v.due_date || null, notes: v.notes || null,
-    discount_paisa: parseNPR(v.discount) ?? 0, transport_paisa: parseNPR(v.transport) ?? 0, vat_paisa: parseNPR(v.vat) ?? 0,
-    vat_rate_pct: Number(v.vat_rate) || 13, lines,
-    overrides: v.split_charges ? v.overrides.map((o) => ({ charge: o.charge, project_id: o.project_id, amount_paisa: parseNPR(o.amount) ?? 0 })) : [],
-  }
-}
-
 /**
  * The rate on this supplier's last posted bill for the material (req §11.2, a hint only: v1
  * has no rate lists). "Use" copies it into the line.
@@ -672,23 +594,4 @@ function LastRate({ supplierId, materialId, current, onUse }: {
       )}
     </span>
   )
-}
-
-/** Delivery line details (challan, date, material, unit) for matching. */
-function useDeliveriesById(deliveryIds: string[]) {
-  const ids = useMemo(() => [...new Set(deliveryIds)].sort(), [deliveryIds])
-  return useQuery({
-    queryKey: ['delivery-lines', 'detail', ids],
-    enabled: ids.length > 0,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('delivery_lines').select('id, material_id, unit_id, unit_note, deliveries(challan_no, receipt_date)')
-        .in('delivery_id', ids)
-      if (error) throw error
-      return new Map(data.map((d) => [d.id, {
-        material_id: d.material_id, unit_id: d.unit_id, unit_note: d.unit_note,
-        challan_no: d.deliveries?.challan_no ?? null, receipt_date: d.deliveries?.receipt_date ?? '',
-      }]))
-    },
-  })
 }

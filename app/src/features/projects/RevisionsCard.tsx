@@ -11,6 +11,7 @@ import { t } from '../../lib/i18n'
 import { formatNPR, parseNPR } from '../../lib/money'
 import { supabase } from '../../lib/supabase'
 import { memberName, useHeadings, useRevisions, type Member } from './api'
+import { refresh } from '../../data/refresh'
 
 type Row = {
   id: string
@@ -126,10 +127,8 @@ function RevisionForm({ kind, projectId, onDone }: { kind: 'contract' | 'budget'
       return data as { lines_match_total: boolean } | null
     },
     onSuccess: async (result) => {
-      await queryClient.invalidateQueries({ queryKey: ['revisions', projectId] })
-      await queryClient.invalidateQueries({ queryKey: ['amounts', projectId] })
-      // Contract and budget feed both dashboards (to collect, budget used, over budget).
-      await Promise.all(['dashboard', 'project-dashboard'].map((k) => queryClient.invalidateQueries({ queryKey: [k] })))
+      // Contract and budget feed both dashboards too (to collect, budget used, over budget).
+      await refresh(queryClient, 'budget')
       if (result && !result.lines_match_total) {
         setWarning(t('revisionsCard.savedNoteTheHeading'))
         return

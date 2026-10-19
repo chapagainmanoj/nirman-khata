@@ -10,9 +10,11 @@ import { friendlyError } from '../../lib/errors'
 import { ShowMore } from '../../components/ShowMore'
 import { newId } from '../../lib/ids'
 import { DELIVERY_ISSUES } from '../../lib/labels'
-import { rpc, useDeliveries, useDeliveryStatusFor, type DeliveryFilter } from './api'
-import { canEnter } from './permissions'
+import { useDeliveries, useDeliveryStatusFor, type DeliveryFilter } from './api'
+import { rpc } from '../../data/rpc'
+import { canEnter } from '../../data/permissions'
 import { t } from '../../lib/i18n'
+import { refresh } from '../../data/refresh'
 
 const qty = (n: number) => Number(n).toLocaleString('en-IN', { maximumFractionDigits: 3 })
 
@@ -155,9 +157,8 @@ export function ReturnForm({ d, onDone }: { d: Delivery; onDone: () => void }) {
       lines: Object.entries(qtys).filter(([, q]) => Number(q) > 0).map(([delivery_line_id, q]) => ({ delivery_line_id, qty: Number(q) })),
     } }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['deliveries'] })
-      await queryClient.invalidateQueries({ queryKey: ['delivery-lines'] })
-      await queryClient.invalidateQueries({ queryKey: ['slip'] })
+      // A return lowers what was received, and what can still be billed.
+      await refresh(queryClient, 'deliveries', 'bills')
       onDone()
     },
   })

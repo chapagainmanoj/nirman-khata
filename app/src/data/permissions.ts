@@ -1,6 +1,6 @@
 // What the signed-in user may do in the supplier loop (design §3.6). The database re-checks
 // every action; these only decide which buttons to show.
-import type { useCompany } from '../../auth/AuthProvider'
+import type { useCompany } from '../auth/AuthProvider'
 
 type Auth = ReturnType<typeof useCompany>
 

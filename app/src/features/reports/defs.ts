@@ -6,7 +6,7 @@ import { type MessageKey, t } from '../../lib/i18n'
 import { PAYMENT_METHODS } from '../../lib/labels'
 import type { XlsxColumn } from '../../lib/xlsx'
 import { docPath, type PartyKind } from '../parties/kinds'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
 import { quantityText } from './quantities'
 
 export type Filters = { from: string; to: string; asOf: string; project: string; party: string; asKnown: boolean }

@@ -7,20 +7,13 @@ import { useCompany } from '../../auth/AuthProvider'
 import { Button, ButtonLink, Card } from '../../components/ui'
 import { supabase } from '../../lib/supabase'
 import { t } from '../../lib/i18n'
+import { platform } from '../../platform'
 
 const hiddenKey = (companyId: string) => `getting-started-hidden:${companyId}`
 
-function readHidden(companyId: string) {
-  try {
-    return localStorage.getItem(hiddenKey(companyId)) === '1'
-  } catch {
-    return false
-  }
-}
-
 export function GettingStarted() {
   const auth = useCompany()
-  const [hidden, setHidden] = useState(() => readHidden(auth.companyId))
+  const [hidden, setHidden] = useState(() => platform.prefs.get(hiddenKey(auth.companyId)) === '1')
   const counts = useQuery({
     queryKey: ['getting-started', auth.companyId],
     enabled: auth.isAdmin && !hidden,
@@ -48,11 +41,7 @@ export function GettingStarted() {
   if (steps.every(([done]) => done)) return null
 
   function hide() {
-    try {
-      localStorage.setItem(hiddenKey(auth.companyId), '1')
-    } catch {
-      // Private mode: hidden for this visit only.
-    }
+    platform.prefs.set(hiddenKey(auth.companyId), '1')
     setHidden(true)
   }
 

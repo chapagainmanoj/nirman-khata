@@ -22,7 +22,7 @@ import { useClientReceived } from '../clients/api'
 import { useCalendarEvents } from '../site/api'
 import { eventHref } from '../calendar/events'
 import { BalanceText, Tabs } from '../parties/PartyParts'
-import { canEnter, canPost } from '../supply/permissions'
+import { canEnter, canPost } from '../../data/permissions'
 import { memberName, useAmountsAsOf, useAssignments, useMembers, useProject, type Member } from './api'
 import { ProjectDetailsFields } from './ProjectDetailsFields'
 import { detailsSchema, detailsToRow, type DetailsValues } from './projectDetails'
@@ -31,6 +31,7 @@ import { SiteSection } from '../site/SiteSection'
 import { useProjectDashboard } from '../dashboard/api'
 import { SourceList, UsedBars, type ProjectFigures } from '../dashboard/parts'
 import { ChevronDownIcon } from '../../components/icons'
+import { refresh } from '../../data/refresh'
 
 const cx = (...c: Array<string | false | null | undefined>) => c.filter(Boolean).join(' ')
 /** Rows per Activity list on the overview before "N more". */
@@ -417,8 +418,7 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
       if (!data?.length) throw new Error(t('projectDetail.youDoNotHave'))
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: ['project', p.id] })
-      await queryClient.invalidateQueries({ queryKey: ['projects'] })
+      await refresh(queryClient, 'projects')
       setEditing(false)
     },
   })
@@ -474,9 +474,7 @@ function StatusActions({ project: p }: { project: Tables<'projects'> }) {
     },
     onSuccess: async () => {
       setClosing(false)
-      await queryClient.invalidateQueries({ queryKey: ['project', p.id] })
-      await queryClient.invalidateQueries({ queryKey: ['projects'] })
-      await queryClient.invalidateQueries({ queryKey: ['dashboard'] })
+      await refresh(queryClient, 'projects')
     },
   })
   const f = dash.data
@@ -636,7 +634,7 @@ function TeamCard({ projectId, members }: { projectId: string; members: Member[]
     (m) => m.active && !assigned.has(m.user_id) && !m.roles.includes('admin') && !m.roles.includes('accounts'),
   )
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['assignments', projectId] })
+  const refreshAssigned = () => refresh(queryClient, 'projects')
   const add = useMutation({
     mutationFn: async (userId: string) => {
       const { error } = await supabase.from('project_assignments').insert({ company_id: auth.companyId, project_id: projectId, user_id: userId })
@@ -644,7 +642,7 @@ function TeamCard({ projectId, members }: { projectId: string; members: Member[]
     },
     onSuccess: () => {
       setAdding('')
-      return refresh()
+      return refreshAssigned()
     },
   })
   const remove = useMutation({
@@ -652,7 +650,7 @@ function TeamCard({ projectId, members }: { projectId: string; members: Member[]
       const { error } = await supabase.from('project_assignments').delete().eq('id', assignmentId)
       if (error) throw error
     },
-    onSuccess: refresh,
+    onSuccess: refreshAssigned,
   })
 
   return (

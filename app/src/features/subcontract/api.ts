@@ -2,7 +2,7 @@
 // Reads go through RLS: package scope for anyone on the project, amounts for finance only.
 import { useQueries, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
-import { rpc } from '../supply/api'
+import { rpc } from '../../data/rpc'
 
 export function useSubcontractors(companyId: string) {
   return useQuery({

@@ -26,8 +26,9 @@ import { formatNPR, parseNPR } from '../../lib/money'
 import { useHeadings, useProjects } from '../projects/api'
 import { projectCrumbs } from '../projects/crumbs'
 import { projectChoices, useWorkingOnDefault } from '../projects/current'
-import { rpc, useRefreshMoney } from '../supply/api'
-import { canRecordPayments } from '../supply/permissions'
+import { useRefreshMoney } from '../../data/refresh'
+import { rpc } from '../../data/rpc'
+import { canRecordPayments } from '../../data/permissions'
 import { usePayees } from './api'
 
 type Values = {

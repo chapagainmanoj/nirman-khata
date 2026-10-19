@@ -15,7 +15,7 @@ import { useProjects } from '../projects/api'
 import { useProjectFilter } from '../lists/ProjectFilter'
 import { useWorkPackages } from '../subcontract/api'
 import { useCurrentProject } from '../projects/current'
-import { canManageSuppliers } from '../supply/permissions'
+import { canManageSuppliers } from '../../data/permissions'
 import { useCrewBalances, usePartyBalances } from './api'
 import { rateText, type RateKind } from '../labour/api'
 import { WorkerForm } from '../labour/WorkerForm'
@@ -23,6 +23,7 @@ import { formatNPR } from '../../lib/money'
 import { PARTY, partyCrumbs, type PartyKind, type PaysBy } from './kinds'
 import { BalanceText } from './PartyParts'
 import { t, type MessageKey } from '../../lib/i18n'
+import { refresh } from '../../data/refresh'
 
 type Row = {
   id: string; name: string; active: boolean; phone: string | null
@@ -290,8 +291,7 @@ export function PartyForm({ kind, party, onDone }: { kind: PartyKind; party?: Ro
       if (error) throw error
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: [PARTY[kind].table] })
-      await queryClient.invalidateQueries({ queryKey: ['balances'] })
+      await refresh(queryClient, 'parties')
       onDone(party ? undefined : newPartyId)
     },
   })

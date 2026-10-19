@@ -1,5 +1,5 @@
 import { createStore, del, get, keys, set } from 'idb-keyval'
-import type { Platform, ShareData, ShareResult } from './types'
+import type { DevicePrefs, Platform, ShareData, ShareResult } from './types'
 
 const store = createStore('nirmankhata', 'device')
 
@@ -39,7 +39,27 @@ function download(blob: Blob, fileName: string) {
   a.href = url
   a.download = fileName
   a.click()
-  setTimeout(() => URL.revokeObjectURL(url), 1000)
+  // A large file (company export) may still be starting to save after a second.
+  setTimeout(() => URL.revokeObjectURL(url), 10_000)
+}
+
+// Private mode or blocked storage: reads give null and writes are dropped.
+const prefs: DevicePrefs = {
+  get(key) {
+    try {
+      return localStorage.getItem(key)
+    } catch {
+      return null
+    }
+  },
+  set(key, value) {
+    try {
+      if (value === null) localStorage.removeItem(key)
+      else localStorage.setItem(key, value)
+    } catch {
+      // Only a convenience: the setting is just not remembered.
+    }
+  },
 }
 
 export const webPlatform: Platform = {
@@ -52,6 +72,7 @@ export const webPlatform: Platform = {
     del: (key) => del(key, store),
     keys: async (prefix) => (await keys(store)).map(String).filter((k) => k.startsWith(prefix)),
   },
+  prefs,
   requestPersistentStorage: async () => (await navigator.storage?.persist?.()) ?? false,
   reload: () => window.location.reload(),
 }

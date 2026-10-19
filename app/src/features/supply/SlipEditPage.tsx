@@ -15,13 +15,14 @@ import { friendlyError } from '../../lib/errors'
 import { t } from '../../lib/i18n'
 import { newId } from '../../lib/ids'
 import { paisaToInput, parseNPR } from '../../lib/money'
-import { supabase } from '../../lib/supabase'
 import { useMaterials, useUnits } from '../catalog/api'
 import { MaterialOptions } from '../catalog/MaterialOptions'
 import { useProjects } from '../projects/api'
 import { projectChoices, useWorkingOnDefault } from '../projects/current'
-import { rpc, saveUnlessSent, useSlip, useSuppliers } from './api'
+import { slipCanBeSent, useSlip, useSuppliers } from './api'
+import { rpc, saveUnlessSent } from '../../data/rpc'
 import { TrashIcon } from '../../components/icons'
+import { refresh } from '../../data/refresh'
 
 export type LineValues = {
   id: string
@@ -139,10 +140,7 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
       // Kept on the device first, so a reload after a lost answer retries with the same id and key.
       await draft.save()
       // A retry after a lost answer finds the slip already sent, unless it was rejected since.
-      const sent = await saveUnlessSent(key, saveDraft, async () => {
-        const { data } = await supabase.from('order_slips').select('status').eq('id', v.id).maybeSingle()
-        return data?.status === 'draft' || data?.status === 'rejected'
-      })
+      const sent = await saveUnlessSent(key, saveDraft, () => slipCanBeSent(v.id))
       const alreadySent = sent.alreadySent
       if (sent.key !== key) {
         setValue('submit_key', sent.key)
@@ -153,8 +151,7 @@ function SlipForm({ initial, number }: { initial?: SlipValues; number?: string }
     },
     onSuccess: async ({ id, alreadySent }) => {
       await draft.clear()
-      await queryClient.invalidateQueries({ queryKey: ['slips'] })
-      await queryClient.invalidateQueries({ queryKey: ['slip', id] })
+      await refresh(queryClient, 'slips')
       navigate(`/slips/${id}`, { replace: true, state: alreadySent ? { alreadySent } : undefined })
     },
   })
