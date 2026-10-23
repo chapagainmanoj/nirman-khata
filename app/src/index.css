@@ -26,20 +26,23 @@
 
   --color-ink: #221b19;
   --color-subtle: #5c524e;
-  --color-line: #e4dfd6;
-  /* Form-control edges: >=3.2:1 on paper and white so empty fields are findable outdoors. */
-  --color-field: #8f847f;
+  /* Card edges and dividers: 1.46:1 on white, 1.18:1 on the page, so cards keep an edge on
+     plain sRGB office monitors where the page fill alone washes out. */
+  --color-line: #dbd5ca;
+  /* Form-control edges: >=3.2:1 on the page and white so empty fields are findable outdoors. */
+  --color-field: #877c77;
   --color-muted: #f3f1ec;
   /* Segmented controls and tab strips: the track behind the white chosen pill. Darker than the
      page so the choice reads as one control; subtle text 5.3:1 on it. */
   --color-track: #ddd7cc;
   /* A lighter track for a wide row of page sections (the project page), so it stays quiet:
-     1.13:1 on the page, the white pill on it 1.28:1, subtle text 5.9:1. */
-  --color-track-soft: #e7e3db;
+     1.12:1 on the page, the white pill on it 1.38:1, subtle text 5.5:1. */
+  --color-track-soft: #e0dbd1;
   --color-surface: #ffffff;
-  /* Page: a warm grey just under the white cards, so the cards stand out as islands and
-     the space between them recedes. Subtle text 6.7:1, links 5.4:1, field edges 3.2:1 on it. */
-  --color-page: #f3f0ea;
+  /* Page: a warm grey under the white cards, so the cards stand out as islands and the space
+     between them recedes. 1.23:1 against white: lighter washed out on a plain sRGB monitor.
+     Subtle text 6.1:1, links 5.0:1, field edges 3.3:1 on it. */
+  --color-page: #ebe7df;
   /* Sidebar: halfway between the page and the white cards, so it reads as its own area without
      out-shining the content. Subtle text 7.1:1 on it. The chosen section is a tint of the accent
      mixed into this colour (brand-soft alone barely differs from it). */
