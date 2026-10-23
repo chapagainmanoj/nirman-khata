@@ -363,8 +363,9 @@ function BillForm({ initial }: { initial?: BillValues }) {
           const l = values.lines[i]
           if (!l) return null
           const unit = units.data?.find((u) => u.id === l.unit_id)
+          // Same material (a typed delivery item, with none, goes on a line with none) and unit (M2).
           const available = (unbilled.data ?? []).filter((u) =>
-            u.project_id === l.project_id && deliveries.data?.get(u.id!)?.material_id === l.material_id &&
+            u.project_id === l.project_id && (deliveries.data?.get(u.id!)?.material_id ?? '') === l.material_id &&
             deliveries.data?.get(u.id!)?.unit_id === l.unit_id && !l.matches.some((m) => m.delivery_line_id === u.id))
           const matched = matchedQty(l.matches)
           return (

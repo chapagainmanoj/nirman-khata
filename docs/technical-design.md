@@ -656,7 +656,7 @@ non-cash methods.
 | C7 | **Credited-bill reversal:** bill 1,00,000, credit 20,000, reverse the bill. The credit is reversed in the same step, and cost and payable from the bill net to 0 (not −20,000). Same for a charge, labour cost and expense |
 | C8 | **Payment reversal after reallocation:** a payment allocated 60/40, later moved to 30/70, then reversed. Every project and the unallocated bucket net to 0. Reports dated before the reversal are unchanged |
 | M1 | Partial match: 60 of 100 bags billed, 40 remain billable |
-| M2 | A match to a different supplier, project, material or unit is rejected |
+| M2 | A match to a different supplier, project, material or unit is rejected. An item typed under "Other" (no material) matches only a line with no material |
 | M3 | One unmatched material line blocks posting without Accounts role + a reason for that line |
 | M4 | A billed quantity can't exceed `billable_qty` |
 | R1 | **Return before credit:** a billed delivery is partly returned. Quantity shows as awaiting credit; cost and payable are unchanged |

@@ -2,7 +2,7 @@
 -- (req §11; acceptance #17, #21 cost side; I-2, I-3, I-7, I-12; M1-M4; S2 for X1; C2).
 begin;
 \ir helpers/helpers.psql
-select plan(39);
+select plan(42);
 
 select tests.create_user('owner') as owner \gset
 select tests.create_user('acct') as acct \gset
@@ -139,6 +139,29 @@ select throws_like(format($$select public.save_bill_draft(jsonb_build_object(
     'project_id', %L, 'material_id', %L, 'qty', 10, 'unit_id', %L, 'amount_paisa', 1000,
     'matches', jsonb_build_array(jsonb_build_object('delivery_line_id', 'dddddddd-0000-0000-0000-000000000002', 'billed_qty', 10))))))$$,
   :'sup', :'p1', :'rod', :'kg'), '%same supplier, project, material and unit%', 'M2: a different material or unit cannot be matched');
+
+-- M2 for an item typed under "Other" (no catalog material): it matches a line with no material.
+select tests.login(:'owner');
+select public.record_delivery(jsonb_build_object('id', gen_random_uuid(), 'supplier_id', :'sup', 'project_id', :'p1',
+  'receipt_date', '2026-05-06', 'no_slip_reason', 'Urgent',
+  'lines', jsonb_build_array(jsonb_build_object('id', 'dddddddd-0000-0000-0000-000000000003',
+    'material_text', 'Motor', 'unit_id', :'bag', 'received_qty', 1))));
+select tests.login(:'acct');
+select lives_ok(format($$select public.save_bill_draft(jsonb_build_object(
+  'id', gen_random_uuid(), 'supplier_id', %L, 'bill_no', 'T-1', 'lines', jsonb_build_array(jsonb_build_object(
+    'project_id', %L, 'description', 'Motor', 'heading_id', %L, 'qty', 1, 'unit_id', %L, 'amount_paisa', 1500000,
+    'matches', jsonb_build_array(jsonb_build_object('delivery_line_id', 'dddddddd-0000-0000-0000-000000000003', 'billed_qty', 1))))))$$,
+  :'sup', :'p1', :'h_rod', :'bag'), 'M2: a typed delivery item matches a bill line with no material');
+select throws_like(format($$select public.save_bill_draft(jsonb_build_object(
+  'id', gen_random_uuid(), 'supplier_id', %L, 'bill_no', 'T-2', 'lines', jsonb_build_array(jsonb_build_object(
+    'project_id', %L, 'material_id', %L, 'qty', 1, 'unit_id', %L, 'amount_paisa', 1500000,
+    'matches', jsonb_build_array(jsonb_build_object('delivery_line_id', 'dddddddd-0000-0000-0000-000000000003', 'billed_qty', 1))))))$$,
+  :'sup', :'p1', :'cement', :'bag'), '%same supplier, project, material and unit%', 'M2: a typed delivery item cannot match a catalog material line');
+select throws_like(format($$select public.save_bill_draft(jsonb_build_object(
+  'id', gen_random_uuid(), 'supplier_id', %L, 'bill_no', 'T-3', 'lines', jsonb_build_array(jsonb_build_object(
+    'project_id', %L, 'description', 'Motor', 'heading_id', %L, 'qty', 1, 'unit_id', %L, 'amount_paisa', 1500000,
+    'matches', jsonb_build_array(jsonb_build_object('delivery_line_id', 'dddddddd-0000-0000-0000-000000000003', 'billed_qty', 1))))))$$,
+  :'sup', :'p1', :'h_rod', :'kg'), '%same supplier, project, material and unit%', 'M2: a typed delivery item still needs the same unit');
 
 -- M3: an unmatched material line needs a reason on that line.
 select public.save_bill_draft(jsonb_build_object(

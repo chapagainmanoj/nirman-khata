@@ -51,7 +51,7 @@ describe('lines from unbilled deliveries', () => {
   let n = 0
   const ids = () => `new${++n}`
 
-  it('only the bill\'s project: the first delivery chooses it; lines without a material are skipped', () => {
+  it('only the bill\'s project: the first delivery chooses it; lines with neither material nor typed name are skipped', () => {
     n = 0
     const r = linesFromDeliveries({ lines: [], project: '', unbilled, deliveries, materials, newId: ids })
     expect(r.project).toBe('p1')
@@ -69,6 +69,19 @@ describe('lines from unbilled deliveries', () => {
     expect(r.lines).toEqual([line({
       id: 'new1', project_id: 'p2', material_id: 'm2', qty: '3', unit_id: 'u-bag', unit_note: 'of 50 kg',
       matches: [{ delivery_line_id: 'dl2', billed_qty: '3' }],
+    })])
+  })
+
+  it('an item typed under Other: its name as the description, no material or heading, still linked', () => {
+    n = 0
+    const typed = new Map([['dl4', { material_id: null, material_text: ' Motor ', unit_id: 'u-pc', unit_note: null }]])
+    const r = linesFromDeliveries({
+      lines: [], project: '', onlyDelivery: 'd4', unbilled: [{ id: 'dl4', delivery_id: 'd4', project_id: 'p1', billable_qty: 1 }],
+      deliveries: typed, materials, newId: ids,
+    })
+    expect(r.lines).toEqual([line({
+      id: 'new1', material_id: '', description: 'Motor', heading_id: '', qty: '1', unit_id: 'u-pc',
+      matches: [{ delivery_line_id: 'dl4', billed_qty: '1' }],
     })])
   })
 

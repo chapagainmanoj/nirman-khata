@@ -453,11 +453,11 @@ export function useDeliveriesById(deliveryIds: string[]) {
     enabled: ids.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('delivery_lines').select('id, material_id, unit_id, unit_note, deliveries(challan_no, receipt_date)')
+        .from('delivery_lines').select('id, material_id, material_text, unit_id, unit_note, deliveries(challan_no, receipt_date)')
         .in('delivery_id', ids)
       if (error) throw error
       return new Map(data.map((d) => [d.id, {
-        material_id: d.material_id, unit_id: d.unit_id, unit_note: d.unit_note,
+        material_id: d.material_id, material_text: d.material_text, unit_id: d.unit_id, unit_note: d.unit_note,
         challan_no: d.deliveries?.challan_no ?? null, receipt_date: d.deliveries?.receipt_date ?? '',
       }]))
     },

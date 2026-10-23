@@ -69,12 +69,13 @@ export function vatOn(subtotal: number, discount: string, transport: string, vat
 export const matchedQty = (matches: Match[]) => matches.reduce((s, m) => s + Number(m.billed_qty || 0), 0)
 
 type Unbilled = { id: string | null; delivery_id: string | null; project_id: string | null; billable_qty: number | null }
-type DeliveryDetail = { material_id: string | null; unit_id: string | null; unit_note: string | null }
+type DeliveryDetail = { material_id: string | null; material_text?: string | null; unit_id: string | null; unit_note: string | null }
 
 /**
  * The supplier's unbilled deliveries as lines, so only rates are added (req §21). Only the bill's
  * project: the first delivery added chooses it when none is chosen yet. Lines already on the bill
- * and deliveries without a material are left out.
+ * are left out. An item typed under "Other" (no catalog material) becomes a line with its typed name
+ * as the description and no heading yet; it still links to its delivery (M2).
  */
 export function linesFromDeliveries(a: {
   lines: BillLine[]
@@ -93,11 +94,12 @@ export function linesFromDeliveries(a: {
     if (!project) project = u.project_id!
     if (u.project_id !== project) continue
     const dl = a.deliveries?.get(u.id!)
-    if (!dl || !dl.material_id) continue
-    const m = a.materials?.find((x) => x.id === dl.material_id)
+    if (!dl || (!dl.material_id && !dl.material_text?.trim())) continue
+    const m = dl.material_id ? a.materials?.find((x) => x.id === dl.material_id) : undefined
     added.push({
       id: a.newId(), line_type: 'material', project_id: project, heading_id: m?.default_heading_id ?? '',
-      material_id: dl.material_id, description: '', qty: String(u.billable_qty), unit_id: dl.unit_id!, unit_note: dl.unit_note ?? '',
+      material_id: dl.material_id ?? '', description: dl.material_id ? '' : dl.material_text!.trim(),
+      qty: String(u.billable_qty), unit_id: dl.unit_id!, unit_note: dl.unit_note ?? '',
       rate: '', amount: '', amount_edited: false, unmatched_reason: '', rate_variance_reason: '',
       matches: [{ delivery_line_id: u.id!, billed_qty: String(u.billable_qty) }],
     })
