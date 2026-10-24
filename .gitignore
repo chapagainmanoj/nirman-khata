@@ -5,10 +5,12 @@ supabase/.branches
 .env
 .env.local
 docker/.env
-# Local helper scripts stay private, except the deploy merge and the screenshot tools.
+# Local helper scripts stay private, except the deploy merge, the screenshot tools and the ad pictures.
 scripts/*
 !scripts/build-deploy.sh
 !scripts/screenshots/
+!scripts/ads/
+scripts/ads/out/
 .pnpm-store
 
 # Merged app + site build (scripts/build-deploy.sh) and wrangler's local state
