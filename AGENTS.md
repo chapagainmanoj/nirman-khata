@@ -30,7 +30,7 @@ deliveries, bills, payments, labour, site reports). Read before changing anythin
 - `supabase/functions/`: Edge Functions (register, admin-users, company-export, files).
 
 ## Commands
-Node 22, pnpm 11, Docker. Root: `pnpm install && pnpm --dir app install`.
+Node 22.23.4+ (`.nvmrc`), pnpm 11, Docker. Root: `pnpm install && pnpm --dir app install`.
 | Task | Command |
 |---|---|
 | Start local Supabase | `pnpm db:start` (API 55321, DB 55322) |
