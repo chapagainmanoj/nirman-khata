@@ -102,7 +102,8 @@ export function useDeleteUnused(kind: DeletableKind, id: string) {
   const queryClient = useQueryClient()
   return useMutation({
     mutationFn: () => rpc('delete_unused', { p_kind: kind, p_id: id }),
-    // A project takes its crew, budget and assignments with it.
-    onSuccess: () => refresh(queryClient, ...(kind === 'project' ? ['projects', 'parties', 'budget', 'attendance'] as const : ['parties', 'attendance'] as const)),
+    // A project takes its crew, budget and assignments with it. Not awaited: refetching first would
+    // reload the page of the entry just deleted, which unmounts it before the caller can leave.
+    onSuccess: () => { void refresh(queryClient, ...(kind === 'project' ? ['projects', 'parties', 'budget', 'attendance'] as const : ['parties', 'attendance'] as const)) },
   })
 }

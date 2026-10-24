@@ -396,8 +396,9 @@ export function DeleteUnused({ kind, id, name, onDeleted }: { kind: DeletableKin
     <Card title={t('deleteUnused.title')} className="mt-4">
       <p className="mb-3 text-sm text-subtle">{t(kind === 'project' ? 'deleteUnused.hintProject' : 'deleteUnused.hint')}</p>
       <ErrorBanner>{remove.error && friendlyError(remove.error)}</ErrorBanner>
+      {/* mutateAsync: mutate's own onSuccess is dropped if the page unmounts first. A refusal shows above. */}
       <ConfirmButton label={t('deleteUnused.deleteName', { name })} confirmLabel={t('deleteUnused.yesDelete')} disabled={remove.isPending}
-        onConfirm={() => remove.mutate(undefined, { onSuccess: onDeleted })}>
+        onConfirm={() => remove.mutateAsync().then(onDeleted, () => {})}>
         {t('deleteUnused.delete')}
       </ConfirmButton>
     </Card>
