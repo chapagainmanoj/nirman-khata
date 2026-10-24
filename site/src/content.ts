@@ -27,7 +27,7 @@ export const meta = {
 }
 
 export const hero = {
-  tagline: 'निर्माण खाता: ठेकेदारको हिसाब किताब',
+  tagline: 'निर्माण व्यवसायीको हिसाब किताब',
   title: 'Site and office in one khata',
   lead: 'Site staff record order slips, deliveries and labour on their phone. The office enters bills and payments. You see what each project has cost, what is paid and what is still baki.',
   note: 'Registration is by invitation: we set up your company with you.',
