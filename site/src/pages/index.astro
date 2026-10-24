@@ -1,0 +1,192 @@
+---
+import Icon from '../components/Icon.astro'
+import Phone from '../components/Phone.astro'
+import { closing, contact, dashboard, hero, loop, nepal, problem, roles, steps } from '../content'
+import Base from '../layouts/Base.astro'
+---
+<Base>
+  <!-- Hero: the owner's dashboard. Still on purpose; the motion is in How it works. -->
+  <section class="overflow-hidden">
+    <div class="mx-auto grid max-w-6xl items-center gap-12 px-4 pt-10 pb-16 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:pt-16 lg:pb-24">
+      <div>
+        <p lang="ne" class="font-display text-xl font-semibold text-bahi">{hero.tagline}</p>
+        <h1 class="mt-3 text-[2.9rem] leading-[1.02] text-balance sm:text-7xl">{hero.title}</h1>
+        <p class="mt-5 max-w-xl text-lg leading-relaxed text-subtle sm:text-xl">{hero.lead}</p>
+        <div class="mt-8 flex flex-col gap-3 sm:flex-row">
+          <a href={contact.whatsAppLink} target="_blank" rel="noreferrer"
+            class="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-xl bg-brand px-6 text-lg font-semibold text-white shadow-[0_8px_20px_-8px_rgb(42_106_110/0.6)] transition hover:-translate-y-0.5 hover:bg-brand-dark">
+            <Icon name="MessageCircle" size={22} />Book a demo on WhatsApp
+          </a>
+          <a href={contact.callLink}
+            class="inline-flex min-h-13 items-center justify-center gap-2.5 rounded-xl border border-ink/80 bg-white px-6 text-lg font-semibold transition hover:-translate-y-0.5">
+            <Icon name="Phone" size={20} />Call {contact.callNumber}
+          </a>
+        </div>
+        <p class="mt-4 text-[15px] text-subtle">{hero.note}</p>
+      </div>
+
+      <div class="relative mx-auto w-full max-w-[420px]">
+        <div aria-hidden="true" class="absolute inset-[-8%] -z-10 rounded-full bg-brand-soft/80 blur-3xl"></div>
+        <div class="mx-auto w-[min(62vw,280px)] lg:w-[320px]">
+          <Phone src={dashboard.screen} alt={dashboard.alt} eager />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- The problem, in the contractor's words. -->
+  <section class="border-t border-line">
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <h2 class="max-w-3xl text-4xl leading-[1.08] text-balance sm:text-6xl">{problem.title}</h2>
+      <p class="mt-6 max-w-3xl text-lg leading-relaxed text-subtle sm:text-xl">{problem.text}</p>
+    </div>
+  </section>
+
+  <!-- How it works: on wide screens a scroll story (one phone stays on its stage, the steps scroll past
+       and its screen changes with them); on phones each step has its own phone. Parallax: the step text, the
+       callout and the big number behind the phone move at their own speeds as each step scrolls past
+       (global.css, "Parallax"). -->
+  <section id="how" class="story scroll-mt-4 border-t border-line bg-white" data-active="0">
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <p class="text-sm font-bold tracking-[0.14em] text-brand uppercase">How it works</p>
+      <h2 class="mt-2 text-4xl sm:text-6xl">Entered once, where it happens</h2>
+
+      <div class="mt-12 lg:mt-0 lg:grid lg:grid-cols-[1fr_1.05fr] lg:gap-14">
+        <div>
+          <ol class="flex flex-col gap-24 lg:gap-0">
+            {steps.map((step, i) => (
+              <li class="story-step lg:flex lg:min-h-screen lg:items-center" data-i={i} data-step={i}>
+                <div class="story-text max-w-lg">
+                  <p class="flex items-baseline gap-3">
+                    <span class="font-display text-5xl leading-none font-bold text-brand">{String(i + 1).padStart(2, '0')}</span>
+                    <span class="text-sm font-bold tracking-[0.14em] text-subtle uppercase">{step.name}</span>
+                  </p>
+                  <h3 class="mt-5 text-3xl leading-[1.1] text-balance sm:text-[2.6rem]">{step.title}</h3>
+                  <p class="mt-4 text-lg leading-relaxed text-subtle">{step.text}</p>
+                  <ul class="mt-6 flex flex-col gap-2.5">
+                    {step.facts.map((fact) => (
+                      <li class="flex items-center gap-3 text-base font-semibold">
+                        <span class="flex size-6 shrink-0 items-center justify-center rounded-full bg-brand-soft text-brand-dark"><Icon name="Check" size={14} /></span>
+                        {fact}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <!-- Phones: this step's own phone. -->
+                <div class="relative mx-auto mt-12 w-[min(68vw,280px)] lg:hidden">
+                  <div class="reveal-phone"><Phone src={step.screen} alt={step.alt} /></div>
+                  <div class="callout-card story-float absolute bottom-[14%] -left-4">
+                    <span class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-dark"><Icon name={step.callout.icon} size={18} /></span>
+                    <span class="leading-tight"><span class="block text-[12px] text-subtle">{step.callout.label}</span><span class="block text-[15px] font-bold">{step.callout.value}</span></span>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <!-- Wide screens: the stage, with the phone that stays while the steps scroll past. -->
+        <div class="hidden lg:block">
+          <div class="sticky top-0 flex h-screen items-center">
+            <div class="story-stage relative flex h-[88vh] w-full flex-col items-center justify-center gap-6 overflow-hidden rounded-[2.5rem]">
+              <ol aria-hidden="true" class="flex items-center gap-1 rounded-full border border-white/70 bg-white/70 p-1 text-[14px] font-semibold shadow-sm backdrop-blur">
+                {loop.map((name, c) => (
+                  <li class="story-chip rounded-full px-3 py-1 text-subtle"
+                    data-on={steps.flatMap((st, i) => (st.loop as readonly number[]).includes(c) ? [String(i)] : []).join(' ')}>{name}</li>
+                ))}
+              </ol>
+              <!-- The step's number, large behind the phone. -->
+              <div aria-hidden="true" class="absolute inset-0 flex items-center justify-center">
+                {steps.map((_, i) => (
+                  <span class="story-num font-display absolute text-[min(30rem,62vh)] leading-none font-bold tracking-[-0.06em] text-white" data-i={i}>{String(i + 1).padStart(2, '0')}</span>
+                ))}
+              </div>
+              <div class="story-phone relative w-[min(300px,34vh)]">
+                <Phone>
+                  {steps.map((step, i) => (
+                    <img src={step.screen} alt={step.alt} width="720" height="1332" loading="lazy" decoding="async"
+                      class="story-screen block h-full w-full" data-i={i} />
+                  ))}
+                </Phone>
+                {steps.map((step, i) => (
+                  <div class="story-callout callout-card absolute bottom-[18%] -left-24" data-i={i}>
+                    <span class="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-soft text-brand-dark"><Icon name={step.callout.icon} size={20} /></span>
+                    <span class="leading-tight"><span class="block text-[13px] text-subtle">{step.callout.label}</span><span class="block text-lg font-bold">{step.callout.value}</span></span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // The story follows the step nearest the middle of the screen. Without this script the phone shows
+    // step 1 and the page still reads top to bottom.
+    const story = document.querySelector<HTMLElement>('.story')
+    if (story && 'IntersectionObserver' in window) {
+      const seen = new IntersectionObserver(
+        (entries) => {
+          for (const e of entries) if (e.isIntersecting) story.dataset.active = (e.target as HTMLElement).dataset.step
+        },
+        { rootMargin: '-45% 0px -45% 0px' },
+      )
+      story.querySelectorAll('[data-step]').forEach((el) => seen.observe(el))
+    }
+  </script>
+
+  <!-- Who uses it. -->
+  <section class="border-t border-line">
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <h2 class="text-3xl sm:text-5xl">One record, everyone in their place</h2>
+      <ul class="mt-12 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {roles.map((role) => (
+          <li class="rounded-2xl border border-line bg-white p-6 transition hover:-translate-y-1 hover:shadow-[0_16px_32px_-16px_rgb(31_31_31/0.3)]">
+            <span class="flex size-12 items-center justify-center rounded-xl bg-brand-soft text-brand-dark"><Icon name={role.icon} size={26} /></span>
+            <h3 class="mt-4 text-xl font-bold">{role.name}</h3>
+            <p class="mt-1.5 text-base leading-relaxed text-subtle">{role.text}</p>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Made for Nepal. -->
+  <section class="border-t border-line bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-16 sm:px-6 sm:py-24">
+      <div>
+        <p lang="ne" class="font-display text-xl font-semibold text-bahi">नेपालका ठेकेदारका लागि</p>
+        <h2 class="mt-2 text-3xl leading-tight sm:text-5xl">Made for contractors in Nepal</h2>
+      </div>
+      <ul class="mt-12 grid gap-x-10 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+        {nepal.map((item) => (
+          <li class="flex gap-4">
+            <span class="flex size-11 shrink-0 items-center justify-center rounded-xl border border-line text-brand"><Icon name={item.icon} size={22} /></span>
+            <div>
+              <h3 class="text-lg font-bold">{item.title}</h3>
+              <p class="mt-1 text-base leading-relaxed text-subtle">{item.text}</p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <!-- Contact. -->
+  <section id="contact" class="scroll-mt-4 border-t border-line">
+    <div class="mx-auto max-w-3xl px-4 py-20 text-center sm:px-6 sm:py-28">
+      <h2 class="text-3xl leading-tight sm:text-5xl">{closing.title}</h2>
+      <p class="mx-auto mt-4 max-w-xl text-lg leading-relaxed text-subtle sm:text-xl">{closing.text}</p>
+      <a href={contact.whatsAppLink} target="_blank" rel="noreferrer"
+        class="mt-8 inline-flex min-h-13 items-center justify-center gap-2.5 rounded-xl bg-brand px-7 text-lg font-semibold text-white shadow-[0_8px_20px_-8px_rgb(42_106_110/0.6)] transition hover:-translate-y-0.5 hover:bg-brand-dark">
+        <Icon name="MessageCircle" size={22} />Book a demo on WhatsApp
+      </a>
+      <ul class="mt-8 flex flex-col items-center justify-center gap-x-8 gap-y-2 text-lg font-semibold text-brand sm:flex-row">
+        <li><a class="inline-flex min-h-11 items-center gap-2 hover:underline" href={contact.callLink}><Icon name="Phone" size={20} />{contact.callNumber}</a></li>
+        <li><a class="inline-flex min-h-11 items-center gap-2 hover:underline" href={contact.emailLink}><Icon name="Mail" size={20} />{contact.email}</a></li>
+      </ul>
+    </div>
+  </section>
+</Base>

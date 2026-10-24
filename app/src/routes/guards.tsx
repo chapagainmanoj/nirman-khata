@@ -68,3 +68,9 @@ export function RedirectIfSignedIn({ children }: { children: ReactNode }) {
 export function Home() {
   return <Navigate to={homeFor(useNavRole())} replace />
 }
+
+/** "/" inside the app: each person's home. A page load of "/" gets the marketing site instead
+ *  (site/, laid over the app at deploy); only links within the app arrive here. */
+export function Root() {
+  return <RequireCompany><Home /></RequireCompany>
+}

@@ -6,7 +6,7 @@ import { LoginPage } from './features/auth/LoginPage'
 import { EMAIL_RESET, ForgotPasswordPage, ResetPasswordPage } from './features/auth/PasswordResetPages'
 import { RegisterPage } from './features/auth/RegisterPage'
 import { ProjectsPage } from './features/projects/ProjectsPage'
-import { AdminOnly, Home, RedirectIfSignedIn, RequireCompany, RequirePlatformAdmin } from './routes/guards'
+import { AdminOnly, RedirectIfSignedIn, RequireCompany, RequirePlatformAdmin, Root } from './routes/guards'
 
 // Each screen is its own chunk, so the first load is only sign-in, the frame and Projects
 // (/impeccable optimize). The service worker precaches the rest for later visits.
@@ -70,6 +70,7 @@ export function App() {
       {/* Screens outside the frame (sign-in, /platform); inside it Layout keeps the menu on screen. */}
       <PageBoundary>
       <Routes>
+        <Route path="/" element={<Root />} />
         <Route path="/login" element={<RedirectIfSignedIn><LoginPage /></RedirectIfSignedIn>} />
         <Route path="/register" element={<RedirectIfSignedIn><RegisterPage /></RedirectIfSignedIn>} />
         {EMAIL_RESET && <Route path="/forgot" element={<RedirectIfSignedIn><ForgotPasswordPage /></RedirectIfSignedIn>} />}
@@ -137,7 +138,6 @@ export function App() {
           <Route path="/daily/new" element={<DailyReportPage />} />
           <Route path="/daily/:reportId" element={<ReportDetailPage />} />
           <Route path="/calendar" element={<CalendarPage />} />
-          <Route path="/" element={<Home />} />
           <Route path="/dashboard" element={<DashboardPage />} />
           <Route path="/reports" element={<ReportsPage />} />
           <Route path="/reports/:reportKey" element={<ReportPage />} />

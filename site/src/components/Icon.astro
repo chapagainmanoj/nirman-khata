@@ -1,0 +1,17 @@
+---
+// Lucide icons as inline SVG (the app uses the same family), decorative: the text beside names the thing.
+import * as icons from 'lucide-static'
+
+interface Props {
+  name: keyof typeof icons
+  size?: number
+  class?: string
+}
+const { name, size = 24, class: className } = Astro.props
+const svg = (icons[name] as string)
+  .replace(/width="\d+"/, `width="${size}"`)
+  .replace(/height="\d+"/, `height="${size}"`)
+  .replace(/stroke-width="[\d.]+"/, 'stroke-width="1.75"')
+  .replace('<svg', `<svg aria-hidden="true" focusable="false"${className ? ` class="${className}"` : ''}`)
+---
+<Fragment set:html={svg} />

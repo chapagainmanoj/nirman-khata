@@ -49,6 +49,8 @@ export function LoginPage() {
           ? <Link to="/forgot" className="flex min-h-11 items-center justify-center text-sm font-medium text-brand">{t('login.forgotPassword')}</Link>
           : <p className="text-xs text-subtle">{t('auth.forgot')}</p>}
         <Link to="/register" className="flex min-h-11 items-center justify-center text-sm font-medium text-slate">{t('auth.register')}</Link>
+        {/* A page load, not an app link: "/" is the marketing site (site/). */}
+        <a href="/" className="flex min-h-11 items-center justify-center text-sm text-subtle underline underline-offset-4">{t('login.newHere')}</a>
       </form>
     </AuthShell>
   )

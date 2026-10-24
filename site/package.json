@@ -1,0 +1,25 @@
+{
+  "name": "nirman-khata-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@fontsource-variable/anek-devanagari": "^5.3.0",
+    "@fontsource/mukta": "^5.3.0",
+    "astro": "^7.4.2"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@tailwindcss/vite": "^4.3.3",
+    "lucide-static": "^1.61.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "~6.0.2"
+  },
+  "engines": {
+    "node": ">=22.23.4"
+  }
+}

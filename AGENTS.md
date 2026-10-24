@@ -21,6 +21,10 @@ deliveries, bills, payments, labour, site reports). Read before changing anythin
   - `src/platform/`: device APIs (storage, share). Use `platform`, never `window`/IndexedDB directly.
     Small settings read before first render (current project, accent) go in `platform.prefs`, not `localStorage`.
   - `e2e/`: Playwright on a Pixel 5 screen.
+- `site/`: the marketing site at `nirman-khata.com/` (Astro + Tailwind, static, no React). Its own look and
+  copy (`site/src/content.ts`); screenshots come from `scripts/screenshots/`. One Pages deploy: `scripts/build-deploy.sh`
+  lays `site/dist` over `app/dist`, "/" is the site (`site.html`, `site/public/_redirects`), every other path the app.
+  The app's service worker uses `app.html` (same shell) and never answers "/". Never add a catch-all `_redirects` rule.
 - `supabase/migrations/`: schema, RLS, RPC functions. The source of truth for the backend.
 - `supabase/tests/`: pgTAP (`NNN_topic.sql`) plus shell tests for concurrency, files, export.
 - `supabase/functions/`: Edge Functions (register, admin-users, company-export, files).
@@ -35,6 +39,8 @@ Node 22, pnpm 11, Docker. Root: `pnpm install && pnpm --dir app install`.
 | Dev server | `pnpm dev` → http://localhost:5173 |
 | Unit tests | `pnpm --dir app test` |
 | Typecheck + build | `pnpm --dir app build` |
+| Marketing site | `pnpm site:dev` → http://localhost:4321, `pnpm site:build` |
+| Deploy folder (app + site) | `pnpm build:deploy`; check with `npx wrangler pages dev deploy` |
 | Lint | `pnpm --dir app lint` |
 | DB tests | `pnpm db:test`, `pnpm db:test:race`, `pnpm db:test:files`, `pnpm db:test:staff`, `pnpm db:test:export` |
 | E2E | `pnpm --dir app e2e` (needs db + dev server) |

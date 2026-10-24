@@ -3,7 +3,7 @@
 // Decorative by default (aria-hidden): the text next to an icon names the action.
 import {
   ArrowRight, Banknote, Bell, Building2, CalendarDays, Camera, ChartColumn, Check, ChevronDown, ChevronLeft, ChevronRight,
-  CircleHelp, ClipboardList, Ellipsis, Hammer, HandCoins, Handshake, HardHat, Info, LayoutDashboard, Lock, LogOut, NotebookPen, Package, Plus, Receipt, Share2, ShieldCheck,
+  CircleHelp, ClipboardList, Ellipsis, Hammer, HandCoins, Handshake, HardHat, Info, LayoutDashboard, Lock, LogOut, Mail, MessageCircle, NotebookPen, Package, Phone, Plus, Receipt, Share2, ShieldCheck,
   SlidersHorizontal, Store, Trash2, TriangleAlert, Truck, Users, Wallet, type LucideIcon, type LucideProps,
 } from 'lucide-react'
 
@@ -71,3 +71,8 @@ export function BrandMark({ size = 32, className }: { size?: number; className?:
     </svg>
   )
 }
+
+// Contact (sign-in, registration)
+export const ChatIcon = icon(MessageCircle, 'ChatIcon')
+export const PhoneIcon = icon(Phone, 'PhoneIcon')
+export const MailIcon = icon(Mail, 'MailIcon')

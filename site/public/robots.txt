@@ -1,0 +1,12 @@
+# The marketing site is public. Every other address on this domain is the app, behind sign-in.
+User-agent: *
+Allow: /$
+Allow: /_site/
+Allow: /screens/
+Allow: /og.png
+Allow: /*.png$
+Allow: /*.svg$
+Allow: /*.ico$
+Disallow: /
+
+Sitemap: https://nirman-khata.com/sitemap.xml

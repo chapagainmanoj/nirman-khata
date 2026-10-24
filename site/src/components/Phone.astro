@@ -1,0 +1,42 @@
+---
+// A phone with an app screen in it: graphite rim, black bezel, camera island, side buttons, a status bar
+// and a faint glass sheen. Screens (screens/*.webp, 720 × 1332, from scripts/screenshots) are passed as
+// `src`, or as children (the story's stacked screens, index.astro), which fill the screen area.
+interface Props {
+  src?: string
+  alt?: string
+  eager?: boolean
+  class?: string
+}
+const { src, alt = '', eager = false, class: className = '' } = Astro.props
+---
+<div class:list={['phone relative', className]}>
+  <!-- Side buttons: volume on the left, power on the right. -->
+  <span aria-hidden="true" class="absolute top-[18%] -left-[3px] h-[7%] w-[3px] rounded-l bg-[#3a3a3c]"></span>
+  <span aria-hidden="true" class="absolute top-[27%] -left-[3px] h-[7%] w-[3px] rounded-l bg-[#3a3a3c]"></span>
+  <span aria-hidden="true" class="absolute top-[22%] -right-[3px] h-[11%] w-[3px] rounded-r bg-[#3a3a3c]"></span>
+
+  <div class="phone-rim rounded-[2.6rem] p-[3px]">
+    <div class="rounded-[2.45rem] bg-[#0d0d0e] p-[7px]">
+      <div class="relative overflow-hidden rounded-[2.05rem] bg-white">
+        <!-- Status bar, white like the app's own header. -->
+        <div aria-hidden="true" class="relative flex h-7 items-center justify-between bg-white px-6 pt-1 text-[11px] font-semibold text-ink">
+          <span>10:24</span>
+          <span class="absolute top-1.5 left-1/2 h-[18px] w-[72px] -translate-x-1/2 rounded-full bg-[#0d0d0e]"></span>
+          <span class="flex items-center gap-1">
+            <svg width="15" height="10" viewBox="0 0 15 10"><rect x="0" y="7" width="2.5" height="3" rx=".6" fill="currentColor"/><rect x="4" y="5" width="2.5" height="5" rx=".6" fill="currentColor"/><rect x="8" y="2.5" width="2.5" height="7.5" rx=".6" fill="currentColor"/><rect x="12" y="0" width="2.5" height="10" rx=".6" fill="currentColor"/></svg>
+            <svg width="13" height="10" viewBox="0 0 13 10"><path d="M6.5 9.2 4.6 7.2a2.7 2.7 0 0 1 3.8 0ZM2.9 5.5a5.1 5.1 0 0 1 7.2 0l-1 1a3.7 3.7 0 0 0-5.2 0Zm-1.8-1.8a7.7 7.7 0 0 1 10.8 0l-1 1a6.3 6.3 0 0 0-8.8 0Z" fill="currentColor"/></svg>
+            <svg width="22" height="10" viewBox="0 0 22 10"><rect x=".5" y=".5" width="18" height="9" rx="2.5" fill="none" stroke="currentColor" opacity=".45"/><rect x="2" y="2" width="12" height="6" rx="1.4" fill="currentColor"/><rect x="19.6" y="3.3" width="1.6" height="3.4" rx=".8" fill="currentColor" opacity=".45"/></svg>
+          </span>
+        </div>
+        <div class="relative aspect-[720/1332]">
+          {src
+            ? <img src={src} alt={alt} width="720" height="1332" loading={eager ? 'eager' : 'lazy'}
+                fetchpriority={eager ? 'high' : 'auto'} decoding="async" class="absolute inset-0 block h-full w-full" />
+            : <slot />}
+        </div>
+        <span aria-hidden="true" class="phone-sheen pointer-events-none absolute inset-0"></span>
+      </div>
+    </div>
+  </div>
+</div>

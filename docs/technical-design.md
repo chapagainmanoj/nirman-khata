@@ -33,7 +33,8 @@
 
 | Need | Choice | Limits | How we handle them |
 |---|---|---|---|
-| Frontend (web + PWA) | React + Vite + TypeScript, static build on **Cloudflare Pages** → `nirmankhata.pages.dev` | Free plan allows commercial use | Static files only, so the app can move host without code changes. |
+| Frontend (web + PWA) | React + Vite + TypeScript, static build on **Cloudflare Pages** → `nirman-khata.com` (also `nirmankhata.pages.dev`) | Free plan allows commercial use | Static files only, so the app can move host without code changes. |
+| Marketing site | Astro static site (`site/`), laid over the app build in the same Pages deploy: `/` is the site, every other path the app | Free | Static HTML for search and link previews; the app's service worker never answers `/`. |
 | Database, auth, files, RPC | **Supabase** | Free: 500 MB DB, 1 GB files, **the project may pause after a period of low activity** | **Accepted pilot limitation.** Upgrade trigger: Supabase Pro (about USD 25/month) once a pilot company relies on it daily. Pro adds daily managed DB backups. PITR is a separate paid add-on (about USD 100+/month) and covers only the database, not files. Not planned for the pilot. |
 | Admin tasks needing the secret key | Supabase Edge Functions | Free invocation quota | Staff accounts, password resets, full export. |
 | Backups | GitHub Actions → **Cloudflare R2** (10 GB free) + **Healthchecks.io** (free) for freshness alerts | See 11.2 | Encrypted. Separate dumps. Independent monitoring. |

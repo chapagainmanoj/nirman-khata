@@ -1,7 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router'
+import { ContactLinks } from '../../components/ContactLinks'
 import { Button, ErrorBanner, Field, Input } from '../../components/ui'
+import { SUPPORT_EMAIL } from '../../lib/contact'
+import { friendlyError } from '../../lib/errors'
 import { callFunction } from '../../lib/functions'
 import { t } from '../../lib/i18n'
 import { parseLoginId } from '../../lib/login-id'
@@ -29,7 +32,7 @@ export function RegisterPage() {
       await callFunction('register', form)
     } catch (err) {
       setBusy(false)
-      return setError((err as Error).message)
+      return setError(friendlyError(err))
     }
     const { error: signInError } = await supabase.auth.signInWithPassword({ email: id.email, password: form.password })
     setBusy(false)
@@ -42,7 +45,10 @@ export function RegisterPage() {
   return (
     <AuthShell title={t('auth.register')}>
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <p className="text-sm text-subtle">{t('auth.byInvitation')}</p>
+        <div>
+          <p className="text-sm text-subtle">{t('auth.byInvitation')}</p>
+          <ContactLinks email={SUPPORT_EMAIL} message={t('contact.helpMessage')} subject={t('contact.helpSubject')} />
+        </div>
         <Field label={t('register.companyName')} htmlFor="company">
           <Input id="company" value={form.company_name} onChange={set('company_name')} required />
         </Field>

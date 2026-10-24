@@ -13,7 +13,10 @@
     "db:test:race": "bash supabase/tests/concurrency.sh",
     "db:test:export": "bash supabase/tests/export.sh",
     "db:test:files": "bash supabase/tests/files.sh",
-    "db:test:staff": "bash supabase/tests/staff.sh"
+    "db:test:staff": "bash supabase/tests/staff.sh",
+    "site:dev": "pnpm --dir site dev",
+    "site:build": "pnpm --dir site build",
+    "build:deploy": "pnpm --dir app build && pnpm --dir site build && bash scripts/build-deploy.sh"
   },
   "devDependencies": {
     "supabase": "^2.120.0"

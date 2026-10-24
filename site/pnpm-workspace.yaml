@@ -1,0 +1,5 @@
+# Install scripts stay off: esbuild ships its binary as an optional package, and sharp is not used
+# (screenshots are made as WebP by scripts/screenshots/capture.mjs, not by Astro).
+allowBuilds:
+  esbuild: false
+  sharp: false

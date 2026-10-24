@@ -443,6 +443,11 @@ const en = {
   'showMore.showingShown': 'Showing {shown}',
   // features/auth/AuthShell.tsx
   'authShell.constructionSiteAndCost': 'Construction site and cost register',
+  'contact.whatsapp': 'WhatsApp {number}',
+  'contact.call': 'Call {number}',
+  'contact.helpMessage': 'Hi, I need help signing in to NirmanKhata.',
+  'contact.helpSubject': 'NirmanKhata access',
+  'login.newHere': 'New to NirmanKhata? See what it does',
   // features/auth/LoginPage.tsx
   'login.enterYourMobileNumber': 'Enter your mobile number (98XXXXXXXX) or email.',
   'login.wrongMobileNumberEmail': 'Wrong mobile number/email or password.',
@@ -2407,8 +2412,8 @@ const en = {
   'function.password_short': 'The password needs at least 8 characters.',
   'function.roles_required': 'Choose at least one role.',
   'function.login_taken': 'This mobile number or email already has a login.',
-  'function.not_approved': 'This mobile number or email is not approved to register. Contact us to get access.',
-  'function.half_registered': 'The login was made but the company was not. Contact us to finish it; do not register again.',
+  'function.not_approved': 'This mobile number or email is not approved to register. Contact us with the links above to get access.',
+  'function.half_registered': 'The login was made but the company was not. Contact us with the links above to finish it; do not register again.',
   'function.not_found': 'Not found. It may have been removed.',
   'function.service_down': 'The file service did not answer. Try again.',
   'function.file_forbidden': 'You cannot change this file. Ask an admin if it needs changing.',
