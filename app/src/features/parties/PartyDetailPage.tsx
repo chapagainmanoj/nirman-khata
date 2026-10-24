@@ -25,7 +25,7 @@ import { CrewBoard } from '../labour/CrewBoard'
 import { WorkerCrews } from '../labour/WorkerCrews'
 import { WorkerForm } from '../labour/WorkerForm'
 import { formatNPR } from '../../lib/money'
-import { BalanceCard, ContactRow, Khata, MatchCard, OpeningBalance, PaymentList } from './PartyParts'
+import { BalanceCard, ContactRow, DeleteUnused, Khata, MatchCard, OpeningBalance, PaymentList } from './PartyParts'
 import { Tabs } from '../../components/Tabs'
 import { RefundCard } from '../refunds/RefundCard'
 import { t } from '../../lib/i18n'
@@ -175,6 +175,10 @@ export function PartyEditPage({ kind }: { kind: PartyKind }) {
           onDone={() => navigate(details, { replace: true })} />
       ) : (
         <PartyForm kind={kind} party={r} onDone={() => navigate(details, { replace: true })} />
+      )}
+      {/* A project's own crew goes only with its project. */}
+      {!(kind === 'crew' && r.is_default) && (
+        <DeleteUnused kind={kind} id={r.id} name={r.name} onDeleted={() => navigate(PARTY[kind].path, { replace: true })} />
       )}
     </>
   )

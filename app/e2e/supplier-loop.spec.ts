@@ -52,6 +52,11 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await page.getByLabel('Material', { exact: true }).selectOption({ label: 'Cement' })
   await expect(page.getByLabel('Unit', { exact: true })).toHaveValue(/.+/)
   await page.getByLabel('Quantity').fill('100')
+  // What was ordered, shown again when the bill is entered.
+  await page.getByText('More details').click()
+  await page.getByLabel('Specification').fill('OPC 43')
+  await page.getByLabel('Expected rate per unit').fill('850')
+  await page.getByLabel('Note', { exact: true }).fill('Fresh stock only')
   await page.screenshot(shots('m2-02-new-slip'))
   await page.getByRole('button', { name: 'Submit for approval' }).click()
   await expect(page.getByText('Pending approval')).toBeVisible()
@@ -92,7 +97,13 @@ test('order, receive, bill, pay: cost and balance add up', async ({ page }) => {
   await expect(page.getByText(/^For the delivery of .* to P-/)).toBeVisible()
   await expect(page.getByLabel('Quantity')).toHaveValue('60')
   await page.getByLabel('Bill number').fill('1001')
-  await page.getByLabel('Rate per unit').fill('850')
+  // The order slip's details sit under the delivery; its expected rate fills the rate.
+  await expect(page.getByText(/^Order slip /)).toBeVisible()
+  await expect(page.getByText('Specification: OPC 43')).toBeVisible()
+  await expect(page.getByText('Note: Fresh stock only')).toBeVisible()
+  await expect(page.getByText(/^Expected rate Rs\. 850/)).toBeVisible()
+  await page.getByRole('button', { name: 'Use', exact: true }).click()
+  await expect(page.getByLabel('Rate per unit')).toHaveValue('850')
   await expect(page.getByText('Total Rs. 51,000')).toBeVisible()
   // The paper bill total is typed too; a wrong one shows the gap at once.
   await page.getByLabel('Total on the paper bill').fill('51,500')

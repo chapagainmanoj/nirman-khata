@@ -576,6 +576,7 @@ Reports state which view and which budget revision they use.
 
 - Drafts can be edited or deleted by authorized users.
 - Posted financial records are never silently edited or deleted. Corrections use a reversal or credit that keeps the original, author, time, reason and effect.
+- A party (supplier, subcontractor, crew, payee, worker) or project entered by mistake and never used may be deleted by an Admin. Anything with a record pointing to it, even a reversed or cancelled one, is only made inactive (a project cancelled). The audit log keeps the deleted row. (Product owner, 2026-10-24.)
 - Material returns track quantity separately from the supplier credit. Cost and payable reduce only when the credit is posted.
 - Opening balances need a cutover date and explanation, and do not become project cost.
 - Completed projects can still receive authorized final bills and payments.

@@ -7,7 +7,7 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { ButtonLink, Card, Detail, EmptyState, ErrorBanner, PageHeader, Spinner } from '../../components/ui'
 import { friendlyError } from '../../lib/errors'
-import { BalanceCard, ContactRow, Khata, MatchCard, PaymentList } from '../parties/PartyParts'
+import { BalanceCard, ContactRow, DeleteUnused, Khata, MatchCard, PaymentList } from '../parties/PartyParts'
 import { Tabs } from '../../components/Tabs'
 import { useProjectFilter } from '../projects/ProjectFilter'
 import { useBills, useSuppliers, useTheirRates } from './api'
@@ -126,6 +126,7 @@ export function SupplierEditPage() {
     <>
       <PageHeader title={t('supplierDetail.editSupplier')} crumbs={[...supplierCrumbs(s), { to: details, label: t('supplierDetail.details') }]} />
       <SupplierForm supplier={s} onDone={() => navigate(details, { replace: true })} />
+      <DeleteUnused kind="supplier" id={s.id} name={s.name} onDeleted={() => navigate('/suppliers', { replace: true })} />
     </>
   )
 }

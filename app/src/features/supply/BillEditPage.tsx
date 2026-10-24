@@ -446,11 +446,17 @@ function BillForm({ initial }: { initial?: BillValues }) {
                   {l.matches.map((m, j) => {
                     const dl = deliveries.data?.get(m.delivery_line_id)
                     return (
-                      <div key={m.delivery_line_id} className="mt-2 flex items-end gap-2">
-                        <Field label={dl ? t('billEdit.challanValueReceiptdate', { value: dl.challan_no ?? '—', receiptDate: formatDate(dl.receipt_date, auth.dateDisplay) }) : t('billEdit.delivery')} htmlFor={`bl${i}-m${j}`}>
-                          <Input id={`bl${i}-m${j}`} inputMode="decimal" {...register(`lines.${i}.matches.${j}.billed_qty`)} />
-                        </Field>
-                        <Button type="button" variant="ghost" onClick={() => setValue(`lines.${i}.matches`, l.matches.filter((_, k) => k !== j))}>{t('billEdit.unlink')}</Button>
+                      <div key={m.delivery_line_id} className="mt-2">
+                        <div className="flex items-end gap-2">
+                          <Field label={dl ? t('billEdit.challanValueReceiptdate', { value: dl.challan_no ?? '—', receiptDate: formatDate(dl.receipt_date, auth.dateDisplay) }) : t('billEdit.delivery')} htmlFor={`bl${i}-m${j}`}>
+                            <Input id={`bl${i}-m${j}`} inputMode="decimal" {...register(`lines.${i}.matches.${j}.billed_qty`)} />
+                          </Field>
+                          <Button type="button" variant="ghost" onClick={() => setValue(`lines.${i}.matches`, l.matches.filter((_, k) => k !== j))}>{t('billEdit.unlink')}</Button>
+                        </div>
+                        {dl?.slip && (
+                          <SlipDetails slip={dl.slip} unit={units.data?.find((u) => u.id === dl.unit_id)?.name} current={parseNPR(l.rate)}
+                            onUse={(paisa) => { setValue(`lines.${i}.rate`, paisaToInput(paisa)); setValue(`lines.${i}.amount_edited`, false); recalc(i) }} />
+                        )}
                       </div>
                     )
                   })}
@@ -575,6 +581,29 @@ function BillForm({ initial }: { initial?: BillValues }) {
  * The rate on this supplier's last posted bill for the material (req §11.2, a hint only: v1
  * has no rate lists). "Use" copies it into the line.
  */
+/** What the order slip asked for, beside the delivery it came on: to check the paper bill against. */
+function SlipDetails({ slip, unit, current, onUse }: {
+  slip: { number: string; spec: string | null; note: string | null; est_rate_paisa: number | null }
+  unit: string | undefined; current: number | null; onUse: (paisa: number) => void
+}) {
+  const rate = slip.est_rate_paisa
+  return (
+    <div className="mt-1 text-xs text-subtle">
+      <div>{t('billEdit.slipNumber', { number: slip.number })}</div>
+      {slip.spec && <div>{t('billEdit.slipSpec', { spec: slip.spec })}</div>}
+      {rate !== null && (
+        <div className="flex flex-wrap items-center gap-x-2">
+          <span>{t('billEdit.slipRate')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(rate)}</span>{unit && ` / ${unit}`}</span>
+          {current !== rate && (
+            <button type="button" className="min-h-11 font-semibold text-brand hover:underline" onClick={() => onUse(rate)}>{t('billEdit.use')}</button>
+          )}
+        </div>
+      )}
+      {slip.note && <div>{t('billEdit.slipNote', { note: slip.note })}</div>}
+    </div>
+  )
+}
+
 function LastRate({ supplierId, materialId, current, onUse }: {
   supplierId: string; materialId: string; current: number | null; onUse: (paisa: number) => void
 }) {

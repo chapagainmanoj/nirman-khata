@@ -1645,6 +1645,10 @@ const en = {
   'billEdit.lastBilled': 'Last billed',
   'billEdit.onBilldateValue': 'on {billDate}{value}',
   'billEdit.use': 'Use',
+  'billEdit.slipNumber': 'Order slip {number}',
+  'billEdit.slipSpec': 'Specification: {spec}',
+  'billEdit.slipRate': 'Expected rate',
+  'billEdit.slipNote': 'Note: {note}',
   // features/supply/BillRow.tsx
   'billRow.outstandingDue': '{outstanding} due',
   'billRow.ofTotal': 'of {total}',
@@ -2018,6 +2022,12 @@ const en = {
   'parties.status': 'Status',
   'parties.active': 'Active',
   'parties.inactiveKeptInHistory': 'Inactive (kept in history)',
+  'deleteUnused.title': 'Delete',
+  'deleteUnused.hint': 'Only for an entry made by mistake that was never used. If it has any record (order, bill, payment or day of work, even a reversed one), make it inactive instead.',
+  'deleteUnused.hintProject': 'Only for a project made by mistake that was never used. If it has any record (order, delivery, bill, payment, labour or daily report), cancel it instead.',
+  'deleteUnused.delete': 'Delete',
+  'deleteUnused.deleteName': 'Delete {name}',
+  'deleteUnused.yesDelete': 'Yes, delete',
   // features/subcontract/WorkPackageEditPage.tsx
   'workPackageEdit.workPackageNotFound': 'Work package not found.',
   'workPackageEdit.chooseTheProject': 'Choose the project.',

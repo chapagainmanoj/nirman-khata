@@ -63,7 +63,7 @@ export function DashboardPage() {
       {d.money_visible && (
         <RunningBlock projects={d.projects}>
           <Figure label={t('dashboard.toPay')} value={owedTotal}
-            sub={Object.entries(owed).filter(([, n]) => n > 0).map(([k, n]) => `${t(OWED_LABEL[k as keyof typeof OWED_LABEL])}\u00a0${formatNPR(n, { whole: true })}`).join('\u00a0· ') || t('dashboard.nothingToPay')}
+            sub={Object.entries(owed).filter(([, n]) => n > 0).map(([k, n]) => `${t(OWED_LABEL[k as keyof typeof OWED_LABEL])}\u00a0${formatNPR(n, { whole: true })}`)}
             to="/parties" />
         </RunningBlock>
       )}
@@ -96,14 +96,25 @@ export function DashboardPage() {
 }
 
 /** One figure, set like "Spent so far": plain ink, no tile (product owner, 2026-10-17). */
-function Figure({ label, value, sub, to }: { label: string; value: number | undefined; sub?: string; to: string }) {
+function Figure({ label, value, sub, to }: { label: string; value: number | undefined; sub: string[]; to: string }) {
   return (
-    <Link to={to} className="group block min-w-0">
+    <Link to={to} className="group @container block min-w-0">
       <span className="block text-sm font-medium text-subtle">{label}</span>
-      <span className="block text-2xl font-semibold whitespace-nowrap text-ink tabular-nums group-hover:underline sm:text-3xl">{formatNPR(value ?? 0, { whole: true })}</span>
-      {sub && <span className="mt-1 block text-sm text-subtle">{sub}</span>}
+      <BigAmount>{formatNPR(value ?? 0, { whole: true })}</BigAmount>
+      {/* One kind per line: joined on one line it widened the column past the figures beside it. */}
+      <span className="mt-1 block text-sm text-subtle">
+        {sub.length ? sub.map((s) => <span key={s} className="block">{s}</span>) : t('dashboard.nothingToPay')}
+      </span>
     </Link>
   )
+}
+
+/**
+ * A headline amount sized to its column (the link around it is the container): crores fit beside
+ * each other on a phone. Too narrow even so, it breaks only after "Rs." (digits and commas don't break).
+ */
+function BigAmount({ className = 'text-ink', children }: { className?: string; children: ReactNode }) {
+  return <span className={`block text-xl font-semibold tabular-nums group-hover:underline @[11rem]:text-2xl @[15rem]:text-3xl ${className}`}>{children}</span>
 }
 
 /**
@@ -120,16 +131,16 @@ function RunningBlock({ projects, children }: { projects: Dashboard['projects'];
   return (
     <section aria-label={t('dashboard.runningProjects')} className="mb-6 min-w-0 rounded-xl border border-line bg-surface p-4 sm:p-5">
       <h2 className="mb-3 text-xs font-semibold tracking-wide text-subtle uppercase">{t('dashboard.runningProjectsCount', { count: r.count })}</h2>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(12rem,auto)]">
-        <Link to="/reports/project-cost" className="group block min-w-0">
+      <div className="grid grid-cols-2 gap-x-6 gap-y-4 lg:grid-cols-3">
+        <Link to="/reports/project-cost" className="group @container block min-w-0">
           <span className="block text-sm font-medium text-subtle">{t('dashboard.spentSoFar')}</span>
-          <span className="block text-2xl font-semibold whitespace-nowrap text-ink tabular-nums group-hover:underline sm:text-3xl">{formatNPR(r.spent, { whole: true })}</span>
+          <BigAmount>{formatNPR(r.spent, { whole: true })}</BigAmount>
         </Link>
-        <Link to="/reports/budget-vs-cost" className="group block min-w-0">
+        <Link to="/reports/budget-vs-cost" className="group @container block min-w-0">
           <span className={`block text-sm font-medium ${over ? 'text-danger' : 'text-subtle'}`}>{over ? t('dashboard.overBudgetBy') : t('dashboard.leftToSpend')}</span>
-          <span className={`block text-2xl font-semibold whitespace-nowrap tabular-nums group-hover:underline sm:text-3xl ${over ? 'text-danger' : 'text-ink'}`}>
+          <BigAmount className={over ? 'text-danger' : 'text-ink'}>
             {r.budget ? formatNPR(Math.abs(r.left), { whole: true }) : t('dashboard.notSet')}
-          </span>
+          </BigAmount>
           <span className="mt-1 block text-sm text-subtle">
             {r.budget ? <>{t('dashboard.of')}{' '}<span className="font-semibold text-ink tabular-nums">{formatNPR(r.budget, { whole: true })}</span> {t('dashboard.budget')}</> : t('dashboard.noSpendingBudgetSet')}
           </span>

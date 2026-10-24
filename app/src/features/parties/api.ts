@@ -1,8 +1,9 @@
 // Data shared by every kind of party: balances, khata, open items, opening balance, payments.
 // Reads go through RLS, so each list already contains only what the user may see.
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { usePaged } from '../../lib/paging'
 import { supabase } from '../../lib/supabase'
+import { refresh } from '../../data/refresh'
 import { rpc, rpcAll } from '../../data/rpc'
 import { PARTY, type PartyKind, type PaysBy } from './kinds'
 
@@ -87,5 +88,21 @@ export function useParties(companyId: string, kind: PartyKind) {
       if (error) throw error
       return data as unknown as Array<{ id: string; name: string; active: boolean; phone: string | null; pays_by?: PaysBy }>
     },
+  })
+}
+
+/** What delete_unused can delete: a party, or a project, that was never used. */
+export type DeletableKind = PartyKind | 'project'
+
+/**
+ * Admin only: delete an entry made by mistake that nothing points to (no slip, bill, payment,
+ * day of work, report, even a reversed one). The server refuses anything used, in plain words.
+ */
+export function useDeleteUnused(kind: DeletableKind, id: string) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: () => rpc('delete_unused', { p_kind: kind, p_id: id }),
+    // A project takes its crew, budget and assignments with it.
+    onSuccess: () => refresh(queryClient, ...(kind === 'project' ? ['projects', 'parties', 'budget', 'attendance'] as const : ['parties', 'attendance'] as const)),
   })
 }

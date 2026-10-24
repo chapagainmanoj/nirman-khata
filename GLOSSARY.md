@@ -156,6 +156,7 @@ A supplier, subcontractor, crew, worker or payee the company pays. A party deals
 - **Relations:** has many bills, work charges, labour costs, payments, Peski and Overpayment across any number of projects.
 - **In code:** "party" in SQL comments and functions; separate tables `suppliers`, `subcontractors`, `crews`, `payees`, `workers`; exactly one of their ids on each payment, ledger row and event (`party_id`).
 - **Notes:** Splitting by project is how the company tracks its own costs. Parties never need to see it.
+- **Notes (2026-10-24):** a party that was never used (a typo, a duplicate) can be deleted by an Admin from its edit page (`delete_unused`). One with any record, even a reversed bill, is made Inactive instead and stays in history. The same holds for a Project, which is Cancelled instead.
 
 ## Payee
 A lightweight Party paid through Other Expenses: name, optional phone and a type of service such as JCB owner, tanker or transporter. Company-wide and reusable; can be promoted to a Supplier later. People see it as **Other service**.

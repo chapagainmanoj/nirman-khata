@@ -453,12 +453,25 @@ export function useDeliveriesById(deliveryIds: string[]) {
     enabled: ids.length > 0,
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('delivery_lines').select('id, material_id, material_text, unit_id, unit_note, deliveries(challan_no, receipt_date)')
+        .from('delivery_lines')
+        .select('id, material_id, material_text, unit_id, unit_note, slip_line_id, deliveries(challan_no, receipt_date), order_slip_lines(spec, note, order_slips(number))')
         .in('delivery_id', ids)
       if (error) throw error
+      // What was ordered, to check the paper bill against. The expected rate is finance only:
+      // RLS returns no row to others, so it is simply missing.
+      const slipLines = [...new Set(data.flatMap((d) => d.slip_line_id ?? []))]
+      const prices = slipLines.length
+        ? await supabase.from('order_slip_line_prices').select('id, est_rate_paisa').in('id', slipLines)
+        : { data: [], error: null }
+      if (prices.error) throw prices.error
+      const rate = new Map(prices.data.map((p) => [p.id, p.est_rate_paisa]))
       return new Map(data.map((d) => [d.id, {
         material_id: d.material_id, material_text: d.material_text, unit_id: d.unit_id, unit_note: d.unit_note,
         challan_no: d.deliveries?.challan_no ?? null, receipt_date: d.deliveries?.receipt_date ?? '',
+        slip: d.slip_line_id && d.order_slip_lines ? {
+          number: d.order_slip_lines.order_slips?.number ?? '', spec: d.order_slip_lines.spec, note: d.order_slip_lines.note,
+          est_rate_paisa: rate.get(d.slip_line_id) ?? null,
+        } : null,
       }]))
     },
   })

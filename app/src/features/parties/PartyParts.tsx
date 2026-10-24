@@ -7,7 +7,7 @@ import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
 import { MoneyInput } from '../../components/MoneyInput'
 import { ReasonButton } from '../../components/ReasonButton'
-import { Badge, Button, ButtonLink, Card, Detail, ErrorBanner, Field, Input, Select, Spinner, Status } from '../../components/ui'
+import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, ErrorBanner, Field, Input, Select, Spinner, Status } from '../../components/ui'
 import { todayKathmandu } from '../../lib/dates'
 import { friendlyError } from '../../lib/errors'
 import { PAYMENT_METHODS } from '../../lib/labels'
@@ -16,7 +16,7 @@ import { parseLoginId } from '../../lib/login-id'
 import { useProjects } from '../projects/api'
 import { useRefreshMoney } from '../../data/refresh'
 import { rpc, usePosting } from '../../data/rpc'
-import { usePartyBalances, usePartyKhata, usePartyOpenItems, usePartyOpeningBalance, usePartyPayments } from './api'
+import { type DeletableKind, useDeleteUnused, usePartyBalances, usePartyKhata, usePartyOpenItems, usePartyOpeningBalance, usePartyPayments } from './api'
 import { ShowMore } from '../../components/ShowMore'
 import { RefundCard } from '../refunds/RefundCard'
 import { DOC_WORD, docPath, PARTY, type PartyKind } from './kinds'
@@ -380,5 +380,26 @@ export function ContactRow({ phone, links }: { phone: string | null; links: Arra
         </span>
       )}
     </div>
+  )
+}
+
+/**
+ * Admin only, at the foot of an edit page: delete an entry made by mistake (a typo, a duplicate,
+ * a test) that was never used. Anything with records is refused by the server and stays; it can
+ * only be made inactive (or a project cancelled).
+ */
+export function DeleteUnused({ kind, id, name, onDeleted }: { kind: DeletableKind; id: string; name: string; onDeleted: () => void }) {
+  const auth = useCompany()
+  const remove = useDeleteUnused(kind, id)
+  if (!auth.isAdmin) return null
+  return (
+    <Card title={t('deleteUnused.title')} className="mt-4">
+      <p className="mb-3 text-sm text-subtle">{t(kind === 'project' ? 'deleteUnused.hintProject' : 'deleteUnused.hint')}</p>
+      <ErrorBanner>{remove.error && friendlyError(remove.error)}</ErrorBanner>
+      <ConfirmButton label={t('deleteUnused.deleteName', { name })} confirmLabel={t('deleteUnused.yesDelete')} disabled={remove.isPending}
+        onConfirm={() => remove.mutate(undefined, { onSuccess: onDeleted })}>
+        {t('deleteUnused.delete')}
+      </ConfirmButton>
+    </Card>
   )
 }

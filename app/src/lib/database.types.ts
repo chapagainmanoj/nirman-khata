@@ -2902,6 +2902,9 @@ isOneToOne: false
 "delete_slip_draft":
 { Args: { "p_slip": string }; Returns: undefined
                            },
+"delete_unused":
+{ Args: { "p_id": string,"p_kind": string }; Returns: undefined
+                           },
 "export_company_data":
 { Args: { "p_company": string }; Returns: Json
                            },

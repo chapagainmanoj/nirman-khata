@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
-import { Link, useParams, useSearchParams } from 'react-router'
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router'
 import { useCompany } from '../../auth/AuthProvider'
 import { DateInput, DateText } from '../../components/DateInput'
 import { Badge, Button, ButtonLink, Card, ConfirmButton, Detail, EmptyState, ErrorBanner, Field, Notice, PageHeader, Select, Spinner } from '../../components/ui'
@@ -21,7 +21,7 @@ import { ClientTab } from '../clients/ClientTab'
 import { useClientReceived } from '../clients/api'
 import { useCalendarEvents } from '../site/api'
 import { eventHref } from '../calendar/events'
-import { BalanceText } from '../parties/PartyParts'
+import { BalanceText, DeleteUnused } from '../parties/PartyParts'
 import { Tabs } from '../../components/Tabs'
 import { canEnter, canPost } from '../../data/permissions'
 import { memberName, useAmountsAsOf, useAssignments, useMembers, useProject, type Member } from './api'
@@ -384,6 +384,7 @@ const EDIT_FIELDS = ['actual_start', 'planned_end'] as const
 function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projects'>; members: Member[]; canEdit: boolean }) {
   const auth = useCompany()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   // A to-do opens the form at the field it is about: "?edit=actual_start".
   const focusField = EDIT_FIELDS.find((f) => f === params.get('edit'))
@@ -426,7 +427,8 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
 
   if (editing) {
     return (
-      <Card title={t('project.details')} className="lg:col-span-2">
+      <div className="lg:col-span-2">
+      <Card title={t('project.details')}>
         <form onSubmit={form.handleSubmit((v) => save.mutate(v), (errs, e) => focusFirstError(errs, e?.target as HTMLFormElement))} className="flex flex-col gap-4">
           <ProjectDetailsFields form={form} members={members} display={auth.dateDisplay} showActualDates />
           <ErrorBanner>{save.error && friendlyError(save.error)}</ErrorBanner>
@@ -436,6 +438,8 @@ function DetailsCard({ project: p, members, canEdit }: { project: Tables<'projec
           </div>
         </form>
       </Card>
+      <DeleteUnused kind="project" id={p.id} name={p.name} onDeleted={() => navigate('/projects', { replace: true })} />
+      </div>
     )
   }
 

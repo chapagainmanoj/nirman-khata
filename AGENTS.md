@@ -50,7 +50,8 @@ Demo logins: mobile `9800000001`–`9800000005`, password `password123` (roles i
 - **Money is integer paisa** (`bigint` in SQL, `number` in TS). Never floats. Parse input straight
   to paisa and format with `formatNPR` / `formatNPRShort` from `lib/money.ts` (`Rs. 12,34,567`).
 - **Dates are stored as AD `date`.** BS is display/input only, via `lib/dates.ts`. "Today" is Asia/Kathmandu.
-- **Nothing is deleted.** Records are deactivated, reversed or credited, with who/when kept.
+- **Nothing is deleted.** Records are deactivated, reversed or credited, with who/when kept. One exception:
+  an Admin may delete a party or project that was never used (`delete_unused`; any record pointing to it refuses).
 - **Money visibility is server-side.** Financial values live only in finance tables behind RLS;
   reports and dashboards are RPCs. The UI must handle "amounts hidden" (`null` → "Not available").
 - **Every tenant table** has `company_id`, `unique (company_id, id)` and composite FKs on
