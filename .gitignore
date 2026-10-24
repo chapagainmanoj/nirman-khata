@@ -10,7 +10,6 @@ scripts/*
 !scripts/build-deploy.sh
 !scripts/screenshots/
 !scripts/ads/
-scripts/ads/out/
 .pnpm-store
 
 # Merged app + site build (scripts/build-deploy.sh) and wrangler's local state
