@@ -22,12 +22,17 @@ test('signed in, "/" goes to the dashboard or projects by role; sign-out goes to
   // Sign-in returns to "/", which sends each person to their home.
   await signIn(page, '9800000001') // owner: sees money
   await expect(page).toHaveURL(/\/dashboard$/)
+  // "/home" (the site's "Open app" button) is a page load that ends at the same home.
+  await page.goto('/home')
+  await expect(page).toHaveURL(/\/dashboard$/)
   await signOut(page)
   await expect(page).toHaveURL(/\/login$/)
 
   await signIn(page, '9800000003') // site staff: no amounts
   await expect(page).toHaveURL(/\/projects$/)
   await page.goto('/')
+  await expect(page).toHaveURL(/\/projects$/)
+  await page.goto('/home')
   await expect(page).toHaveURL(/\/projects$/)
 })
 

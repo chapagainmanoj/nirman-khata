@@ -71,6 +71,8 @@ export function App() {
       <PageBoundary>
       <Routes>
         <Route path="/" element={<Root />} />
+        {/* The same, for a page load: the site's "Open app" button (site/src/layouts/Base.astro). */}
+        <Route path="/home" element={<Root />} />
         <Route path="/login" element={<RedirectIfSignedIn><LoginPage /></RedirectIfSignedIn>} />
         <Route path="/register" element={<RedirectIfSignedIn><RegisterPage /></RedirectIfSignedIn>} />
         {EMAIL_RESET && <Route path="/forgot" element={<RedirectIfSignedIn><ForgotPasswordPage /></RedirectIfSignedIn>} />}

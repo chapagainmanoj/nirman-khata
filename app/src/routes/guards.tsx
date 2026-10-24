@@ -70,7 +70,8 @@ export function Home() {
 }
 
 /** "/" inside the app: each person's home. A page load of "/" gets the marketing site instead
- *  (site/, laid over the app at deploy); only links within the app arrive here. */
+ *  (site/, laid over the app at deploy); only links within the app arrive here. A page load of
+ *  "/home" (the site's "Open app" button) lands here too. */
 export function Root() {
   return <RequireCompany><Home /></RequireCompany>
 }

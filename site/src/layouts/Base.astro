@@ -64,8 +64,20 @@ const jsonLd = {
         <nav class="flex items-center gap-1 text-[15px] font-semibold sm:gap-4">
           <a href="#how" class="hidden min-h-11 items-center px-2 text-subtle hover:text-ink sm:flex">How it works</a>
           <a href="#contact" class="hidden min-h-11 items-center px-2 text-subtle hover:text-ink sm:flex">Contact</a>
-          <a href={appUrl('/login')} class="flex min-h-11 items-center rounded-lg border border-ink/80 px-4 hover:bg-white">Sign in</a>
+          <a href={appUrl('/login')} data-open={appUrl('/home')} id="app-link" class="flex min-h-11 items-center rounded-lg border border-ink/80 px-4 hover:bg-white">Sign in</a>
         </nav>
+        <script is:inline>
+          // Signed in to the app (same origin; Supabase keeps the session in localStorage as
+          // sb-<ref>-auth-token): offer "Open app", which goes to each person's home (/home in the app).
+          // Runs right after the link, before the page is drawn, so the label does not flicker.
+          try {
+            if (Object.keys(localStorage).some((k) => /^sb-.+-auth-token$/.test(k))) {
+              const a = document.getElementById('app-link')
+              a.textContent = 'Open app'
+              a.href = a.dataset.open
+            }
+          } catch {}
+        </script>
       </div>
     </header>
     <main id="main">
